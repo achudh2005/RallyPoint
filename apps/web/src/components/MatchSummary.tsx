@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { getStats, type MatchState } from '@rallypoint/engine';
 import { useMatchStore } from '../store/matchStore.js';
 import { PointLog } from './PointLog.js';
+import { AnalyticsDashboard } from './analytics/AnalyticsDashboard.js';
 
 interface MatchSummaryProps {
   state: MatchState;
@@ -10,11 +11,22 @@ interface MatchSummaryProps {
 export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
   const { events, resetMatch } = useMatchStore();
   const [showLog, setShowLog] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const stats = getStats(events, state.config);
   const nameA = state.config.sideA.name;
   const nameB = state.config.sideB.name;
   const winnerName = state.winnerSide === 'A' ? nameA : nameB;
+
+  if (showAnalytics) {
+    return (
+      <AnalyticsDashboard
+        state={state}
+        events={events}
+        onBack={() => setShowAnalytics(false)}
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto p-5 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl flex flex-col gap-4">
@@ -90,7 +102,15 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-2.5 mt-2">
+      <button
+        onClick={() => setShowAnalytics(true)}
+        className="w-full py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg tap-active flex items-center justify-center gap-2"
+      >
+        <span>📊</span>
+        <span>Analytics, Insights & Story Card</span>
+      </button>
+
+      <div className="flex gap-2.5">
         <button
           onClick={() => setShowLog(true)}
           className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-semibold tracking-wider uppercase transition-colors tap-active"
@@ -99,7 +119,7 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
         </button>
         <button
           onClick={resetMatch}
-          className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold tracking-wider uppercase transition-colors shadow-lg tap-active"
+          className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-semibold tracking-wider uppercase transition-colors tap-active"
         >
           New Match
         </button>
