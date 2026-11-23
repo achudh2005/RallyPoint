@@ -1,0 +1,23 @@
+{
+  "name": "@rallypoint/engine",
+  "version": "1.0.0",
+  "description": "Pure TypeScript BWF rules and event-sourced badminton scoring engine with zero dependencies",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@vitest/coverage-v8": "^2.1.4",
+    "fast-check": "^3.23.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
