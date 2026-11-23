@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing and coverage
+coverage
+test-results
+playwright-report
+blob-report
+
+# Production build
+dist
+build
+.next
+out
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# IDE and OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+
+# Cache
+.turbo
+.eslintcache
+.cache
