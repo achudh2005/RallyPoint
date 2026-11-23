@@ -16,7 +16,8 @@
     "db:generate": "npm run --workspace=@rallypoint/db generate",
     "db:migrate": "npm run --workspace=@rallypoint/db migrate",
     "db:seed": "npm run --workspace=@rallypoint/db seed",
-    "db:rebuild-stats": "npm run --workspace=@rallypoint/db rebuild-stats"
+    "db:rebuild-stats": "npm run --workspace=@rallypoint/db rebuild-stats",
+    "rebuild-rankings": "tsx packages/ranking/src/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
