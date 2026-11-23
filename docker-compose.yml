@@ -29,5 +29,34 @@ services:
     depends_on:
       - postgres
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: rallypoint-api
+    restart: always
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgres://rallypoint:rallypoint_secret@postgres:5432/rallypoint_db
+      JWT_SECRET: production_rallypoint_secret_jwt_key_at_least_32_characters_long
+      REFRESH_TOKEN_SECRET: production_rallypoint_refresh_secret_key_at_least_32_characters_long
+      CORS_ORIGIN: http://localhost:3000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: rallypoint-web
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:

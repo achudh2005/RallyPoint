@@ -9,6 +9,24 @@ export default defineConfig({
       '@rallypoint/engine': path.resolve(__dirname, '../../packages/engine/src/index.ts'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) {
+              return 'charts';
+            }
+            if (id.includes('html-to-image')) {
+              return 'export';
+            }
+            return 'vendor';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     port: 3000,
     host: true,

@@ -1,0 +1,40 @@
+# Multi-stage Dockerfile for RallyPoint Backend API
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Install openssl for Prisma
+RUN apk add --no-cache openssl
+
+COPY package*.json ./
+COPY packages/engine/package*.json ./packages/engine/
+COPY apps/api/package*.json ./apps/api/
+
+RUN npm install
+
+COPY packages/engine/ ./packages/engine/
+COPY apps/api/ ./apps/api/
+COPY tsconfig.base.json ./
+
+# Generate Prisma Client & compile
+RUN cd apps/api && npx prisma generate
+RUN npm run build --workspace=@rallypoint/engine
+RUN npm run build --workspace=@rallypoint/api
+
+# Production Runner Stage
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+RUN apk add --no-cache openssl
+ENV NODE_ENV=production
+ENV PORT=4000
+
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/engine/dist ./packages/engine/dist
+COPY --from=builder /app/packages/engine/package*.json ./packages/engine/
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package*.json ./apps/api/
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+
+EXPOSE 4000
+CMD ["node", "apps/api/dist/server.js"]
