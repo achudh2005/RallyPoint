@@ -133,6 +133,8 @@ model Player {
   history             PlayerProfileHistory[]
   teamMemberships     TeamMember[]
   matchParticipations MatchParticipant[]
+  careerStats         PlayerCareerStats?
+  formTrend           PlayerFormTrend?
 
   @@index([displayName])
   @@index([clubId])
@@ -265,10 +267,11 @@ model Match {
   tournament   Tournament?        @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   court        Court?             @relation(fields: [courtId], references: [id], onDelete: SetNull)
   scorer       User?              @relation("ScorerMatches", fields: [scorerUserId], references: [id], onDelete: SetNull)
-  sides        MatchSide[]
-  participants MatchParticipant[]
-  games        Game[]
-  events       MatchEvent[]
+  sides           MatchSide[]
+  participants    MatchParticipant[]
+  games           Game[]
+  events          MatchEvent[]
+  analyticsRollup MatchAnalyticsRollup?
 
   @@index([status])
   @@map("matches")
@@ -339,4 +342,73 @@ model MatchEvent {
   @@index([matchId, sequenceNumber])
   @@index([occurredAt])
   @@map("match_events")
+}
+
+
+model PlayerCareerStats {
+  playerId      String    @id @map("player_id")
+  matchesPlayed Int       @default(0) @map("matches_played")
+  matchesWon    Int       @default(0) @map("matches_won")
+  matchesLost   Int       @default(0) @map("matches_lost")
+  gamesWon      Int       @default(0) @map("games_won")
+  gamesLost     Int       @default(0) @map("games_lost")
+  pointsWon     Int       @default(0) @map("points_won")
+  pointsLost    Int       @default(0) @map("points_lost")
+  winRate       Float     @default(0.0) @map("win_rate")
+  currentStreak Int       @default(0) @map("current_streak")
+  bestStreak    Int       @default(0) @map("best_streak")
+  lastPlayedAt  DateTime? @map("last_played_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  player        Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_career_stats")
+}
+
+model HeadToHead {
+  id            String   @id @default(cuid())
+  playerAId     String   @map("player_a_id")
+  playerBId     String   @map("player_b_id")
+  matchesPlayed Int      @default(0) @map("matches_played")
+  aWins         Int      @default(0) @map("a_wins")
+  bWins         Int      @default(0) @map("b_wins")
+  gamesPlayed   Int      @default(0) @map("games_played")
+  aGameWins     Int      @default(0) @map("a_game_wins")
+  bGameWins     Int      @default(0) @map("b_game_wins")
+  lastMatchId   String?  @map("last_match_id")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([playerAId, playerBId])
+  @@index([playerAId])
+  @@index([playerBId])
+  @@map("head_to_head_stats")
+}
+
+model PlayerFormTrend {
+  playerId                String   @id @map("player_id")
+  recentResults           String   @default("[]") @map("recent_results") // JSON-serialized array of ["W", "L", ...]
+  avgPointsPerGame        Float    @default(0.0) @map("avg_points_per_game")
+  avgMatchDurationMinutes Float    @default(0.0) @map("avg_match_duration_minutes")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  player                  Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_form_trends")
+}
+
+model MatchAnalyticsRollup {
+  matchId          String   @id @map("match_id")
+  longestRally     Int      @default(0) @map("longest_rally")
+  streakA          Int      @default(0) @map("streak_a")
+  streakB          Int      @default(0) @map("streak_b")
+  leadChanges      Int      @default(0) @map("lead_changes")
+  comebackDeficits Json     @default("{}") @map("comeback_deficits")
+  serveWinPctA     Float    @default(0.0) @map("serve_win_pct_a")
+  serveWinPctB     Float    @default(0.0) @map("serve_win_pct_b")
+  shotBreakdown    Json     @default("{}") @map("shot_breakdown")
+  computedAt       DateTime @default(now()) @map("computed_at")
+
+  match            Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("match_analytics_rollups")
 }

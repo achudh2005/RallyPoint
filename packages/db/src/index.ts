@@ -56,3 +56,5 @@ export async function softDeletePlayer(
 }
 
 export * from './eventIngestion.js';
+
+export * from './statsProjection.js';

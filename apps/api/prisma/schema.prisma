@@ -96,7 +96,7 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  player       Player?
+  player        Player?
   scoredMatches Match[]  @relation("ScorerMatches")
 
   @@map("users")
@@ -128,11 +128,13 @@ model Player {
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  club         Club?         @relation(fields: [clubId], references: [id], onDelete: SetNull)
-  history      PlayerProfileHistory[]
-  teamMemberships TeamMember[]
+  user                User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  club                Club?                  @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  history             PlayerProfileHistory[]
+  teamMemberships     TeamMember[]
   matchParticipations MatchParticipant[]
+  careerStats         PlayerCareerStats?
+  formTrend           PlayerFormTrend?
 
   @@index([displayName])
   @@index([clubId])
@@ -168,13 +170,13 @@ model Club {
 }
 
 model Team {
-  id        String     @id @default(cuid())
+  id        String       @id @default(cuid())
   name      String
-  type      TeamType   @default(SINGLES_ENTRY)
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+  type      TeamType     @default(SINGLES_ENTRY)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
 
-  members   TeamMember[]
+  members    TeamMember[]
   matchSides MatchSide[]
 
   @@map("teams")
@@ -190,24 +192,24 @@ model TeamMember {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, playerId, leftAt])
   @@map("team_members")
 }
 
 model Venue {
-  id         String   @id @default(cuid())
+  id         String       @id @default(cuid())
   name       String
   address    String?
   latitude   Float?
   longitude  Float?
-  courtCount Int      @default(1) @map("court_count")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  courtCount Int          @default(1) @map("court_count")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
 
-  courts     Court[]
+  courts      Court[]
   tournaments Tournament[]
 
   @@map("venues")
@@ -221,8 +223,8 @@ model Court {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  matches     Match[]
+  venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  matches Match[]
 
   @@unique([venueId, courtNumber])
   @@map("courts")
@@ -240,35 +242,36 @@ model Tournament {
   createdAt DateTime           @default(now()) @map("created_at")
   updatedAt DateTime           @updatedAt @map("updated_at")
 
-  venue     Venue?             @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  matches   Match[]
+  venue   Venue?  @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  matches Match[]
 
   @@map("tournaments")
 }
 
 model Match {
-  id           String        @id @default(cuid())
-  tournamentId String?       @map("tournament_id")
-  courtId      String?       @map("court_id")
-  matchType    MatchType     @default(SINGLES) @map("match_type")
-  bestOf       Int           @default(3) @map("best_of")
-  status       MatchStatus   @default(SCHEDULED)
-  scheduledAt  DateTime?     @map("scheduled_at")
-  startedAt    DateTime?     @map("started_at")
-  endedAt      DateTime?     @map("ended_at")
+  id           String         @id @default(cuid())
+  tournamentId String?        @map("tournament_id")
+  courtId      String?        @map("court_id")
+  matchType    MatchType      @default(SINGLES) @map("match_type")
+  bestOf       Int            @default(3) @map("best_of")
+  status       MatchStatus    @default(SCHEDULED)
+  scheduledAt  DateTime?      @map("scheduled_at")
+  startedAt    DateTime?      @map("started_at")
+  endedAt      DateTime?      @map("ended_at")
   winnerSide   MatchSideEnum? @map("winner_side")
-  scorerUserId String?       @map("scorer_user_id")
-  clientUuid   String        @unique @map("client_uuid")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  scorerUserId String?        @map("scorer_user_id")
+  clientUuid   String         @unique @map("client_uuid")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
 
-  tournament   Tournament?   @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
-  court        Court?        @relation(fields: [courtId], references: [id], onDelete: SetNull)
-  scorer       User?         @relation("ScorerMatches", fields: [scorerUserId], references: [id], onDelete: SetNull)
-  sides        MatchSide[]
-  participants MatchParticipant[]
-  games        Game[]
-  events       MatchEvent[]
+  tournament      Tournament?           @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  court           Court?                @relation(fields: [courtId], references: [id], onDelete: SetNull)
+  scorer          User?                 @relation("ScorerMatches", fields: [scorerUserId], references: [id], onDelete: SetNull)
+  sides           MatchSide[]
+  participants    MatchParticipant[]
+  games           Game[]
+  events          MatchEvent[]
+  analyticsRollup MatchAnalyticsRollup?
 
   @@index([status])
   @@map("matches")
@@ -280,8 +283,8 @@ model MatchSide {
   side    MatchSideEnum
   teamId  String?       @map("team_id")
 
-  match   Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  team    Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  team  Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@unique([matchId, side])
   @@map("match_sides")
@@ -294,25 +297,25 @@ model MatchParticipant {
   playerId String        @map("player_id")
   position Int           @default(1)
 
-  match    Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  player   Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@unique([matchId, side, position])
   @@map("match_participants")
 }
 
 model Game {
-  id          String         @id @default(cuid())
-  matchId     String         @map("match_id")
-  gameNumber  Int            @map("game_number")
-  scoreA      Int            @default(0) @map("score_a")
-  scoreB      Int            @default(0) @map("score_b")
-  winnerSide  MatchSideEnum? @map("winner_side")
-  startedAt   DateTime       @default(now()) @map("started_at")
-  endedAt     DateTime?      @map("ended_at")
+  id         String         @id @default(cuid())
+  matchId    String         @map("match_id")
+  gameNumber Int            @map("game_number")
+  scoreA     Int            @default(0) @map("score_a")
+  scoreB     Int            @default(0) @map("score_b")
+  winnerSide MatchSideEnum? @map("winner_side")
+  startedAt  DateTime       @default(now()) @map("started_at")
+  endedAt    DateTime?      @map("ended_at")
 
-  match       Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  events      MatchEvent[]
+  match  Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  events MatchEvent[]
 
   @@unique([matchId, gameNumber])
   @@map("games")
@@ -332,11 +335,79 @@ model MatchEvent {
   recordedAt     DateTime          @default(now()) @map("recorded_at")
   deviceId       String?           @map("device_id")
 
-  match          Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  game           Game?             @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  game  Game? @relation(fields: [gameId], references: [id], onDelete: SetNull)
 
   @@unique([matchId, sequenceNumber])
   @@index([matchId, sequenceNumber])
   @@index([occurredAt])
   @@map("match_events")
+}
+
+model PlayerCareerStats {
+  playerId      String    @id @map("player_id")
+  matchesPlayed Int       @default(0) @map("matches_played")
+  matchesWon    Int       @default(0) @map("matches_won")
+  matchesLost   Int       @default(0) @map("matches_lost")
+  gamesWon      Int       @default(0) @map("games_won")
+  gamesLost     Int       @default(0) @map("games_lost")
+  pointsWon     Int       @default(0) @map("points_won")
+  pointsLost    Int       @default(0) @map("points_lost")
+  winRate       Float     @default(0.0) @map("win_rate")
+  currentStreak Int       @default(0) @map("current_streak")
+  bestStreak    Int       @default(0) @map("best_streak")
+  lastPlayedAt  DateTime? @map("last_played_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  player        Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_career_stats")
+}
+
+model HeadToHead {
+  id            String   @id @default(cuid())
+  playerAId     String   @map("player_a_id")
+  playerBId     String   @map("player_b_id")
+  matchesPlayed Int      @default(0) @map("matches_played")
+  aWins         Int      @default(0) @map("a_wins")
+  bWins         Int      @default(0) @map("b_wins")
+  gamesPlayed   Int      @default(0) @map("games_played")
+  aGameWins     Int      @default(0) @map("a_game_wins")
+  bGameWins     Int      @default(0) @map("b_game_wins")
+  lastMatchId   String?  @map("last_match_id")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([playerAId, playerBId])
+  @@index([playerAId])
+  @@index([playerBId])
+  @@map("head_to_head_stats")
+}
+
+model PlayerFormTrend {
+  playerId                String   @id @map("player_id")
+  recentResults           String   @default("[]") @map("recent_results")
+  avgPointsPerGame        Float    @default(0.0) @map("avg_points_per_game")
+  avgMatchDurationMinutes Float    @default(0.0) @map("avg_match_duration_minutes")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  player                  Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_form_trends")
+}
+
+model MatchAnalyticsRollup {
+  matchId          String   @id @map("match_id")
+  longestRally     Int      @default(0) @map("longest_rally")
+  streakA          Int      @default(0) @map("streak_a")
+  streakB          Int      @default(0) @map("streak_b")
+  leadChanges      Int      @default(0) @map("lead_changes")
+  comebackDeficits Json     @default("{}") @map("comeback_deficits")
+  serveWinPctA     Float    @default(0.0) @map("serve_win_pct_a")
+  serveWinPctB     Float    @default(0.0) @map("serve_win_pct_b")
+  shotBreakdown    Json     @default("{}") @map("shot_breakdown")
+  computedAt       DateTime @default(now()) @map("computed_at")
+
+  match            Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("match_analytics_rollups")
 }
