@@ -58,6 +58,7 @@ flowchart TD
 
 ## Monorepo Layout
 - `packages/engine`: Pure TypeScript BWF rules and event-sourced scoring engine (zero runtime dependencies).
+- `packages/ranking`: Pure TypeScript ranking & team league engine (zero runtime dependencies, 97%+ test coverage).
 - `apps/web`: React 18 + Vite + Tailwind CSS + Zustand + Recharts + Dexie PWA.
 - `apps/api`: Node.js + Express + TypeScript + Prisma + PostgreSQL 16 + Socket.IO.
 - `packages/db`: Shared Prisma client and database repository schemas.
@@ -191,6 +192,22 @@ For complete details, see [docs/database.md](docs/database.md).
   - Row Level Security (RLS) policies (`packages/db/src/rlsPolicies.sql`).
   - Performance audit with `EXPLAIN ANALYZE` benchmarks (`packages/db/src/performanceAudit.sql`).
   - End-to-end 16-player tournament simulation and concurrent live scoring tests (`packages/db/src/dbE2E.test.ts`).
+
+---
+
+## Community Ranking and Team League System (`@rallypoint/ranking`)
+
+A dedicated pure TypeScript ranking engine for local badminton communities and leagues:
+- **Event-Sourced Projections**: Recomputable from raw match events at any time with `npm run rebuild-rankings`.
+- **Rally Event Tagging**: Attributed shot types (`SMASH`, `DROP`, `NET`, `CLEAR`, `DRIVE`, `LOB`, `SERVE`) and rally outcomes (`WINNER`, `UNFORCED_ERROR`, `FORCED_ERROR`, `OUT`, `NET_FAULT`, `SERVICE_FAULT`).
+- **Leaderboards**:
+  - `OVERALL`: Weighted composite index:
+    $$\text{Score} = 0.40 \times \text{WinRate} + 0.25 \times \text{PtDiff} + 0.15 \times \text{Wins} + 0.10 \times \text{Form} + 0.10 \times \text{Consistency}$$
+  - `MOST WINS`, `MOST POINTS SCORED`, `MOST LOSSES`, `MOST DROPS` (played & conceded), `MOST UNFORCED ERRORS`, and `BEST WIN RATE` (min matches filter).
+- **Format Requirements**:
+  - Every leaderboard row displays **Matches: N** next to rank.
+  - Shared tie ranks `(1, 2, 2, 4)` and rank movements (`UP`, `DOWN`, `SAME`).
+- **Team League**: Auto-detected doubles pairs and fixed club teams with independent rankings.
 
 ---
 

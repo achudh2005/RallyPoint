@@ -2,6 +2,34 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Ranking Phase 1] - Data Model and Ranking Engine (@rallypoint/ranking)
+### Added
+- Created dedicated `@rallypoint/ranking` package (zero external dependencies) with 97.04% test coverage.
+- Prisma schema extensions for community ranking and seasons:
+  - `Season`: Active and historical league seasons.
+  - `TeamType`: Added `FIXED_PAIR` alongside `CLUB_TEAM` and `SINGLES_ENTRY`.
+  - `ShotType`: `SMASH`, `DROP`, `NET`, `CLEAR`, `DRIVE`, `LOB`, `SERVE`.
+  - `RallyEndResult`: `WINNER`, `UNFORCED_ERROR`, `FORCED_ERROR`, `OUT`, `NET_FAULT`, `SERVICE_FAULT`.
+  - Attributed rally events on `MatchEvent`: `shotType`, `rallyEndResult`, `pointWinnerPlayerId`, `errorPlayerId`.
+  - `PlayerRankingSnapshot` & `TeamRankingSnapshot` models storing point-in-time leaderboard state and rank movements.
+- Full player stats accumulator:
+  - `matches_played`, `wins`, `losses`, `win_rate`, `points_scored`, `points_conceded`, `point_difference`, `games_won`, `games_lost`, `drop_shots_played`, `drop_shot_winners`, `drop_shot_errors`, `unforced_errors`, `smash_winners`, `longest_win_streak`, `current_form` (last 5 results).
+- All 8 individual ranking leaderboards:
+  1. `OVERALL`: Configurable weighted formula (40% win rate, 25% pt diff/match, 15% wins, 10% form, 10% consistency).
+  2. `MOST_WINS`: Tiebreak = win rate > point difference > head-to-head > name.
+  3. `MOST_POINTS`: Tiebreak = points per match > wins > win rate.
+  4. `MOST_LOSSES`: Tiebreak = loss rate > points conceded.
+  5. `MOST_DROPS_PLAYED`: Drop shots played.
+  6. `MOST_DROPS_CONCEDED`: Points conceded / dropped.
+  7. `MOST_UNFORCED_ERRORS`: Unforced error count ("who fails more" board).
+  8. `BEST_WIN_RATE`: Filtered by configurable minimum matches threshold (default: 5).
+- Shared rank tie handling: `1, 2, 2, 4` ranking assignment with explicit `Matches: N` indicators on every row.
+- Rank movement indicators: `UP`, `DOWN`, `SAME` comparing against previous snapshots.
+- Team ranking engine:
+  - Auto-detection of doubles pairs with isolated pair statistics.
+  - Leaderboards: `OVERALL_TEAM`, `MOST_TEAM_WINS`, `MOST_TEAM_LOSSES`, `BEST_TEAM_WIN_RATE`, `BEST_POINT_DIFFERENCE`.
+- Event-sourced replay pipeline: `rebuildRankings(matches)` and CLI command `npm run rebuild-rankings`.
+
 ## [DB Phase 4] - Production Hardening, Performance & Operations
 ### Added
 - Enterprise backup and disaster recovery suite:
