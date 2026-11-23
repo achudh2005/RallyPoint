@@ -1,11 +1,62 @@
 import React, { useState } from 'react';
-import type { MatchConfig } from '@rallypoint/engine';
 import { useRankingStore, CommunityPlayer, TaggingMode } from '../../store/rankingStore.js';
-import { useMatchStore } from '../../store/matchStore.js';
+import { useMatchStore, ExtendedMatchConfig } from '../../store/matchStore.js';
+import { ScoringFormat, FORMAT_PRESETS } from '@rallypoint/scoring-rules';
 
 interface CommunityMatchSetupProps {
   onStart: () => void;
 }
+
+const SCORING_FORMAT_OPTIONS: {
+  format: ScoringFormat;
+  title: string;
+  badge: string;
+  description: string;
+  type: 'RALLY' | 'SERVICE';
+}[] = [
+  {
+    format: 'RALLY_21',
+    title: 'Rally 21 (BWF)',
+    badge: 'Standard BWF',
+    description: 'Every rally scores, game to 21, win by 2, cap at 30',
+    type: 'RALLY',
+  },
+  {
+    format: 'RALLY_15',
+    title: 'Rally 15',
+    badge: 'Short Game',
+    description: 'Every rally scores, game to 15, win by 2, cap at 24',
+    type: 'RALLY',
+  },
+  {
+    format: 'RALLY_11',
+    title: 'Rally 11',
+    badge: 'Sprint',
+    description: 'Every rally scores, game to 11, win by 2, cap at 20',
+    type: 'RALLY',
+  },
+  {
+    format: 'SERVICE_POINT_15',
+    title: 'Service 15',
+    badge: 'Classic 15',
+    description: 'Only server scores, side-out on loss, setting at 13/14',
+    type: 'SERVICE',
+  },
+  {
+    format: 'SERVICE_POINT_11',
+    title: 'Service 11',
+    badge: 'Classic Sprint',
+    description: 'Only server scores, side-out on loss, setting at 9/10',
+    type: 'SERVICE',
+  },
+  {
+    format: 'CUSTOM',
+    title: 'Custom',
+    badge: 'Configurable',
+    description: 'Set custom target points, win-by, cap, and setting rules',
+    type: 'RALLY',
+  },
+];
 
 export const CommunityMatchSetup: React.FC<CommunityMatchSetupProps> = ({ onStart }) => {
   const {
@@ -22,7 +73,26 @@ export const CommunityMatchSetup: React.FC<CommunityMatchSetupProps> = ({ onStar
 
   const { startMatch } = useMatchStore();
 
+  // Remember last-used scoring system from localStorage
+  const [scoringFormat, setScoringFormat] = useState<ScoringFormat>(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = window.localStorage.getItem('rallypoint_last_scoring_format') as ScoringFormat;
+        if (saved && FORMAT_PRESETS[saved]) return saved;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return 'RALLY_21';
+  });
+
+  const [customTargetPoints, setCustomTargetPoints] = useState(21);
+  const [customWinBy, setCustomWinBy] = useState(2);
+  const [customCap, setCustomCap] = useState(30);
+
   const [matchType, setMatchType] = useState<'SINGLES' | 'DOUBLES'>('SINGLES');
+  const [firstServerSide, setFirstServerSide] = useState<'A' | 'B'>('A');
+  const [isCoinFlipping, setIsCoinFlipping] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPlayerName, setNewPlayerName] = useState('');
 
@@ -35,6 +105,27 @@ export const CommunityMatchSetup: React.FC<CommunityMatchSetupProps> = ({ onStar
     pairB: [CommunityPlayer, CommunityPlayer];
     balanceDelta: number;
   } | null>(null);
+
+  // Save selected scoring format
+  const handleSelectFormat = (fmt: ScoringFormat) => {
+    setScoringFormat(fmt);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('rallypoint_last_scoring_format', fmt);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCoinToss = () => {
+    setIsCoinFlipping(true);
+    setTimeout(() => {
+      const picked = Math.random() < 0.5 ? 'A' : 'B';
+      setFirstServerSide(picked);
+      setIsCoinFlipping(false);
+    }, 600);
+  };
 
   const filteredPlayers = communityPlayers.filter((p) =>
     p.displayName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -112,12 +203,26 @@ export const CommunityMatchSetup: React.FC<CommunityMatchSetupProps> = ({ onStar
     const playerIdsA = playersSideA.map((p) => p.id);
     const playerIdsB = playersSideB.map((p) => p.id);
 
-    const config: MatchConfig = {
+    const preset = FORMAT_PRESETS[scoringFormat];
+    const targetPoints = scoringFormat === 'CUSTOM' ? customTargetPoints : preset.targetPoints;
+    const tiebreakCap = scoringFormat === 'CUSTOM' ? customCap : preset.cap;
+
+    const initialServerPlayerId =
+      firstServerSide === 'A'
+        ? playerIdsA[0] || 'p1'
+        : playerIdsB[0] || 'p2';
+
+    const config: ExtendedMatchConfig = {
       id: matchId,
       mode: matchType === 'SINGLES' ? 'singles' : 'doubles',
+      scoringFormat,
+      customFormatConfig:
+        scoringFormat === 'CUSTOM'
+          ? { targetPoints: customTargetPoints, winBy: customWinBy, cap: customCap }
+          : undefined,
       bestOf: 3,
-      pointsToWinGame: 21,
-      tiebreakCap: 30,
+      pointsToWinGame: targetPoints,
+      tiebreakCap,
       sideA: {
         id: 'side-a',
         name: nameA,
@@ -130,8 +235,10 @@ export const CommunityMatchSetup: React.FC<CommunityMatchSetupProps> = ({ onStar
         playerIds: playerIdsB.length > 0 ? playerIdsB : ['p2'],
         playerNames: playersSideB.map((p) => p.displayName),
       },
-      initialServerSide: 'A',
-      initialServerPlayerId: playerIdsA[0] || 'p1',
+      initialServerSide: firstServerSide,
+      initialServerPlayerId,
+      firstServerSide,
+      firstServerPlayerId: initialServerPlayerId,
       startTime: Date.now(),
     };
 
@@ -140,6 +247,7 @@ export const CommunityMatchSetup: React.FC<CommunityMatchSetupProps> = ({ onStar
       id: matchId,
       seasonId: activeSeason,
       matchType,
+      scoringFormat,
       status: 'LIVE',
       participants: [
         ...playersSideA.map((p, idx) => ({
@@ -208,6 +316,133 @@ export const CommunityMatchSetup: React.FC<CommunityMatchSetupProps> = ({ onStar
             }`}
           >
             Doubles
+          </button>
+        </div>
+      </div>
+
+      {/* Scoring System Selector (Top Primary Selector) */}
+      <div className="bg-gray-800/60 p-3 rounded-2xl border border-gray-700/70 flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <label className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+            <span>⚙️ Scoring System</span>
+          </label>
+          <span className="text-[10px] bg-emerald-950 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+            {FORMAT_PRESETS[scoringFormat]?.scoringType === 'SERVICE' ? 'Classic Service Point' : 'Rally Point'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {SCORING_FORMAT_OPTIONS.map((opt) => (
+            <button
+              key={opt.format}
+              type="button"
+              onClick={() => handleSelectFormat(opt.format)}
+              className={`p-2 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                scoringFormat === opt.format
+                  ? 'bg-emerald-950/80 border-emerald-500 text-white shadow-md'
+                  : 'bg-gray-900/70 border-gray-800 text-gray-300 hover:border-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-extrabold text-[11px] leading-tight">{opt.title}</span>
+                <span
+                  className={`text-[8px] font-bold px-1.5 py-0.2 rounded ${
+                    opt.type === 'SERVICE'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  }`}
+                >
+                  {opt.badge}
+                </span>
+              </div>
+              <p className="text-[9px] text-gray-400 leading-tight line-clamp-2">{opt.description}</p>
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Rules Settings Drawer */}
+        {scoringFormat === 'CUSTOM' && (
+          <div className="mt-2 p-2.5 bg-gray-900 border border-gray-700/60 rounded-xl grid grid-cols-3 gap-2 text-[10px]">
+            <div>
+              <span className="text-gray-400 block mb-0.5 font-bold">Target Points:</span>
+              <input
+                type="number"
+                min={5}
+                max={50}
+                value={customTargetPoints}
+                onChange={(e) => setCustomTargetPoints(Number(e.target.value))}
+                className="w-full bg-gray-800 text-white rounded-lg p-1.5 border border-gray-700 focus:outline-none focus:border-emerald-500 font-bold"
+              />
+            </div>
+            <div>
+              <span className="text-gray-400 block mb-0.5 font-bold">Win By:</span>
+              <input
+                type="number"
+                min={1}
+                max={5}
+                value={customWinBy}
+                onChange={(e) => setCustomWinBy(Number(e.target.value))}
+                className="w-full bg-gray-800 text-white rounded-lg p-1.5 border border-gray-700 focus:outline-none focus:border-emerald-500 font-bold"
+              />
+            </div>
+            <div>
+              <span className="text-gray-400 block mb-0.5 font-bold">Hard Cap:</span>
+              <input
+                type="number"
+                min={customTargetPoints}
+                max={60}
+                value={customCap}
+                onChange={(e) => setCustomCap(Number(e.target.value))}
+                className="w-full bg-gray-800 text-white rounded-lg p-1.5 border border-gray-700 focus:outline-none focus:border-emerald-500 font-bold"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Serve First & Coin Toss Helper */}
+      <div className="bg-gray-800/40 p-2.5 rounded-2xl border border-gray-800 flex justify-between items-center">
+        <div>
+          <span className="font-bold text-gray-200 block text-[11px]">First Serve</span>
+          <span className="text-[10px] text-gray-400">
+            {firstServerSide === 'A' ? 'Side A serves first' : 'Side B serves first'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex bg-gray-900 rounded-xl p-0.5 gap-1">
+            <button
+              type="button"
+              onClick={() => setFirstServerSide('A')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                firstServerSide === 'A'
+                  ? 'bg-blue-600 text-white font-black'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Side A
+            </button>
+            <button
+              type="button"
+              onClick={() => setFirstServerSide('B')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                firstServerSide === 'B'
+                  ? 'bg-red-600 text-white font-black'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Side B
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleCoinToss}
+            disabled={isCoinFlipping}
+            className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border border-amber-500/40 bg-amber-950/60 text-amber-300 hover:bg-amber-900/80 transition-transform ${
+              isCoinFlipping ? 'animate-spin' : ''
+            }`}
+            title="Toss Coin for First Serve"
+          >
+            🪙 Toss
           </button>
         </div>
       </div>

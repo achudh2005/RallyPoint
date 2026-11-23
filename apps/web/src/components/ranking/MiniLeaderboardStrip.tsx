@@ -1,17 +1,21 @@
 import React from 'react';
 import type { RankingCategory } from '@rallypoint/ranking';
 import { useRankingStore } from '../../store/rankingStore.js';
+import { useMatchStore } from '../../store/matchStore.js';
 
 const CATEGORIES: { key: RankingCategory; label: string }[] = [
   { key: 'OVERALL', label: 'Overall' },
+  { key: 'LEAGUE_TABLE', label: 'League' },
   { key: 'MOST_WINS', label: 'Wins' },
   { key: 'MOST_POINTS', label: 'Points' },
   { key: 'MOST_DROPS_PLAYED', label: 'Drops' },
+  { key: 'BEST_SERVICE_GAME', label: 'Service' },
   { key: 'BEST_WIN_RATE', label: 'Win %' },
 ];
 
 export const MiniLeaderboardStrip: React.FC = () => {
   const { playerLeaderboards, selectedCategory, setSelectedCategory } = useRankingStore();
+  const { scoringFormat } = useMatchStore();
 
   const currentBoard = (playerLeaderboards[selectedCategory] || []).slice(0, 3);
 
@@ -70,8 +74,13 @@ export const MiniLeaderboardStrip: React.FC = () => {
     >
       {/* Category Tabs & Label */}
       <div className="flex justify-between items-center border-b border-gray-800/80 pb-1.5">
-        <span className="font-extrabold text-[11px] uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+        <span className="font-extrabold text-[11px] uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
           <span>🏆 Community Live Board</span>
+          {scoringFormat && (
+            <span className="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-mono font-bold">
+              [{scoringFormat.replace(/_/g, ' ')}]
+            </span>
+          )}
         </span>
         <div className="flex gap-1 overflow-x-auto scrollbar-none">
           {CATEGORIES.map(({ key, label }) => (

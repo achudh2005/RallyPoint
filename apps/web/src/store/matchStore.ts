@@ -10,10 +10,36 @@ import {
   Side,
 } from '@rallypoint/engine';
 import { db } from '../db/index.js';
+import {
+  convertEngineConfigToScoringConfig,
+  createScoringMatch,
+  recordRally,
+  scoringChooseSetting,
+  scoringUndo,
+  syncScoringStateToEngineState,
+  ScoringFormat,
+  FormatConfig,
+  ScoringRulesMatchState,
+} from './scoringBridge.js';
+
+export interface ExtendedMatchConfig extends MatchConfig {
+  scoringFormat?: ScoringFormat;
+  customFormatConfig?: Partial<FormatConfig>;
+  firstServerSide?: 'A' | 'B';
+  firstServerPlayerId?: string;
+}
 
 interface MatchStore {
   match: MatchState | null;
   events: MatchEvent[];
+  scoringFormat: ScoringFormat;
+  scoringRulesState: ScoringRulesMatchState | null;
+  pendingSettingChoice: {
+    eligibleSide: 'A' | 'B';
+    atScore: number;
+    setToTarget: number;
+    extraPoints: number;
+  } | null;
   enableRallyTagging: boolean;
   pendingPointSide: Side | null;
   theme: 'dark' | 'light';
@@ -21,8 +47,9 @@ interface MatchStore {
   announcement: string;
 
   // Actions
-  startMatch: (config: MatchConfig, enableRallyTagging?: boolean) => Promise<void>;
+  startMatch: (config: ExtendedMatchConfig, enableRallyTagging?: boolean) => Promise<void>;
   recordPoint: (side: Side, rallyEndType?: RallyEndType) => Promise<void>;
+  chooseSettingChoice: (setGame: boolean) => Promise<void>;
   undo: () => Promise<void>;
   recordServeFault: (faultySide: Side) => Promise<void>;
   toggleInterval: () => Promise<void>;
@@ -66,6 +93,9 @@ function generateAriaAnnouncement(state: MatchState): string {
 export const useMatchStore = create<MatchStore>((set, get) => ({
   match: null,
   events: [],
+  scoringFormat: 'RALLY_21',
+  scoringRulesState: null,
+  pendingSettingChoice: null,
   enableRallyTagging: false,
   pendingPointSide: null,
   theme: 'dark',
@@ -73,12 +103,22 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   announcement: '',
 
   startMatch: async (config, enableRallyTagging = false) => {
-    const state = createMatch(config);
+    const scoringFormat = config.scoringFormat || 'RALLY_21';
+    const scoringConfig = convertEngineConfigToScoringConfig(config);
+    const scoringRulesState = createScoringMatch(scoringConfig);
+
+    let state = createMatch(config);
+    if (scoringFormat !== 'RALLY_21') {
+      state = syncScoringStateToEngineState(scoringRulesState, config);
+    }
     const announcement = generateAriaAnnouncement(state);
 
     set({
       match: state,
       events: [],
+      scoringFormat,
+      scoringRulesState,
+      pendingSettingChoice: null,
       enableRallyTagging,
       pendingPointSide: null,
       announcement,
@@ -94,12 +134,100 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     });
   },
 
+  chooseSettingChoice: async (setGame: boolean) => {
+    const { scoringRulesState, match, events, pendingSettingChoice } = get();
+    if (!match) return;
+
+    triggerHaptic(40);
+    let nextEngineState = match;
+    let nextScoringState = scoringRulesState;
+
+    if (scoringRulesState) {
+      const activeChoice = scoringRulesState.pendingSettingChoice || pendingSettingChoice;
+      if (activeChoice) {
+        const stateWithChoice = {
+          ...scoringRulesState,
+          pendingSettingChoice: activeChoice,
+        };
+        const result = scoringChooseSetting(stateWithChoice, setGame);
+        nextScoringState = result.state;
+        nextEngineState = syncScoringStateToEngineState(result.state, match.config);
+      }
+    }
+
+    const announcement = generateAriaAnnouncement(nextEngineState);
+
+    const settingEvent: MatchEvent = {
+      id: `setting-${Date.now()}`,
+      matchId: match.config.id,
+      timestamp: Date.now(),
+      type: 'INTERVAL',
+      intervalType: 'GAME_BREAK',
+      gameNumber: match.currentGameNumber,
+    };
+
+    const nextEvents = [...events, settingEvent];
+    set({
+      scoringRulesState: nextScoringState,
+      pendingSettingChoice: null,
+      match: nextEngineState,
+      events: nextEvents,
+      announcement,
+    });
+
+    await db.matches.put({
+      id: match.config.id,
+      config: match.config,
+      state: nextEngineState,
+      events: nextEvents,
+      updatedAt: Date.now(),
+      completed: nextEngineState.status === 'COMPLETED',
+    });
+  },
+
   recordPoint: async (side, rallyEndType) => {
-    const { match, events, pendingPointSide } = get();
+    const { match, events, pendingPointSide, scoringRulesState, scoringFormat } = get();
     if (!match || match.status === 'COMPLETED') return;
 
     triggerHaptic(50);
     const targetSide = pendingPointSide ?? side;
+
+    if (scoringRulesState && scoringFormat !== 'RALLY_21') {
+      const rallyRes = recordRally(scoringRulesState, {
+        winningSide: targetSide as 'A' | 'B',
+      });
+      const nextEngineState = syncScoringStateToEngineState(rallyRes.state, match.config);
+      const announcement = generateAriaAnnouncement(nextEngineState);
+
+      const event: MatchEvent = {
+        id: `pt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        matchId: match.config.id,
+        timestamp: Date.now(),
+        type: 'POINT',
+        side: targetSide,
+        rallyEndType,
+      };
+
+      const nextEvents = [...events, event];
+      set({
+        scoringRulesState: rallyRes.state,
+        pendingSettingChoice: rallyRes.state.pendingSettingChoice,
+        match: nextEngineState,
+        events: nextEvents,
+        pendingPointSide: null,
+        announcement,
+      });
+
+      await db.matches.put({
+        id: match.config.id,
+        config: match.config,
+        state: nextEngineState,
+        events: nextEvents,
+        updatedAt: Date.now(),
+        completed: nextEngineState.status === 'COMPLETED',
+      });
+      return;
+    }
 
     const event: MatchEvent = {
       id: `pt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -132,10 +260,37 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   },
 
   undo: async () => {
-    const { match, events } = get();
+    const { match, events, scoringRulesState, scoringFormat } = get();
     if (!match || events.length === 0) return;
 
     triggerHaptic(30);
+
+    if (scoringRulesState && scoringFormat !== 'RALLY_21') {
+      const undoneScoringState = scoringUndo(scoringRulesState);
+      const nextEngineState = syncScoringStateToEngineState(undoneScoringState, match.config);
+      const nextEvents = [...events];
+      nextEvents.pop();
+      const announcement = `Undone. Score: ${generateAriaAnnouncement(nextEngineState)}`;
+
+      set({
+        scoringRulesState: undoneScoringState,
+        pendingSettingChoice: undoneScoringState.pendingSettingChoice,
+        match: nextEngineState,
+        events: nextEvents,
+        pendingPointSide: null,
+        announcement,
+      });
+
+      await db.matches.put({
+        id: match.config.id,
+        config: match.config,
+        state: nextEngineState,
+        events: nextEvents,
+        updatedAt: Date.now(),
+        completed: nextEngineState.status === 'COMPLETED',
+      });
+      return;
+    }
 
     const undoEvent: MatchEvent = {
       id: `undo-${Date.now()}`,

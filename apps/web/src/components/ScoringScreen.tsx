@@ -13,6 +13,10 @@ export const ScoringScreen: React.FC = () => {
   const {
     match,
     events,
+    scoringFormat,
+    scoringRulesState,
+    pendingSettingChoice,
+    chooseSettingChoice,
     enableRallyTagging,
     pendingPointSide,
     largeTextMode,
@@ -34,6 +38,22 @@ export const ScoringScreen: React.FC = () => {
   if (!match) return null;
 
   const { endsSwapped, config, currentScoreA, currentScoreB, serveState, gamesWonA, gamesWonB, currentGameNumber } = match;
+
+  const isServicePoint =
+    scoringFormat === 'SERVICE_POINT_15' ||
+    scoringFormat === 'SERVICE_POINT_11' ||
+    (scoringRulesState && scoringRulesState.formatConfig.scoringType === 'SERVICE');
+
+  const isOneDown = scoringRulesState?.isOneDownInitialTurn;
+  const serverNumber = scoringRulesState?.serverNumber; // 1 or 2
+  const servingPlayerName =
+    scoringRulesState?.servingPlayerId === config.sideA.playerIds[0]
+      ? config.sideA.playerNames?.[0] || config.sideA.name
+      : scoringRulesState?.servingPlayerId === config.sideA.playerIds[1]
+      ? config.sideA.playerNames?.[1] || 'Partner A'
+      : scoringRulesState?.servingPlayerId === config.sideB.playerIds[0]
+      ? config.sideB.playerNames?.[0] || config.sideB.name
+      : config.sideB.playerNames?.[1] || 'Partner B';
 
   // Determine physical Left and Right sides based on endsSwapped
   const leftSide: Side = endsSwapped ? 'B' : 'A';
@@ -161,9 +181,12 @@ export const ScoringScreen: React.FC = () => {
             <span className="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded font-medium">
               Best of {config.bestOf}
             </span>
+            <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+              {scoringFormat.replace(/_/g, ' ')}
+            </span>
             {match.status === 'INTERVAL' && (
               <span className="text-[10px] bg-amber-500 text-gray-950 font-bold px-1.5 py-0.5 rounded animate-pulse">
-                INTERVAL (11 PTS)
+                INTERVAL
               </span>
             )}
           </div>
@@ -195,6 +218,25 @@ export const ScoringScreen: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Service Point Live Callout Banner */}
+      {isServicePoint && (
+        <div className="bg-gradient-to-r from-amber-950/80 to-amber-900/60 border border-amber-500/60 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs my-1 shadow-md">
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-400 font-black flex items-center gap-1">
+              <span>⚡</span> SERVICE POINT SCORING
+            </span>
+            {config.mode === 'doubles' && (
+              <span className="bg-amber-400 text-gray-950 text-[10px] font-black px-1.5 py-0.2 rounded-full shadow">
+                {isOneDown ? 'ONE DOWN (1st Turn)' : `Server ${serverNumber || 1} of 2`}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-bold text-gray-300">
+            Server: <span className="text-white font-mono font-black">{servingPlayerName}</span>
+          </span>
+        </div>
+      )}
 
       {/* Side Swap Animated Banner */}
       {sideSwapAlert && (
@@ -243,6 +285,27 @@ export const ScoringScreen: React.FC = () => {
             {leftScore}
           </div>
 
+          {/* Action Prediction Badge */}
+          <div className="my-1">
+            {isServicePoint ? (
+              isLeftServing ? (
+                <span className="bg-emerald-500 text-gray-950 font-black text-xs px-3 py-1 rounded-xl shadow-lg inline-block">
+                  +1 POINT
+                </span>
+              ) : (
+                <span className="bg-amber-500 text-gray-950 font-black text-xs px-3 py-1 rounded-xl shadow-lg inline-block">
+                  {config.mode === 'doubles' && serverNumber === 1 && !isOneDown
+                    ? 'SECOND SERVER'
+                    : 'SIDE OUT'}
+                </span>
+              )
+            ) : (
+              <span className="bg-emerald-500/80 text-white font-black text-[11px] px-2.5 py-0.5 rounded-lg inline-block">
+                +1 POINT
+              </span>
+            )}
+          </div>
+
           {/* Serve Badge */}
           <div className="h-6 flex items-center justify-center">
             {isLeftServing && (
@@ -253,7 +316,11 @@ export const ScoringScreen: React.FC = () => {
           </div>
 
           <div className="text-[10px] text-gray-400 tracking-wider uppercase font-semibold">
-            Tap to add point [Key: {leftSide === 'A' ? 'A' : 'B'}]
+            {isServicePoint
+              ? isLeftServing
+                ? `Server wins rally (+1 pt) [Key: ${leftSide === 'A' ? 'A' : 'B'}]`
+                : `Receiver wins rally (0 pts) [Key: ${leftSide === 'A' ? 'A' : 'B'}]`
+              : `Tap to add point [Key: ${leftSide === 'A' ? 'A' : 'B'}]`}
           </div>
         </button>
 
@@ -292,6 +359,27 @@ export const ScoringScreen: React.FC = () => {
             {rightScore}
           </div>
 
+          {/* Action Prediction Badge */}
+          <div className="my-1">
+            {isServicePoint ? (
+              isRightServing ? (
+                <span className="bg-emerald-500 text-gray-950 font-black text-xs px-3 py-1 rounded-xl shadow-lg inline-block">
+                  +1 POINT
+                </span>
+              ) : (
+                <span className="bg-amber-500 text-gray-950 font-black text-xs px-3 py-1 rounded-xl shadow-lg inline-block">
+                  {config.mode === 'doubles' && serverNumber === 1 && !isOneDown
+                    ? 'SECOND SERVER'
+                    : 'SIDE OUT'}
+                </span>
+              )
+            ) : (
+              <span className="bg-emerald-500/80 text-white font-black text-[11px] px-2.5 py-0.5 rounded-lg inline-block">
+                +1 POINT
+              </span>
+            )}
+          </div>
+
           {/* Serve Badge */}
           <div className="h-6 flex items-center justify-center">
             {isRightServing && (
@@ -302,7 +390,11 @@ export const ScoringScreen: React.FC = () => {
           </div>
 
           <div className="text-[10px] text-gray-400 tracking-wider uppercase font-semibold">
-            Tap to add point [Key: {rightSide === 'A' ? 'A' : 'B'}]
+            {isServicePoint
+              ? isRightServing
+                ? `Server wins rally (+1 pt) [Key: ${rightSide === 'A' ? 'A' : 'B'}]`
+                : `Receiver wins rally (0 pts) [Key: ${rightSide === 'A' ? 'A' : 'B'}]`
+              : `Tap to add point [Key: ${rightSide === 'A' ? 'A' : 'B'}]`}
           </div>
         </button>
       </div>
@@ -356,6 +448,44 @@ export const ScoringScreen: React.FC = () => {
           onSelectTag={handleSelectRallyTag}
           onCancel={() => setPendingPointSide(null)}
         />
+      )}
+
+      {/* Setting Choice Modal (Service Point Scoring) */}
+      {pendingSettingChoice && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-900 border-2 border-amber-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl flex flex-col gap-4 animate-in zoom-in-95">
+            <div className="text-3xl">⚖️</div>
+            <div>
+              <h3 className="text-xl font-black text-white">
+                {pendingSettingChoice.atScore}-All Reached!
+              </h3>
+              <p className="text-xs text-amber-300 font-bold mt-1">
+                Side {pendingSettingChoice.eligibleSide} ({pendingSettingChoice.eligibleSide === 'A' ? config.sideA.name : config.sideB.name}) has the option to Set!
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                Set to {pendingSettingChoice.extraPoints} more points (game to {pendingSettingChoice.setToTarget}) or Play to target without setting?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <button
+                type="button"
+                data-testid="choose-set-game"
+                onClick={() => chooseSettingChoice(true)}
+                className="py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black rounded-2xl shadow-lg transition-transform active:scale-95 text-xs uppercase"
+              >
+                Set to {pendingSettingChoice.setToTarget}
+              </button>
+              <button
+                type="button"
+                data-testid="choose-no-set"
+                onClick={() => chooseSettingChoice(false)}
+                className="py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold rounded-2xl border border-gray-700 transition-colors text-xs uppercase"
+              >
+                No Set (Play on)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Point Log Drawer */}

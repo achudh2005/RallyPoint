@@ -220,5 +220,39 @@ describe('Ranking UI Components (Phase 2)', () => {
       });
       expect(useMatchStore.getState().match).not.toBeNull();
     });
+
+    it('allows choosing scoring systems and stores selection in localStorage', async () => {
+      const onStart = vi.fn();
+      render(<CommunityMatchSetup onStart={onStart} />);
+
+      // Verify all scoring systems are visible
+      expect(screen.getByText('Rally 21 (BWF)')).toBeInTheDocument();
+      expect(screen.getByText('Rally 15')).toBeInTheDocument();
+      expect(screen.getByText('Rally 11')).toBeInTheDocument();
+      expect(screen.getByText('Service 15')).toBeInTheDocument();
+      expect(screen.getByText('Service 11')).toBeInTheDocument();
+      expect(screen.getByText('Custom')).toBeInTheDocument();
+
+      // Click Service 15
+      fireEvent.click(screen.getByText('Service 15'));
+
+      // Check localStorage if available in environment
+      if (typeof window !== 'undefined' && window.localStorage) {
+        expect(window.localStorage.getItem('rallypoint_last_scoring_format')).toBe('SERVICE_POINT_15');
+      }
+
+      // Click coin toss
+      const tossBtn = screen.getByRole('button', { name: /Toss/i });
+      fireEvent.click(tossBtn);
+
+      // Start match in Service 15
+      const startButton = screen.getByRole('button', { name: /Start Match/i });
+      fireEvent.click(startButton);
+
+      await waitFor(() => {
+        expect(onStart).toHaveBeenCalled();
+      });
+      expect(useMatchStore.getState().scoringFormat).toBe('SERVICE_POINT_15');
+    });
   });
 });
