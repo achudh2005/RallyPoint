@@ -2,6 +2,16 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [DB Phase 2] - Append-Only Event History & Partitioning
+### Added
+- Append-only database trigger specification and exception raising for `UPDATE` and `DELETE` on `match_events`.
+- Declarative monthly partitioning procedures in `packages/db/src/partitioning.sql`:
+  - `create_monthly_match_events_partition(date)` to create `match_events_YYYY_MM`.
+  - `ensure_future_match_event_partitions(months_ahead)` to ensure future partition readiness.
+- Idempotent event ingestion service (`packages/db/src/eventIngestion.ts`) with client UUID deduplication.
+- Sequence number progression validation (`OutOfOrderSequenceError`) rejecting sequence gaps.
+- Unit test suite verifying append, append-only exceptions, sequence validation, and idempotent batch ingestion.
+
 ## [DB Phase 1] - Core Schema and Master Data (@rallypoint/db)
 ### Added
 - Created dedicated `@rallypoint/db` package in `packages/db` with Prisma ORM and TypeScript exports.

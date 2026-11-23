@@ -96,3 +96,24 @@ erDiagram
 - **Fuzzy Search**: `CREATE INDEX idx_players_trgm ON players USING gin (lower(display_name) gin_trgm_ops);`
 - **Full Text Search**: GIN index on `to_tsvector('english', first_name || ' ' || last_name)`
 - **Foreign Keys**: B-Tree indexes on all foreign key columns (`club_id`, `venue_id`, `tournament_id`, `match_id`).
+
+
+---
+
+## Phase 2: Append-Only Event Layer & Partitioning
+
+### 1. `matches` & `games`
+- Matches store tournament and court references, scorer UUID, format configuration (`best_of`), and unique `client_uuid` for idempotent match creation.
+- Games enforce valid badminton game numbers and track current scores with foreign key cascade from matches.
+
+### 2. `match_events` Append-Only Table
+- Stores granular domain events: `POINT`, `UNDO`, `SERVE_FAULT`, `INTERVAL`, `RETIRE`, `WALKOVER`, `GAME_END`, `MATCH_END`.
+- Unique constraint on `(match_id, sequence_number)` guarantees strict sequence progression.
+- Database trigger `enforce_match_events_append_only()` raises an exception on any `UPDATE` or `DELETE`.
+- Monthly partitioning on `occurred_at`:
+  - `create_monthly_match_events_partition(target_date)` dynamically creates monthly child tables `match_events_YYYY_MM`.
+  - `ensure_future_match_event_partitions(6)` pre-creates partitions for the next 6 months.
+
+### 3. Idempotent Ingestion Engine (`eventIngestion.ts`)
+- Client-generated UUIDs ensure retry-safe ingestion.
+- Strict sequence number validation prevents sequence gaps and out-of-order writes.
