@@ -1,0 +1,22 @@
+{
+  "name": "RallyPoint - BWF Badminton Scoring",
+  "short_name": "RallyPoint",
+  "description": "Tournament-grade BWF badminton point tracking, offline sync and live scoring PWA",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#107c41",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
