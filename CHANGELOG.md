@@ -2,6 +2,34 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Scoring Systems & Ranking Phase 1] - Scoring Systems, Data Model, and Ranking Engine
+### Added
+- **`@rallypoint/scoring-rules` Package**:
+  - Pure TypeScript, zero-dependency scoring engine handling BWF rally scoring and traditional service-point scoring.
+  - Formats: `RALLY_21`, `RALLY_15`, `RALLY_11`, `SERVICE_POINT_15`, `SERVICE_POINT_11`, and `CUSTOM`.
+  - Traditional service point side-out logic: Only the serving side scores points; receiver win causes a Side-Out without incrementing score.
+  - Doubles "One Down" initial turn: At the start of every game in service point scoring, the initial server is Server 2 ("One Down"). Losing that rally immediately triggers a side-out. Thereafter, both partners serve before a side-out occurs.
+  - Setting (deuce) choices: Configured setting thresholds (e.g. 13-all set to 5, 14-all set to 3 in 15pt; 9-all set to 3, 10-all set to 3 in 11pt) offered exclusively to the side that reached the tied score first.
+  - Singles server court placement parity (even = right, odd = left) in both rally and service point systems.
+  - Deciding game midpoint side switch (11 for 21-pt, 8 for 15-pt, 6 for 11-pt).
+  - Event sourcing with full undo and replay support across game boundaries.
+  - 96%+ test coverage with Vitest and `fast-check` property tests.
+- **`@rallypoint/ranking` Scoring Systems & RP Extensions**:
+  - Global Scoring System Filter (`'ALL' | 'RALLY' | 'SERVICE'`).
+  - Ranking Points (RP) & League Standings:
+    - 3 RP per win (Rally or Service Point).
+    - Bonus RP: +1 RP for straight games (2-0), +1 RP for Giant Killer (beating someone ranked 3+ spots higher), +1 RP for winning a game that went to setting.
+    - Format split: Every player shows matches split `Matches: N (R:X S:Y)`.
+    - Normalization: When `formatFilter === 'ALL'`, `MOST_POINTS` ranks by `pointSharePct` ($\frac{\text{PointsScored}}{\text{TotalMatchPoints}} \times 100$) so 15-pt and 21-pt games compare equitably.
+    - New category `BEST_SERVICE_GAME` ranking players by service holds, side-outs won, and service points won.
+    - Full backward compatibility for `rebuildRankings(matches, prevRanks, prevTeamRanks, configOrWeights, formatFilter)`.
+- **Database Schema Updates (`packages/db` & `apps/api`)**:
+  - Added `ScoringFormat` enum (`RALLY_21`, `RALLY_15`, `RALLY_11`, `SERVICE_POINT_15`, `SERVICE_POINT_11`, `CUSTOM`).
+  - Added `SIDE_OUT` and `SETTING_CHOICE` to `MatchEventType`.
+  - Added `scoringFormat`, `targetPoints`, `winBy`, `cap`, `settingRule`, and `firstServer` columns to `Match`.
+  - Added `scoringFormat` and `rankingPoints` to `PlayerRankingSnapshot` and `TeamRankingSnapshot`.
+  - Added `RankingConfig` model for admin customizable point values, multipliers, and weights.
+
 ## [Ranking Phase 5 / rank-v1.0.0] - Polish, Performance, and Production Deployment
 ### Added
 - **Performance & Materialized Views (`rankingMaterializedViews.sql`)**:

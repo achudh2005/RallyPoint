@@ -58,7 +58,8 @@ flowchart TD
 
 ## Monorepo Layout
 - `packages/engine`: Pure TypeScript BWF rules and event-sourced scoring engine (zero runtime dependencies).
-- `packages/ranking`: Pure TypeScript ranking & team league engine (zero runtime dependencies, 97%+ test coverage).
+- `packages/scoring-rules`: Pure TypeScript scoring format engine supporting BWF Rally Point (21, 15, 11) and Traditional Service Point (15, 11, One Down doubles serve rule, setting choices at 13/14-all or 9/10-all).
+- `packages/ranking`: Pure TypeScript ranking & team league engine with Ranking Points (RP), format filtering, and zero dependencies (96%+ test coverage).
 - `apps/web`: React 18 + Vite + Tailwind CSS + Zustand + Recharts + Dexie PWA.
 - `apps/api`: Node.js + Express + TypeScript + Prisma + PostgreSQL 16 + Socket.IO.
 - `packages/db`: Shared Prisma client and database repository schemas.
@@ -237,6 +238,22 @@ A dedicated pure TypeScript ranking engine and live marking interface for local 
   - PWA offline caching via Dexie IndexedDB with offline banner indicator and queued event sync.
   - Color-blind-safe badges (`#1 Gold`, `#2 Silver`, `#3 Bronze`) and `aria-live="polite"` screen-reader accessibility.
   - Multi-stage Docker configuration supporting `@rallypoint/ranking`.
+- **Scoring System Selection & Ranking Points (RP) Engine (`@rallypoint/scoring-rules` & `@rallypoint/ranking`)**:
+  - **Scoring Formats Supported**:
+    - `RALLY_21`: Standard BWF rally scoring (game to 21, win by 2, cap at 30, deciding game side change at 11).
+    - `RALLY_15`: Short rally point format (game to 15, win by 2, cap at 21, deciding game side change at 8).
+    - `RALLY_11`: Fast rally point sprint format (game to 11, win by 2, cap at 15, deciding game side change at 6).
+    - `SERVICE_POINT_15`: Traditional service-only scoring. Only the serving side scores points; receiver winning the rally forces a Side-Out (0 points scored). Setting option at 13-all (set to 5, game to 18) and 14-all (set to 3, game to 17) awarded to the side reaching the score first. Deciding game switch at 8.
+    - `SERVICE_POINT_11`: Traditional 11-point service scoring. Setting option at 9-all (set to 3, game to 14) and 10-all (set to 3, game to 13). Deciding game switch at 6.
+    - `CUSTOM`: Configurable target points, win-by, cap, setting rules, and best-of length.
+  - **Traditional Doubles "One Down" Rule**:
+    - At the start of every game in service point scoring, the serving pair begins with only one server ("One Down"). Losing the rally immediately yields a side-out. Thereafter, both partners serve consecutively before each side-out.
+  - **Ranking Points (RP) & League Standings**:
+    - Win: 3 RP (Rally or Service Point).
+    - Bonus points: +1 RP for straight-game wins (2-0), +1 RP for defeating a player ranked 3+ spots higher (Giant Killer), +1 RP for winning a game that went to setting.
+    - Matches split display format: `Matches: N (R:X S:Y)`.
+    - Normalization: When viewing all scoring systems together (`formatFilter === 'ALL'`), points scored ranking normalizes by `pointSharePct` ($\frac{\text{PointsScored}}{\text{TotalMatchPoints}} \times 100$) ensuring 15-pt and 21-pt games are evaluated fairly.
+    - Service game leaderboards: `BEST_SERVICE_GAME` ranking players by service holds, side-outs won, and service points won.
 
 ---
 
