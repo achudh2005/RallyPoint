@@ -2,6 +2,35 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Ranking Phase 3] - Rankings Dashboard and Team League (apps/web)
+### Added
+- **Dedicated Rankings Dashboard (`RankingsDashboard.tsx`)**:
+  - Live derived leaderboard with Category Tabs: Overall Index, Most Wins, Most Points, Most Losses, Most Drops (with sub-toggle for Drop Shots Played vs Points Dropped), Most Errors ("Who Fails More"), Win Rate, and Team League.
+  - Multi-window time filters: Season (`All Season`), Month (`This Month`), Week (`This Week`), and All-time.
+  - Interactive table with gold (`🥇`), silver (`🥈`), and bronze (`🥉`) rank badges, player avatars, prominent `Matches: N` indicators, headline stats, secondary stats, 5-match form dots (green W / red L), and rank movement deltas (`▲ +N`, `▼ -N`, `−`).
+  - Search/filter by player name with instant live filtering.
+  - Current logged-in user row highlighting.
+- **Weekly Community Awards & Badges**:
+  - `🪶 Drop-Shot King`: Most drop winners.
+  - `🧱 Iron Wall`: Lowest unforced error rate per match.
+  - `⚡ Smash Master`: Highest smash winners.
+  - `🔥 Comeback Kid`: Highest point differential comeback resiliency.
+  - `🏃 Marathoner`: Most matches played this week.
+- **Player Profile Modal (`PlayerProfileModal.tsx`)**:
+  - Inverted Y-axis rank history line chart (Recharts) with Rank 1 rendered on top.
+  - Shot breakdown comparison bar chart: Smash, Drop, Net, Clear, Drive winners vs errors.
+  - Head-to-Head (H2H) match lookup against any community opponent with win/loss record and point totals.
+  - Singles vs Doubles volume breakdown.
+- **Team League Standings (`TeamLeagueStandings.tsx`)**:
+  - Doubles Pairs ranking table with pair records, win rates, and point differentials.
+  - Club Teams league standings with match points (3 for Win, 1 for Draw, 0 for Loss), game diff, point diff, and recent form dots.
+  - Visual promotion zone (green border) and relegation zone (red border) cutoff lines.
+- **Share & Export Tools**:
+  - Story-ready vertical 9:16 PNG export card (`html-to-image`) formatted for Instagram and WhatsApp with community branding, date, and Top 5 leaderboard.
+  - Full CSV export of active leaderboard rankings.
+- **Comprehensive Vitest Suite (`RankingsDashboard.test.tsx`)**:
+  - 8 tests covering category switching, time filters, drops sub-toggle, player modal, team league tabs, and CSV/PNG export handlers.
+
 ## [Ranking Phase 2] - Live Marking UI While Playing (apps/web)
 ### Added
 - **Mini-Leaderboard Live Strip (`MiniLeaderboardStrip.tsx`)**:

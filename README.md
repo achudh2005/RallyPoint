@@ -216,7 +216,13 @@ A dedicated pure TypeScript ranking engine and live marking interface for local 
 - **Format Requirements**:
   - Every leaderboard row displays **Matches: N** next to rank.
   - Shared tie ranks `(1, 2, 2, 4)` and rank movements (`UP`, `DOWN`, `SAME`).
-- **Team League**: Auto-detected doubles pairs and fixed club teams with independent rankings.
+- **Rankings Dashboard (`RankingsDashboard.tsx`)**:
+  - Live category leaderboards (Overall, Most Wins, Most Points, Most Losses, Drops Played/Conceded, Most Errors, Win Rate).
+  - Multi-window time filtering: Season, Month, Week, All-time.
+  - Weekly community accolades: Drop-Shot King, Iron Wall, Smash Master, Comeback Kid, Marathoner.
+  - Social story card export (vertical 9:16 PNG) for Instagram/WhatsApp and full CSV export.
+- **Player Profile Modal**: Inverted Y-axis rank history over time, shot winner/error radar & bar breakdowns, and head-to-head lookup against any opponent.
+- **Team League**: Auto-detected doubles pairs and fixed club teams with promotion and relegation cutoff thresholds.
 
 ---
 
