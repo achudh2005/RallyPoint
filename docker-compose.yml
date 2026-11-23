@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rallypoint-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: rallypoint
+      POSTGRES_PASSWORD: rallypoint_secret
+      POSTGRES_DB: rallypoint_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rallypoint -d rallypoint_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rallypoint-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@rallypoint.local
+      PGADMIN_DEFAULT_PASSWORD: admin_secret
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
