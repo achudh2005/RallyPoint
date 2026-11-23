@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { app } from './app.js';
 import { env } from './config/env.js';
 import { setupMatchSockets } from './sockets/matchSocket.js';
+import { setupRankingSockets } from './sockets/rankingSocket.js';
 
 const server = http.createServer(app);
 
@@ -15,6 +16,7 @@ const io = new Server(server, {
 });
 
 setupMatchSockets(io);
+setupRankingSockets(io);
 
 server.listen(env.PORT, () => {
   console.log(`🚀 RallyPoint API & Socket server listening on port ${env.PORT}`);

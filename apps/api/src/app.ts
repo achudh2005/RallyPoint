@@ -9,6 +9,8 @@ import { requestLogger } from './utils/logger.js';
 import authRoutes from './routes/authRoutes.js';
 import matchRoutes from './routes/matchRoutes.js';
 import playerRoutes from './routes/playerRoutes.js';
+import rankingRoutes from './routes/rankingRoutes.js';
+import adminRankingRoutes from './routes/adminRankingRoutes.js';
 
 export const app = express();
 
@@ -47,5 +49,10 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/players', playerRoutes);
+app.use('/api/rankings', rankingRoutes);
+app.use('/rankings', rankingRoutes);
+app.use('/api/teams', rankingRoutes);
+app.use('/api/admin', adminRankingRoutes);
+app.use('/admin', adminRankingRoutes);
 
 export default app;

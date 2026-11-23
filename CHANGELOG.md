@@ -2,6 +2,26 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Ranking Phase 4] - Backend, Live Sync, and Admin (apps/api)
+### Added
+- **Ranking REST Endpoints (`rankingRoutes.ts`)**:
+  - `GET /api/rankings/:category`: Paginated rankings with 5s TTL Cache-Control and `Matches: N`.
+  - `GET /api/rankings/player/:id`: Comprehensive player statistics, multi-category ranks, and rank history.
+  - `GET /api/rankings/head-to-head`: Two-player comparison with wins, head-to-head points, and match history.
+  - `GET /api/teams/rankings`: Doubles pairs rankings and club league standings.
+- **Admin Governance & Event Replay (`adminRankingRoutes.ts`)**:
+  - Protected by JWT authentication and strict `ADMIN` role check.
+  - `POST /api/admin/rebuild-rankings`: Re-runs full event replay across season or all-time domain events.
+  - `POST /api/admin/recalculate-streaks`: Recalculates current and longest win streaks for all players.
+  - `GET /api/admin/audit-log`: Immutable audit log tracking manual edits, score corrections, and recalculations.
+  - `POST /api/admin/daily-rollup`: Nightly worker trigger generating snapshots and weekly community awards.
+- **Live Sync Engine (`rankingSocket.ts`)**:
+  - Dedicated `/rankings` Socket.IO namespace.
+  - 500ms debounced live rank recomputation upon receipt of match point events.
+  - Calculates rank differences and broadcasts `rankings:update` diff payload with changed rows (`playerId`, `category`, `oldRank`, `newRank`, `movement`).
+- **Integration Test Suite (`rankingRoutes.test.ts`)**:
+  - 15 end-to-end integration tests covering pagination, 5s TTL cache behavior, player stats, H2H, RBAC permissions, audit logging, and 500ms debounced live diff emissions.
+
 ## [Ranking Phase 3] - Rankings Dashboard and Team League (apps/web)
 ### Added
 - **Dedicated Rankings Dashboard (`RankingsDashboard.tsx`)**:

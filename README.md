@@ -223,6 +223,11 @@ A dedicated pure TypeScript ranking engine and live marking interface for local 
   - Social story card export (vertical 9:16 PNG) for Instagram/WhatsApp and full CSV export.
 - **Player Profile Modal**: Inverted Y-axis rank history over time, shot winner/error radar & bar breakdowns, and head-to-head lookup against any opponent.
 - **Team League**: Auto-detected doubles pairs and fixed club teams with promotion and relegation cutoff thresholds.
+- **Backend & Live Sync (`apps/api` - Phase 4)**:
+  - High-performance in-memory cache with 5s TTL & cache invalidation on new match events.
+  - Endpoints: `GET /api/rankings/:category`, `GET /api/rankings/player/:id`, `GET /api/rankings/head-to-head`, `GET /api/teams/rankings`.
+  - Live ranking updates via Socket.IO `/rankings` namespace with 500ms debounce emitting minimal diffs (`rankings:update`).
+  - Admin controls (`/api/admin/rebuild-rankings`, `/api/admin/recalculate-streaks`, `/api/admin/audit-log`, `/api/admin/daily-rollup`) secured with JWT RBAC.
 
 ---
 
