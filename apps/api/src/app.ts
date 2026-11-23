@@ -5,11 +5,15 @@ import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env.js';
 import { swaggerDocument } from './swagger.js';
+import { requestLogger } from './utils/logger.js';
 import authRoutes from './routes/authRoutes.js';
 import matchRoutes from './routes/matchRoutes.js';
 import playerRoutes from './routes/playerRoutes.js';
 
 export const app = express();
+
+// Structured Request Logging
+app.use(requestLogger);
 
 // Security Middleware
 app.use(helmet());
