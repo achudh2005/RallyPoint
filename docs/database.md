@@ -117,3 +117,35 @@ erDiagram
 ### 3. Idempotent Ingestion Engine (`eventIngestion.ts`)
 - Client-generated UUIDs ensure retry-safe ingestion.
 - Strict sequence number validation prevents sequence gaps and out-of-order writes.
+
+
+---
+
+## Phase 3: Derived Analytics Layer & Rollup Projections
+
+### 1. `player_career_stats`
+- Fast single-row read for career statistics:
+  - `matches_played`, `matches_won`, `matches_lost`, `games_won`, `games_lost`
+  - `points_won`, `points_lost`, `win_rate` (percentage to 2 decimals)
+  - `current_streak`, `best_streak`, `last_played_at`
+
+### 2. `head_to_head_stats`
+- Pairwise historical record between two players:
+  - `player_a_id`, `player_b_id` with `UNIQUE(player_a_id, player_b_id)`
+  - `matches_played`, `a_wins`, `b_wins`, `games_played`, `a_game_wins`, `b_game_wins`
+  - `last_match_id`
+
+### 3. `player_form_trends`
+- Rolling window of the last 10 completed matches:
+  - `recent_results`: JSON-serialized array (e.g. `["W", "W", "L", ...]`)
+  - `avg_points_per_game`, `avg_match_duration_minutes`
+
+### 4. `match_analytics_rollups`
+- Pre-aggregated post-match analytics:
+  - `longest_rally`, `streak_a`, `streak_b`, `lead_changes`, `comeback_deficits`
+  - `serve_win_pct_a`, `serve_win_pct_b`, `shot_breakdown`
+
+### 5. Stored Procedures & Projection Functions
+- `rebuild_player_stats(player_id)`: PL/pgSQL function recalculating career stats from raw match & event records.
+- `trg_match_completed_rollups`: Database trigger automatically invoking rollup calculations upon match status transitioning to `COMPLETED`.
+- `calculateCareerStats()`: Pure TypeScript projection in `packages/db/src/statsProjection.ts` for deterministic recomputation.

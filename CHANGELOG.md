@@ -2,6 +2,14 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [DB Phase 3] - Derived Analytics Layer & Rollup Tables
+### Added
+- Rollup database models: `PlayerCareerStats`, `HeadToHead`, `PlayerFormTrend`, `MatchAnalyticsRollup`.
+- PL/pgSQL stored procedure `rebuild_player_stats(player_id)` in `packages/db/src/analyticsRollups.sql` for full career stats recalculation.
+- Match completion trigger `trg_match_completed_rollups` automatically projecting player rollups when match transitions to `COMPLETED`.
+- Pure TypeScript projection service in `packages/db/src/statsProjection.ts` (`calculateCareerStats`, `rebuildPlayerStats`).
+- Unit test suite verifying exact career rollup calculations (matches, games, points, win rates, streaks) and upsert operations.
+
 ## [DB Phase 2] - Append-Only Event History & Partitioning
 ### Added
 - Append-only database trigger specification and exception raising for `UPDATE` and `DELETE` on `match_events`.
