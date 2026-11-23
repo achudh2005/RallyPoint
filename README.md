@@ -56,3 +56,21 @@ RallyPoint is a tournament-grade badminton point tracking and analytics applicat
 - **Export & Sharing Capabilities**:
   - **Shareable Scorecard**: Branded 9:16 high-resolution scorecard sized for Instagram and WhatsApp stories, exported as a PNG image (`html-to-image`).
   - **Data Export**: Full match CSV export and structured JSON export for archival and external analysis.
+
+## Phase 4: Backend, Auth, and Live Sync (`apps/api`)
+- **Backend Architecture**:
+  - Node.js + Express + TypeScript with Prisma ORM connecting to PostgreSQL 16.
+  - Schemas: `User`, `Player`, `PlayerProfileHistory`, `Club`, `Team`, `TeamMember`, `Venue`, `Court`, `Tournament`, `Match`, `MatchSide`, `MatchParticipant`, `Game`, `MatchEvent`.
+- **Security & Multi-Role Authentication**:
+  - JWT Access Tokens (15m) and Refresh Tokens (7d) with bcrypt hashing.
+  - Role-based authorization: `ADMIN`, `SCORER` (write match events), `UMPIRE` (can override match state), `PLAYER`, `VIEWER` (read-only).
+  - Helmet security headers, CORS origin protection, and express-rate-limit protection.
+- **Offline-First Synchronization**:
+  - Idempotent event batch sync (`POST /api/matches/:id/events/sync`) accepting client-generated UUIDs with conflict resolution by event sequence ordering.
+- **Real-Time Live Scoreboard**:
+  - Socket.IO rooms per match (`/match` namespace) broadcasting live point events and spectator counts.
+  - Public big-screen TV scoreboard endpoint (`/api/matches/:id/live`).
+- **Developer Tooling & DevOps**:
+  - OpenAPI 3.0 / Swagger UI documentation at `/api/docs`.
+  - Docker Compose for local PostgreSQL 16 and pgAdmin 4.
+  - Supertest API integration tests.

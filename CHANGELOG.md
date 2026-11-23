@@ -2,6 +2,19 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Phase 4] - Backend, Auth, and Live Sync (apps/api)
+### Added
+- Node.js + Express + TypeScript API server with Socket.IO and Prisma ORM in `apps/api`.
+- Comprehensive Prisma schema with PostgreSQL 16 models for User, Player, Match, MatchEvent, Tournament, Venue, and Clubs.
+- Multi-role JWT authentication (Access & Refresh tokens) with bcrypt password hashing.
+- Role-based authorization middleware supporting `ADMIN`, `SCORER`, `UMPIRE`, `PLAYER`, `VIEWER`.
+- Idempotent offline event synchronization endpoint (`POST /api/matches/:id/events/sync`) resolving ordering conflicts.
+- Real-time Socket.IO match rooms broadcasting live score updates and spectator counts.
+- Public read-only live scoreboard endpoint (`/api/matches/:id/live`) for big-screen displays.
+- OpenAPI 3.0 / Swagger UI documentation at `/api/docs`.
+- Docker Compose configuration for local PostgreSQL and pgAdmin.
+- Supertest integration test suite covering auth, match creation, event sync, live scoreboard, and player queries.
+
 ## [Phase 3] - Analytics and Insights
 ### Added
 - Interactive analytics dashboard using Recharts in `apps/web/src/components/analytics`.
