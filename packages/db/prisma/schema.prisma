@@ -94,6 +94,17 @@ enum MatchEventType {
   WALKOVER
   GAME_END
   MATCH_END
+  SIDE_OUT
+  SETTING_CHOICE
+}
+
+enum ScoringFormat {
+  RALLY_21
+  RALLY_15
+  RALLY_11
+  SERVICE_POINT_15
+  SERVICE_POINT_11
+  CUSTOM
 }
 
 enum RallyEndTypeEnum {
@@ -271,13 +282,19 @@ model Tournament {
 }
 
 model Match {
-  id           String         @id @default(cuid())
-  tournamentId String?        @map("tournament_id")
-  seasonId     String?        @map("season_id")
-  courtId      String?        @map("court_id")
-  matchType    MatchType      @default(SINGLES) @map("match_type")
-  bestOf       Int            @default(3) @map("best_of")
-  status       MatchStatus    @default(SCHEDULED)
+  id            String         @id @default(cuid())
+  tournamentId  String?        @map("tournament_id")
+  seasonId      String?        @map("season_id")
+  courtId       String?        @map("court_id")
+  matchType     MatchType      @default(SINGLES) @map("match_type")
+  scoringFormat ScoringFormat  @default(RALLY_21) @map("scoring_format")
+  targetPoints  Int            @default(21) @map("target_points")
+  winBy         Int            @default(2) @map("win_by")
+  cap           Int            @default(30)
+  settingRule   String?        @map("setting_rule")
+  firstServer   String?        @map("first_server")
+  bestOf        Int            @default(3) @map("best_of")
+  status        MatchStatus    @default(SCHEDULED)
   scheduledAt  DateTime?      @map("scheduled_at")
   startedAt    DateTime?      @map("started_at")
   endedAt      DateTime?      @map("ended_at")
@@ -464,9 +481,11 @@ model PlayerRankingSnapshot {
   seasonId      String?   @map("season_id")
   category      String
   period        String    @default("ALL_TIME")
+  scoringFormat String    @default("ALL") @map("scoring_format")
   rank          Int
   previousRank  Int?      @map("previous_rank")
   matchesPlayed Int       @map("matches_played")
+  rankingPoints Int       @default(0) @map("ranking_points")
   headlineValue Float     @map("headline_value")
   stats         Json      @default("{}")
   snapshotDate  DateTime  @default(now()) @map("snapshot_date")
@@ -478,6 +497,7 @@ model PlayerRankingSnapshot {
   @@index([playerId])
   @@index([seasonId])
   @@index([category, period])
+  @@index([category, period, scoringFormat])
   @@map("player_ranking_snapshots")
 }
 
@@ -487,9 +507,11 @@ model TeamRankingSnapshot {
   seasonId      String?   @map("season_id")
   category      String
   period        String    @default("ALL_TIME")
+  scoringFormat String    @default("ALL") @map("scoring_format")
   rank          Int
   previousRank  Int?      @map("previous_rank")
   matchesPlayed Int       @map("matches_played")
+  rankingPoints Int       @default(0) @map("ranking_points")
   headlineValue Float     @map("headline_value")
   stats         Json      @default("{}")
   snapshotDate  DateTime  @default(now()) @map("snapshot_date")
@@ -501,5 +523,23 @@ model TeamRankingSnapshot {
   @@index([teamId])
   @@index([seasonId])
   @@index([category, period])
+  @@index([category, period, scoringFormat])
   @@map("team_ranking_snapshots")
+}
+
+model RankingConfig {
+  id                    String   @id @default(cuid())
+  name                  String   @default("DEFAULT")
+  rallyPointsPerWin     Int      @default(3) @map("rally_points_per_win")
+  servicePointsPerWin   Int      @default(3) @map("service_points_per_win")
+  straightGamesBonus    Int      @default(1) @map("straight_games_bonus")
+  giantKillerBonus      Int      @default(1) @map("giant_killer_bonus")
+  serviceSettingBonus   Int      @default(1) @map("service_setting_bonus")
+  weightsJson           Json     @default("{}") @map("weights_json")
+  formatMultipliersJson Json     @default("{}") @map("format_multipliers_json")
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("ranking_configs")
 }
