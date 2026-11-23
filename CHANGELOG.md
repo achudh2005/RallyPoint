@@ -2,6 +2,34 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Scoring Systems & Ranking Phase 2] - Live Marking UI While Playing (apps/web)
+### Added
+- **Match Setup with Scoring System Picker (`CommunityMatchSetup.tsx`)**:
+  - Prominent top selector card grid for 6 scoring formats:
+    - Rally 21 (BWF) - "Standard: every rally scores, game to 21"
+    - Rally 15 - "Short game: every rally scores, game to 15"
+    - Rally 11 - "Sprint: every rally scores, game to 11"
+    - Service 15 - "Classic: only server scores, side-out on loss, game to 15"
+    - Service 11 - "Classic sprint: only server scores, game to 11"
+    - Custom - Expandable controls for target points, win-by, and hard cap.
+  - Device persistence: Remembers the last-used scoring format in `localStorage`.
+  - Singles and Doubles selector with auto-balanced pair generator.
+  - Interactive First Serve Picker & Coin Toss helper (`🪙 Toss`).
+- **Adaptive Live Scoring Screen (`ScoringScreen.tsx` & `matchStore.ts`)**:
+  - Format Badge: Displays current scoring format (e.g. `[RALLY 21]`, `[SERVICE 15]`) in match header and Mini-Leaderboard Strip.
+  - Service Point Scoring Live Callout:
+    - Prominent amber banner: `⚡ SERVICE POINT SCORING` indicating active serving player and court.
+    - Doubles service turns: Displays `ONE DOWN (1st Turn)` on initial turn, or `Server 1/2 of 2` on subsequent turns.
+    - Dynamic button prediction badges:
+      - Serving side: `+1 POINT` (Server scores point).
+      - Receiving side: `SIDE OUT` (or `SECOND SERVER` in doubles; changes serve, 0 pts).
+  - Setting Choice Modal:
+    - Automatically prompts eligible side at setting thresholds (e.g. 13-all / 14-all in 15pt, 9-all / 10-all in 11pt).
+    - Large touch-friendly options: "Set to 18" vs "No Set (Play to 15)".
+    - Generates `SETTING_CHOICE` event and updates game target points.
+  - Full undo support reverting setting choices, points, or side-outs.
+  - Fast rally marking detail bar with 3-second auto-dismiss for rapid scorekeeping.
+
 ## [Scoring Systems & Ranking Phase 1] - Scoring Systems, Data Model, and Ranking Engine
 ### Added
 - **`@rallypoint/scoring-rules` Package**:

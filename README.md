@@ -254,6 +254,13 @@ A dedicated pure TypeScript ranking engine and live marking interface for local 
     - Matches split display format: `Matches: N (R:X S:Y)`.
     - Normalization: When viewing all scoring systems together (`formatFilter === 'ALL'`), points scored ranking normalizes by `pointSharePct` ($\frac{\text{PointsScored}}{\text{TotalMatchPoints}} \times 100$) ensuring 15-pt and 21-pt games are evaluated fairly.
     - Service game leaderboards: `BEST_SERVICE_GAME` ranking players by service holds, side-outs won, and service points won.
+  - **Live Marking UI While Playing (`apps/web` - Phase 2)**:
+    - Match setup with prominent Scoring System Picker (Rally 21, Rally 15, Rally 11, Service 15, Service 11, Custom) with localStorage memory.
+    - Coin Toss Helper (`🪙 Toss`) for random first server selection.
+    - Adaptive Scoring Screen with prominent `⚡ SERVICE POINT SCORING` banner, active server callout, and doubles One Down / Server 1 of 2 badge.
+    - Adaptive button prediction badges: `+1 POINT` for server side, `SIDE OUT` / `SECOND SERVER` for receiver side.
+    - Setting Choice Modal on setting thresholds (13-all / 14-all, 9-all / 10-all) prompting the eligible side to set or play on.
+    - 3-second auto-dismiss Quick-Mark detail bar for fast shot attribution and full undo across side-outs and points.
 
 ---
 
