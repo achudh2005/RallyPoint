@@ -3,7 +3,7 @@ import {
   type RankingMatch,
   type RankingMatchEvent,
   type RankingParticipant,
-  DEFAULT_RANKING_WEIGHTS,
+  DEFAULT_RANKING_CONFIG,
 } from './index.js';
 
 export interface LoadTestMetrics {
@@ -83,7 +83,7 @@ export function runRankingLoadTest(
   const totalEvents = matchCount * eventsPerMatch;
 
   const rebuildStart = performance.now();
-  const result = rebuildRankings(matches, undefined, undefined, DEFAULT_RANKING_WEIGHTS);
+  const result = rebuildRankings(matches, undefined, undefined, DEFAULT_RANKING_CONFIG);
   const rebuildDuration = performance.now() - rebuildStart;
 
   const throughput = Math.round((totalEvents / (rebuildDuration / 1000)));

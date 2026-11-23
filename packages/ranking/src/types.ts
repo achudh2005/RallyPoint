@@ -1,3 +1,13 @@
+export type ScoringFormat =
+  | 'RALLY_21'
+  | 'RALLY_15'
+  | 'RALLY_11'
+  | 'SERVICE_POINT_15'
+  | 'SERVICE_POINT_11'
+  | 'CUSTOM';
+
+export type ScoringSystemFilter = 'ALL' | 'RALLY' | 'SERVICE';
+
 export type ShotType =
   | 'SMASH'
   | 'DROP'
@@ -28,6 +38,9 @@ export interface RankingMatchEvent {
   sequenceNumber: number;
   eventType:
     | 'POINT'
+    | 'RALLY_WON'
+    | 'SIDE_OUT'
+    | 'SETTING_CHOICE'
     | 'UNDO'
     | 'SERVE_FAULT'
     | 'INTERVAL'
@@ -42,6 +55,8 @@ export interface RankingMatchEvent {
   errorPlayerId?: string | null;
   serverPlayerId?: string | null;
   occurredAt?: Date | string;
+  isPoint?: boolean;
+  isSideOut?: boolean;
   payload?: Record<string, unknown> | null;
 }
 
@@ -50,6 +65,7 @@ export interface RankingParticipant {
   displayName: string;
   side: 'A' | 'B';
   position: 1 | 2;
+  initialRank?: number; // For giant killer bonus calculation
 }
 
 export interface RankingGame {
@@ -57,12 +73,14 @@ export interface RankingGame {
   scoreA: number;
   scoreB: number;
   winnerSide?: 'A' | 'B' | null;
+  isSettingGame?: boolean;
 }
 
 export interface RankingMatch {
   id: string;
   seasonId?: string | null;
   matchType: 'SINGLES' | 'DOUBLES' | 'MIXED';
+  scoringFormat?: ScoringFormat;
   teamAId?: string | null;
   teamBId?: string | null;
   participants: RankingParticipant[];
@@ -70,6 +88,10 @@ export interface RankingMatch {
   status: 'SCHEDULED' | 'LIVE' | 'COMPLETED' | 'RETIRED' | 'WALKOVER';
   games: RankingGame[];
   events: RankingMatchEvent[];
+  targetPoints?: number;
+  winBy?: number;
+  cap?: number;
+  isSettingGame?: boolean;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
 }
@@ -78,12 +100,17 @@ export interface PlayerStats {
   playerId: string;
   displayName: string;
   matchesPlayed: number;
+  rallyMatchesPlayed: number;
+  serviceMatchesPlayed: number;
+  matchesSplitFormatted: string; // e.g. "R:8 S:4"
+  rankingPoints: number; // League Points (RP)
   wins: number;
   losses: number;
   winRate: number; // 0 to 100 percentage
   pointsScored: number;
   pointsConceded: number; // points dropped
   pointDifference: number;
+  pointSharePct: number; // pointsScored / (pointsScored + pointsConceded) * 100
   gamesWon: number;
   gamesLost: number;
   dropShotsPlayed: number;
@@ -94,6 +121,20 @@ export interface PlayerStats {
   longestWinStreak: number;
   currentStreak: number;
   currentForm: ('W' | 'L')[]; // last 5 results (newest last)
+
+  // Service point stats
+  servicePointsWon: number;
+  sideOutsWon: number;
+  serviceHolds: number;
+  serviceBreaks: number;
+  avgPointsPerServiceTurn: number;
+  longestServiceRun: number;
+
+  // Rally point stats
+  pointsWonOnServe: number;
+  pointsWonOnReceive: number;
+  longestPointStreak: number;
+  comebackPoints: number;
 }
 
 export interface TeamStats {
@@ -102,12 +143,16 @@ export interface TeamStats {
   type: 'FIXED_PAIR' | 'CLUB_TEAM';
   playerIds: string[];
   matchesPlayed: number;
+  rallyMatchesPlayed: number;
+  serviceMatchesPlayed: number;
+  rankingPoints: number;
   wins: number;
   losses: number;
   winRate: number; // 0 to 100 percentage
   pointsFor: number;
   pointsAgainst: number;
   pointDifference: number;
+  pointSharePct: number;
   gamesWon: number;
   gamesLost: number;
   currentStreak: number;
@@ -116,16 +161,19 @@ export interface TeamStats {
 
 export type RankingCategory =
   | 'OVERALL'
+  | 'LEAGUE_TABLE'
   | 'MOST_WINS'
   | 'MOST_POINTS'
   | 'MOST_LOSSES'
   | 'MOST_DROPS_PLAYED'
   | 'MOST_DROPS_CONCEDED'
   | 'MOST_UNFORCED_ERRORS'
-  | 'BEST_WIN_RATE';
+  | 'BEST_WIN_RATE'
+  | 'BEST_SERVICE_GAME';
 
 export type TeamRankingCategory =
   | 'OVERALL_TEAM'
+  | 'TEAM_LEAGUE_TABLE'
   | 'MOST_TEAM_WINS'
   | 'MOST_TEAM_LOSSES'
   | 'BEST_TEAM_WIN_RATE'
@@ -138,8 +186,11 @@ export interface LeaderboardEntry<T = PlayerStats | TeamStats> {
   id: string; // playerId or teamId
   name: string;
   matchesPlayed: number; // Displayed as "Matches: N"
+  matchesSplitFormatted: string; // e.g. "R:8 S:4"
   headlineValue: number;
   headlineFormatted: string;
+  secondaryValue?: number;
+  secondaryFormatted?: string;
   rankMovement: RankMovement;
   movementDelta: number;
   stats: T;
@@ -154,6 +205,23 @@ export interface OverallRankingWeights {
   minMatchesThreshold: number; // Default 5
 }
 
+export interface RankingConfig {
+  weights: OverallRankingWeights;
+  minMatchesThreshold: number;
+  // RP Defaults
+  rallyWinRp: number;
+  rallyLossRp: number;
+  rallyStraightGamesBonus: number;
+  rallyGiantKillerBonus: number;
+  serviceWinRp: number;
+  serviceLossRp: number;
+  serviceStraightGamesBonus: number;
+  serviceGiantKillerBonus: number;
+  serviceSettingBonus: number;
+  rallyMultiplier: number;
+  serviceMultiplier: number;
+}
+
 export const DEFAULT_RANKING_WEIGHTS: OverallRankingWeights = {
   winRateWeight: 0.4,
   pointDiffPerMatchWeight: 0.25,
@@ -161,4 +229,20 @@ export const DEFAULT_RANKING_WEIGHTS: OverallRankingWeights = {
   currentFormWeight: 0.1,
   consistencyWeight: 0.1,
   minMatchesThreshold: 5,
+};
+
+export const DEFAULT_RANKING_CONFIG: RankingConfig = {
+  weights: DEFAULT_RANKING_WEIGHTS,
+  minMatchesThreshold: 5,
+  rallyWinRp: 3,
+  rallyLossRp: 1,
+  rallyStraightGamesBonus: 1,
+  rallyGiantKillerBonus: 1,
+  serviceWinRp: 3,
+  serviceLossRp: 1,
+  serviceStraightGamesBonus: 1,
+  serviceGiantKillerBonus: 1,
+  serviceSettingBonus: 1,
+  rallyMultiplier: 1.0,
+  serviceMultiplier: 1.0,
 };

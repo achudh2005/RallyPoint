@@ -7,6 +7,7 @@ import {
   OverallRankingWeights,
   DEFAULT_RANKING_WEIGHTS,
   RankMovement,
+  ScoringSystemFilter,
 } from './types.js';
 
 export interface RankingSnapshotLookup {
@@ -14,7 +15,8 @@ export interface RankingSnapshotLookup {
 }
 
 /**
- * Calculates normalized overall score (0 - 100) based on weighted formula
+ * Calculates normalized overall score (0 - 100) based on weighted formula.
+ * Normalizes point differential using pointSharePct so 21-pt rally and 15-pt service results are directly comparable.
  */
 export function calculateOverallScore(
   stats: PlayerStats,
@@ -27,9 +29,12 @@ export function calculateOverallScore(
   // 1. Win Rate Score (0 - 100)
   const winRateScore = stats.winRate;
 
-  // 2. Point Difference Per Match Score (centered at 50, clamp 0 - 100)
+  // 2. Point Difference / Share Per Match Score (centered at 50, clamp 0 - 100)
   const ptDiffPerMatch = stats.pointDifference / stats.matchesPlayed;
-  const ptDiffScore = Math.min(100, Math.max(0, 50 + ptDiffPerMatch * 5));
+  let ptDiffScore = Math.min(100, Math.max(0, 50 + ptDiffPerMatch * 5));
+  if (stats.pointSharePct > 0) {
+    ptDiffScore = (ptDiffScore + stats.pointSharePct) / 2;
+  }
 
   // 3. Wins Volume Score (0 - 100)
   const winsScore = maxWins > 0 ? (stats.wins / maxWins) * 100 : 0;
@@ -61,7 +66,8 @@ export function generatePlayerLeaderboard(
   statsList: PlayerStats[],
   category: RankingCategory,
   previousRanks: RankingSnapshotLookup = {},
-  weights: OverallRankingWeights = DEFAULT_RANKING_WEIGHTS
+  weights: OverallRankingWeights = DEFAULT_RANKING_WEIGHTS,
+  formatFilter: ScoringSystemFilter = 'ALL'
 ): LeaderboardEntry<PlayerStats>[] {
   const maxWins = Math.max(0, ...statsList.map((s) => s.wins));
   const maxMatches = Math.max(0, ...statsList.map((s) => s.matchesPlayed));
@@ -83,6 +89,12 @@ export function generatePlayerLeaderboard(
         if (b.pointDifference !== a.pointDifference) return b.pointDifference - a.pointDifference;
         return b.wins - a.wins;
       }
+      case 'LEAGUE_TABLE': {
+        if (b.rankingPoints !== a.rankingPoints) return b.rankingPoints - a.rankingPoints;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        return b.pointDifference - a.pointDifference;
+      }
       case 'MOST_WINS': {
         if (b.wins !== a.wins) return b.wins - a.wins;
         if (b.winRate !== a.winRate) return b.winRate - a.winRate;
@@ -90,6 +102,11 @@ export function generatePlayerLeaderboard(
         return a.displayName.localeCompare(b.displayName);
       }
       case 'MOST_POINTS': {
+        if (formatFilter === 'ALL' && (b.pointSharePct > 0 || a.pointSharePct > 0)) {
+          if (b.pointSharePct !== a.pointSharePct) return b.pointSharePct - a.pointSharePct;
+          if (b.pointsScored !== a.pointsScored) return b.pointsScored - a.pointsScored;
+          return b.wins - a.wins;
+        }
         if (b.pointsScored !== a.pointsScored) return b.pointsScored - a.pointsScored;
         const ppmA = a.matchesPlayed > 0 ? a.pointsScored / a.matchesPlayed : 0;
         const ppmB = b.matchesPlayed > 0 ? b.pointsScored / b.matchesPlayed : 0;
@@ -127,6 +144,11 @@ export function generatePlayerLeaderboard(
         if (b.matchesPlayed !== a.matchesPlayed) return b.matchesPlayed - a.matchesPlayed;
         return b.pointDifference - a.pointDifference;
       }
+      case 'BEST_SERVICE_GAME': {
+        if (b.serviceHolds !== a.serviceHolds) return b.serviceHolds - a.serviceHolds;
+        if (b.sideOutsWon !== a.sideOutsWon) return b.sideOutsWon - a.sideOutsWon;
+        return b.servicePointsWon - a.servicePointsWon;
+      }
     }
   });
 
@@ -140,7 +162,7 @@ export function generatePlayerLeaderboard(
     // Check tie with previous candidate
     if (i > 0) {
       const prev = candidates[i - 1]!;
-      const isTied = isPlayerTied(category, prev, player, maxWins, maxMatches, weights);
+      const isTied = isPlayerTied(category, prev, player, maxWins, maxMatches, weights, formatFilter);
       if (!isTied) {
         currentRank = i + 1;
       }
@@ -148,6 +170,14 @@ export function generatePlayerLeaderboard(
 
     const headlineValue = getHeadlineValue(category, player, maxWins, maxMatches, weights);
     const headlineFormatted = formatHeadline(category, headlineValue);
+
+    let secondaryValue: number | undefined;
+    let secondaryFormatted: string | undefined;
+
+    if (category === 'MOST_POINTS' && formatFilter === 'ALL') {
+      secondaryValue = player.pointsScored;
+      secondaryFormatted = `${player.pointsScored} pts`;
+    }
 
     // Compute rank movement
     const prevRank = previousRanks[player.playerId];
@@ -169,8 +199,11 @@ export function generatePlayerLeaderboard(
       id: player.playerId,
       name: player.displayName,
       matchesPlayed: player.matchesPlayed,
+      matchesSplitFormatted: player.matchesSplitFormatted,
       headlineValue,
       headlineFormatted,
+      secondaryValue,
+      secondaryFormatted,
       rankMovement,
       movementDelta,
       stats: player,
@@ -186,7 +219,8 @@ function isPlayerTied(
   b: PlayerStats,
   maxWins: number,
   maxMatches: number,
-  weights: OverallRankingWeights
+  weights: OverallRankingWeights,
+  formatFilter: ScoringSystemFilter
 ): boolean {
   switch (category) {
     case 'OVERALL':
@@ -197,95 +231,120 @@ function isPlayerTied(
         a.pointDifference === b.pointDifference &&
         a.wins === b.wins
       );
+    case 'LEAGUE_TABLE':
+      return (
+        a.rankingPoints === b.rankingPoints &&
+        a.wins === b.wins &&
+        a.winRate === b.winRate &&
+        a.pointDifference === b.pointDifference
+      );
     case 'MOST_WINS':
-      return a.wins === b.wins && a.winRate === b.winRate && a.pointDifference === b.pointDifference;
+      return (
+        a.wins === b.wins &&
+        a.winRate === b.winRate &&
+        a.pointDifference === b.pointDifference
+      );
     case 'MOST_POINTS':
+      if (formatFilter === 'ALL' && a.pointSharePct !== undefined && b.pointSharePct !== undefined) {
+        return a.pointSharePct === b.pointSharePct && a.wins === b.wins;
+      }
       return a.pointsScored === b.pointsScored && a.wins === b.wins;
     case 'MOST_LOSSES':
       return a.losses === b.losses && a.pointsConceded === b.pointsConceded;
     case 'MOST_DROPS_PLAYED':
-      return (
-        a.dropShotsPlayed === b.dropShotsPlayed &&
-        a.dropShotWinners === b.dropShotWinners &&
-        a.pointDifference === b.pointDifference
-      );
+      return a.dropShotsPlayed === b.dropShotsPlayed && a.dropShotWinners === b.dropShotWinners;
     case 'MOST_DROPS_CONCEDED':
       return a.pointsConceded === b.pointsConceded && a.losses === b.losses;
     case 'MOST_UNFORCED_ERRORS':
-      return a.unforcedErrors === b.unforcedErrors && a.pointsConceded === b.pointsConceded;
+      return a.unforcedErrors === b.unforcedErrors;
     case 'BEST_WIN_RATE':
-      return (
-        a.winRate === b.winRate &&
-        a.matchesPlayed === b.matchesPlayed &&
-        a.pointDifference === b.pointDifference
-      );
+      return a.winRate === b.winRate && a.matchesPlayed === b.matchesPlayed;
+    case 'BEST_SERVICE_GAME':
+      return a.serviceHolds === b.serviceHolds && a.sideOutsWon === b.sideOutsWon;
   }
 }
 
 function getHeadlineValue(
   category: RankingCategory,
-  p: PlayerStats,
+  stats: PlayerStats,
   maxWins: number,
   maxMatches: number,
   weights: OverallRankingWeights
 ): number {
   switch (category) {
     case 'OVERALL':
-      return calculateOverallScore(p, maxWins, maxMatches, weights);
+      return calculateOverallScore(stats, maxWins, maxMatches, weights);
+    case 'LEAGUE_TABLE':
+      return stats.rankingPoints;
     case 'MOST_WINS':
-      return p.wins;
+      return stats.wins;
     case 'MOST_POINTS':
-      return p.pointsScored;
+      return stats.pointsScored;
     case 'MOST_LOSSES':
-      return p.losses;
+      return stats.losses;
     case 'MOST_DROPS_PLAYED':
-      return p.dropShotsPlayed;
+      return stats.dropShotsPlayed;
     case 'MOST_DROPS_CONCEDED':
-      return p.pointsConceded;
+      return stats.pointsConceded;
     case 'MOST_UNFORCED_ERRORS':
-      return p.unforcedErrors;
+      return stats.unforcedErrors;
     case 'BEST_WIN_RATE':
-      return p.winRate;
+      return stats.winRate;
+    case 'BEST_SERVICE_GAME':
+      return stats.serviceHolds;
   }
 }
 
-function formatHeadline(category: RankingCategory, val: number): string {
+function formatHeadline(
+  category: RankingCategory,
+  value: number
+): string {
   switch (category) {
     case 'OVERALL':
-      return `${val} pts`;
+      return `${value.toFixed(1)} Pts`;
+    case 'LEAGUE_TABLE':
+      return `${value} RP`;
     case 'MOST_WINS':
-      return `${val} Wins`;
+      return `${value} Wins`;
     case 'MOST_POINTS':
-      return `${val} Pts`;
+      return `${value} Pts`;
     case 'MOST_LOSSES':
-      return `${val} Losses`;
+      return `${value} Losses`;
     case 'MOST_DROPS_PLAYED':
-      return `${val} Drops`;
+      return `${value} Drops`;
     case 'MOST_DROPS_CONCEDED':
-      return `${val} Pts Conceded`;
+      return `${value} Pts Conceded`;
     case 'MOST_UNFORCED_ERRORS':
-      return `${val} Errors`;
+      return `${value} Errors`;
     case 'BEST_WIN_RATE':
-      return `${val}%`;
+      return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
+    case 'BEST_SERVICE_GAME':
+      return `${value} Holds`;
   }
 }
 
 /**
- * Generates leaderboard for teams/pairs
+ * Generates leaderboard for team ranking categories
  */
 export function generateTeamLeaderboard(
-  teamsList: TeamStats[],
+  statsList: TeamStats[],
   category: TeamRankingCategory,
   previousRanks: RankingSnapshotLookup = {}
 ): LeaderboardEntry<TeamStats>[] {
-  const candidates = [...teamsList];
+  const candidates = [...statsList];
 
   candidates.sort((a, b) => {
     switch (category) {
       case 'OVERALL_TEAM': {
+        if (b.wins !== a.wins) return b.wins - a.wins;
         if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-        if (b.pointDifference !== a.pointDifference) return b.pointDifference - a.pointDifference;
-        return b.wins - a.wins;
+        return b.pointDifference - a.pointDifference;
+      }
+      case 'TEAM_LEAGUE_TABLE': {
+        if (b.rankingPoints !== a.rankingPoints) return b.rankingPoints - a.rankingPoints;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        return b.pointDifference - a.pointDifference;
       }
       case 'MOST_TEAM_WINS': {
         if (b.wins !== a.wins) return b.wins - a.wins;
@@ -294,16 +353,15 @@ export function generateTeamLeaderboard(
       }
       case 'MOST_TEAM_LOSSES': {
         if (b.losses !== a.losses) return b.losses - a.losses;
-        return b.pointsAgainst - a.pointsAgainst;
+        return a.pointDifference - b.pointDifference;
       }
       case 'BEST_TEAM_WIN_RATE': {
         if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-        if (b.matchesPlayed !== a.matchesPlayed) return b.matchesPlayed - a.matchesPlayed;
-        return b.pointDifference - a.pointDifference;
+        return b.matchesPlayed - a.matchesPlayed;
       }
       case 'BEST_POINT_DIFFERENCE': {
         if (b.pointDifference !== a.pointDifference) return b.pointDifference - a.pointDifference;
-        return b.winRate - a.winRate;
+        return b.wins - a.wins;
       }
     }
   });
@@ -322,19 +380,8 @@ export function generateTeamLeaderboard(
       }
     }
 
-    let headlineValue = team.wins;
-    let headlineFormatted = `${team.wins} Wins`;
-
-    if (category === 'BEST_TEAM_WIN_RATE' || category === 'OVERALL_TEAM') {
-      headlineValue = team.winRate;
-      headlineFormatted = `${team.winRate}%`;
-    } else if (category === 'MOST_TEAM_LOSSES') {
-      headlineValue = team.losses;
-      headlineFormatted = `${team.losses} Losses`;
-    } else if (category === 'BEST_POINT_DIFFERENCE') {
-      headlineValue = team.pointDifference;
-      headlineFormatted = team.pointDifference >= 0 ? `+${team.pointDifference}` : `${team.pointDifference}`;
-    }
+    const headlineValue = getTeamHeadlineValue(category, team);
+    const headlineFormatted = formatTeamHeadline(category, headlineValue);
 
     const prevRank = previousRanks[team.teamId];
     let rankMovement: RankMovement = 'SAME';
@@ -355,6 +402,7 @@ export function generateTeamLeaderboard(
       id: team.teamId,
       name: team.name,
       matchesPlayed: team.matchesPlayed,
+      matchesSplitFormatted: `R:${team.rallyMatchesPlayed} S:${team.serviceMatchesPlayed}`,
       headlineValue,
       headlineFormatted,
       rankMovement,
@@ -369,18 +417,47 @@ export function generateTeamLeaderboard(
 function isTeamTied(category: TeamRankingCategory, a: TeamStats, b: TeamStats): boolean {
   switch (category) {
     case 'OVERALL_TEAM':
-    case 'BEST_TEAM_WIN_RATE':
-      return (
-        a.winRate === b.winRate &&
-        a.pointDifference === b.pointDifference &&
-        a.wins === b.wins &&
-        a.matchesPlayed === b.matchesPlayed
-      );
     case 'MOST_TEAM_WINS':
       return a.wins === b.wins && a.winRate === b.winRate && a.pointDifference === b.pointDifference;
+    case 'TEAM_LEAGUE_TABLE':
+      return a.rankingPoints === b.rankingPoints && a.wins === b.wins && a.winRate === b.winRate;
     case 'MOST_TEAM_LOSSES':
-      return a.losses === b.losses && a.pointsAgainst === b.pointsAgainst;
+      return a.losses === b.losses && a.pointDifference === b.pointDifference;
+    case 'BEST_TEAM_WIN_RATE':
+      return a.winRate === b.winRate && a.matchesPlayed === b.matchesPlayed;
     case 'BEST_POINT_DIFFERENCE':
-      return a.pointDifference === b.pointDifference && a.winRate === b.winRate;
+      return a.pointDifference === b.pointDifference && a.wins === b.wins;
+  }
+}
+
+function getTeamHeadlineValue(category: TeamRankingCategory, team: TeamStats): number {
+  switch (category) {
+    case 'OVERALL_TEAM':
+    case 'MOST_TEAM_WINS':
+      return team.wins;
+    case 'TEAM_LEAGUE_TABLE':
+      return team.rankingPoints;
+    case 'MOST_TEAM_LOSSES':
+      return team.losses;
+    case 'BEST_TEAM_WIN_RATE':
+      return team.winRate;
+    case 'BEST_POINT_DIFFERENCE':
+      return team.pointDifference;
+  }
+}
+
+function formatTeamHeadline(category: TeamRankingCategory, value: number): string {
+  switch (category) {
+    case 'OVERALL_TEAM':
+    case 'MOST_TEAM_WINS':
+      return `${value} Wins`;
+    case 'TEAM_LEAGUE_TABLE':
+      return `${value} RP`;
+    case 'MOST_TEAM_LOSSES':
+      return `${value} Losses`;
+    case 'BEST_TEAM_WIN_RATE':
+      return `${value.toFixed(1)}%`;
+    case 'BEST_POINT_DIFFERENCE':
+      return `${value > 0 ? '+' : ''}${value}`;
   }
 }

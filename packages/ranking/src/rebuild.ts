@@ -1,12 +1,14 @@
 import {
   RankingMatch,
-  OverallRankingWeights,
-  DEFAULT_RANKING_WEIGHTS,
   RankingCategory,
   TeamRankingCategory,
   LeaderboardEntry,
   PlayerStats,
   TeamStats,
+  ScoringSystemFilter,
+  RankingConfig,
+  DEFAULT_RANKING_CONFIG,
+  OverallRankingWeights,
 } from './types.js';
 import { computeAllPlayerStats, computeAllTeamStats } from './stats.js';
 import {
@@ -27,11 +29,17 @@ export function rebuildRankings(
   matches: RankingMatch[],
   previousPlayerRanks: Partial<Record<RankingCategory, RankingSnapshotLookup>> = {},
   previousTeamRanks: Partial<Record<TeamRankingCategory, RankingSnapshotLookup>> = {},
-  weights: OverallRankingWeights = DEFAULT_RANKING_WEIGHTS
+  configOrWeights: RankingConfig | OverallRankingWeights = DEFAULT_RANKING_CONFIG,
+  formatFilter: ScoringSystemFilter = 'ALL'
 ): CompleteRankingSystemResult {
-  // 1. Accumulate stats
-  const playerStats = computeAllPlayerStats(matches);
-  const teamStats = computeAllTeamStats(matches);
+  const config: RankingConfig =
+    'weights' in configOrWeights
+      ? configOrWeights
+      : { ...DEFAULT_RANKING_CONFIG, weights: configOrWeights };
+
+  // 1. Accumulate stats with format filter and config
+  const playerStats = computeAllPlayerStats(matches, config, formatFilter);
+  const teamStats = computeAllTeamStats(matches, config, formatFilter);
 
   const playerStatsList = Object.values(playerStats);
   const teamStatsList = Object.values(teamStats);
@@ -39,6 +47,7 @@ export function rebuildRankings(
   // 2. Generate all player leaderboards
   const playerCategories: RankingCategory[] = [
     'OVERALL',
+    'LEAGUE_TABLE',
     'MOST_WINS',
     'MOST_POINTS',
     'MOST_LOSSES',
@@ -46,6 +55,7 @@ export function rebuildRankings(
     'MOST_DROPS_CONCEDED',
     'MOST_UNFORCED_ERRORS',
     'BEST_WIN_RATE',
+    'BEST_SERVICE_GAME',
   ];
 
   const playerLeaderboards = {} as Record<RankingCategory, LeaderboardEntry<PlayerStats>[]>;
@@ -54,13 +64,15 @@ export function rebuildRankings(
       playerStatsList,
       cat,
       previousPlayerRanks[cat] || {},
-      weights
+      config.weights,
+      formatFilter
     );
   }
 
   // 3. Generate all team leaderboards
   const teamCategories: TeamRankingCategory[] = [
     'OVERALL_TEAM',
+    'TEAM_LEAGUE_TABLE',
     'MOST_TEAM_WINS',
     'MOST_TEAM_LOSSES',
     'BEST_TEAM_WIN_RATE',

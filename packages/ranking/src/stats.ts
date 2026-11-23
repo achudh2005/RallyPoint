@@ -3,6 +3,9 @@ import {
   TeamStats,
   RankingMatch,
   RankingMatchEvent,
+  RankingConfig,
+  DEFAULT_RANKING_CONFIG,
+  ScoringSystemFilter,
 } from './types.js';
 
 export function initializePlayerStats(playerId: string, displayName = ''): PlayerStats {
@@ -10,12 +13,17 @@ export function initializePlayerStats(playerId: string, displayName = ''): Playe
     playerId,
     displayName: displayName || playerId,
     matchesPlayed: 0,
+    rallyMatchesPlayed: 0,
+    serviceMatchesPlayed: 0,
+    matchesSplitFormatted: 'R:0 S:0',
+    rankingPoints: 0,
     wins: 0,
     losses: 0,
     winRate: 0,
     pointsScored: 0,
     pointsConceded: 0,
     pointDifference: 0,
+    pointSharePct: 0,
     gamesWon: 0,
     gamesLost: 0,
     dropShotsPlayed: 0,
@@ -26,6 +34,20 @@ export function initializePlayerStats(playerId: string, displayName = ''): Playe
     longestWinStreak: 0,
     currentStreak: 0,
     currentForm: [],
+
+    // Service point stats
+    servicePointsWon: 0,
+    sideOutsWon: 0,
+    serviceHolds: 0,
+    serviceBreaks: 0,
+    avgPointsPerServiceTurn: 0,
+    longestServiceRun: 0,
+
+    // Rally point stats
+    pointsWonOnServe: 0,
+    pointsWonOnReceive: 0,
+    longestPointStreak: 0,
+    comebackPoints: 0,
   };
 }
 
@@ -41,12 +63,16 @@ export function initializeTeamStats(
     type,
     playerIds,
     matchesPlayed: 0,
+    rallyMatchesPlayed: 0,
+    serviceMatchesPlayed: 0,
+    rankingPoints: 0,
     wins: 0,
     losses: 0,
     winRate: 0,
     pointsFor: 0,
     pointsAgainst: 0,
     pointDifference: 0,
+    pointSharePct: 0,
     gamesWon: 0,
     gamesLost: 0,
     currentStreak: 0,
@@ -54,20 +80,20 @@ export function initializeTeamStats(
   };
 }
 
-/**
- * Filter match events handling UNDO operations via event sourcing replay
- */
 export function replayValidEvents(events: RankingMatchEvent[]): RankingMatchEvent[] {
   const stack: RankingMatchEvent[] = [];
-  // Sort events by sequenceNumber
   const sorted = [...events].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
 
   for (const event of sorted) {
     if (event.eventType === 'UNDO') {
-      // Remove last score-bearing event
       for (let i = stack.length - 1; i >= 0; i--) {
         const candidate = stack[i];
-        if (candidate && (candidate.eventType === 'POINT' || candidate.eventType === 'SERVE_FAULT')) {
+        if (
+          candidate &&
+          (candidate.eventType === 'POINT' ||
+            candidate.eventType === 'RALLY_WON' ||
+            candidate.eventType === 'SERVE_FAULT')
+        ) {
           stack.splice(i, 1);
           break;
         }
@@ -80,13 +106,25 @@ export function replayValidEvents(events: RankingMatchEvent[]): RankingMatchEven
   return stack;
 }
 
-/**
- * Recomputes player statistics across an array of matches
- */
-export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, PlayerStats> {
+export function isMatchInFormat(match: RankingMatch, filter: ScoringSystemFilter): boolean {
+  if (filter === 'ALL') return true;
+  const fmt = match.scoringFormat || 'RALLY_21';
+  if (filter === 'RALLY') {
+    return fmt.startsWith('RALLY');
+  }
+  if (filter === 'SERVICE') {
+    return fmt.startsWith('SERVICE');
+  }
+  return true;
+}
+
+export function computeAllPlayerStats(
+  matches: RankingMatch[],
+  config: RankingConfig = DEFAULT_RANKING_CONFIG,
+  formatFilter: ScoringSystemFilter = 'ALL'
+): Record<string, PlayerStats> {
   const statsMap: Record<string, PlayerStats> = {};
 
-  // Sort matches chronologically if dates available
   const sortedMatches = [...matches].sort((a, b) => {
     const timeA = a.endedAt ? new Date(a.endedAt).getTime() : 0;
     const timeB = b.endedAt ? new Date(b.endedAt).getTime() : 0;
@@ -94,7 +132,14 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
   });
 
   for (const match of sortedMatches) {
-    // Register players in statsMap
+    // Check format filter
+    if (!isMatchInFormat(match, formatFilter)) {
+      continue;
+    }
+
+    const fmt = match.scoringFormat || 'RALLY_21';
+    const isServiceMatch = fmt.startsWith('SERVICE');
+
     for (const p of match.participants) {
       if (!statsMap[p.playerId]) {
         statsMap[p.playerId] = initializePlayerStats(p.playerId, p.displayName);
@@ -104,10 +149,21 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
     const sideAPlayers = match.participants.filter((p) => p.side === 'A');
     const sideBPlayers = match.participants.filter((p) => p.side === 'B');
 
-    // 1. Process Event Tags from valid replayed events
+    // 1. Process Event Tags
     const validEvents = replayValidEvents(match.events);
+
+    let currentPointStreakA = 0;
+    let currentPointStreakB = 0;
+    let currentServiceRun = 0;
+    let lastServingPlayerId: string | null = null;
+
     for (const event of validEvents) {
-      if (event.eventType === 'POINT' || event.eventType === 'SERVE_FAULT') {
+      if (
+        event.eventType === 'POINT' ||
+        event.eventType === 'RALLY_WON' ||
+        event.eventType === 'SIDE_OUT' ||
+        event.eventType === 'SERVE_FAULT'
+      ) {
         // Point winner attribution
         if (event.pointWinnerPlayerId && statsMap[event.pointWinnerPlayerId]) {
           const winnerStats = statsMap[event.pointWinnerPlayerId]!;
@@ -119,6 +175,53 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
           }
           if (event.shotType === 'SMASH' && event.rallyEndResult === 'WINNER') {
             winnerStats.smashWinners++;
+          }
+
+          // Service vs Receive rally/point stats
+          const winnerParticipant = match.participants.find(
+            (p) => p.playerId === event.pointWinnerPlayerId
+          );
+          const winnerSide = winnerParticipant?.side || event.side;
+
+          if (isServiceMatch) {
+            if (event.isPoint || event.eventType === 'POINT') {
+              winnerStats.servicePointsWon++;
+              winnerStats.serviceHolds++;
+              if (lastServingPlayerId === event.pointWinnerPlayerId) {
+                currentServiceRun++;
+                if (currentServiceRun > winnerStats.longestServiceRun) {
+                  winnerStats.longestServiceRun = currentServiceRun;
+                }
+              } else {
+                currentServiceRun = 1;
+                lastServingPlayerId = event.pointWinnerPlayerId;
+              }
+            } else if (event.isSideOut) {
+              winnerStats.sideOutsWon++;
+              winnerStats.serviceBreaks++;
+              currentServiceRun = 0;
+            }
+          } else {
+            // Rally point stats
+            if (winnerSide === 'A') {
+              currentPointStreakA++;
+              currentPointStreakB = 0;
+              if (currentPointStreakA > winnerStats.longestPointStreak) {
+                winnerStats.longestPointStreak = currentPointStreakA;
+              }
+            } else {
+              currentPointStreakB++;
+              currentPointStreakA = 0;
+              if (currentPointStreakB > winnerStats.longestPointStreak) {
+                winnerStats.longestPointStreak = currentPointStreakB;
+              }
+            }
+
+            if (event.serverPlayerId === event.pointWinnerPlayerId) {
+              winnerStats.pointsWonOnServe++;
+            } else {
+              winnerStats.pointsWonOnReceive++;
+            }
           }
         }
 
@@ -141,7 +244,7 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
       }
     }
 
-    // 2. Process Games and Match Results if match is completed
+    // 2. Process Games and Match Results
     const isCompleted =
       match.status === 'COMPLETED' || match.winnerSide !== null || match.games.length > 0;
 
@@ -158,7 +261,6 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
         else if (g.winnerSide === 'B' || g.scoreB > g.scoreA) sideBGames++;
       }
 
-      // If points weren't in games, sum from valid events
       if (sideAPoints === 0 && sideBPoints === 0 && validEvents.length > 0) {
         for (const ev of validEvents) {
           if (ev.side === 'A') sideAPoints++;
@@ -169,15 +271,57 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
       const matchWinnerSide =
         match.winnerSide || (sideAGames > sideBGames ? 'A' : sideBGames > sideAGames ? 'B' : null);
 
-      // Attribute match and game stats to Side A players
+      const isStraightGames =
+        (sideAGames === 2 && sideBGames === 0) || (sideBGames === 2 && sideAGames === 0);
+
+      // Ranking Points (RP) Calculation
+      let winnerRp = isServiceMatch ? config.serviceWinRp : config.rallyWinRp;
+      let loserRp = isServiceMatch ? config.serviceLossRp : config.rallyLossRp;
+
+      // Straight games bonus
+      if (isStraightGames) {
+        winnerRp += isServiceMatch
+          ? config.serviceStraightGamesBonus
+          : config.rallyStraightGamesBonus;
+      }
+
+      // Setting bonus (service point)
+      if (isServiceMatch && (match.isSettingGame || match.games.some((g) => g.isSettingGame))) {
+        winnerRp += config.serviceSettingBonus;
+      }
+
+      // Giant killer bonus (if winner had worse initialRank than loser)
+      const rankA = sideAPlayers[0]?.initialRank;
+      const rankB = sideBPlayers[0]?.initialRank;
+      let giantKillerA = false;
+      let giantKillerB = false;
+      if (rankA && rankB) {
+        if (rankA > rankB && matchWinnerSide === 'A') giantKillerA = true;
+        if (rankB > rankA && matchWinnerSide === 'B') giantKillerB = true;
+      }
+
+      const mult = isServiceMatch ? config.serviceMultiplier : config.rallyMultiplier;
+
+      // Attribute to Side A
+      const rpA = Math.round(
+        (matchWinnerSide === 'A' ? winnerRp + (giantKillerA ? config.rallyGiantKillerBonus : 0) : loserRp) * mult
+      );
+
       for (const p of sideAPlayers) {
         const pStats = statsMap[p.playerId]!;
         pStats.matchesPlayed++;
+        if (isServiceMatch) pStats.serviceMatchesPlayed++;
+        else pStats.rallyMatchesPlayed++;
+
+        pStats.rankingPoints += rpA;
         pStats.pointsScored += sideAPoints;
         pStats.pointsConceded += sideBPoints;
         pStats.pointDifference = pStats.pointsScored - pStats.pointsConceded;
         pStats.gamesWon += sideAGames;
         pStats.gamesLost += sideBGames;
+
+        const totalPts = pStats.pointsScored + pStats.pointsConceded;
+        pStats.pointSharePct = totalPts > 0 ? Number(((pStats.pointsScored / totalPts) * 100).toFixed(2)) : 0;
 
         if (matchWinnerSide === 'A') {
           pStats.wins++;
@@ -198,17 +342,29 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
           pStats.matchesPlayed > 0
             ? Number(((pStats.wins / pStats.matchesPlayed) * 100).toFixed(2))
             : 0;
+        pStats.matchesSplitFormatted = `R:${pStats.rallyMatchesPlayed} S:${pStats.serviceMatchesPlayed}`;
       }
 
-      // Attribute match and game stats to Side B players
+      // Attribute to Side B
+      const rpB = Math.round(
+        (matchWinnerSide === 'B' ? winnerRp + (giantKillerB ? config.rallyGiantKillerBonus : 0) : loserRp) * mult
+      );
+
       for (const p of sideBPlayers) {
         const pStats = statsMap[p.playerId]!;
         pStats.matchesPlayed++;
+        if (isServiceMatch) pStats.serviceMatchesPlayed++;
+        else pStats.rallyMatchesPlayed++;
+
+        pStats.rankingPoints += rpB;
         pStats.pointsScored += sideBPoints;
         pStats.pointsConceded += sideAPoints;
         pStats.pointDifference = pStats.pointsScored - pStats.pointsConceded;
         pStats.gamesWon += sideBGames;
         pStats.gamesLost += sideAGames;
+
+        const totalPts = pStats.pointsScored + pStats.pointsConceded;
+        pStats.pointSharePct = totalPts > 0 ? Number(((pStats.pointsScored / totalPts) * 100).toFixed(2)) : 0;
 
         if (matchWinnerSide === 'B') {
           pStats.wins++;
@@ -229,6 +385,7 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
           pStats.matchesPlayed > 0
             ? Number(((pStats.wins / pStats.matchesPlayed) * 100).toFixed(2))
             : 0;
+        pStats.matchesSplitFormatted = `R:${pStats.rallyMatchesPlayed} S:${pStats.serviceMatchesPlayed}`;
       }
     }
   }
@@ -236,65 +393,63 @@ export function computeAllPlayerStats(matches: RankingMatch[]): Record<string, P
   return statsMap;
 }
 
-/**
- * Computes team statistics for fixed pairs, club teams, or auto-detected doubles pairs
- */
-export function computeAllTeamStats(matches: RankingMatch[]): Record<string, TeamStats> {
-  const teamsMap: Record<string, TeamStats> = {};
+export function computeAllTeamStats(
+  matches: RankingMatch[],
+  config: RankingConfig = DEFAULT_RANKING_CONFIG,
+  formatFilter: ScoringSystemFilter = 'ALL'
+): Record<string, TeamStats> {
+  const teamStatsMap: Record<string, TeamStats> = {};
 
-  const sortedMatches = [...matches].sort((a, b) => {
-    const timeA = a.endedAt ? new Date(a.endedAt).getTime() : 0;
-    const timeB = b.endedAt ? new Date(b.endedAt).getTime() : 0;
-    return timeA - timeB;
-  });
-
-  for (const match of sortedMatches) {
-    const isDoubles = match.matchType === 'DOUBLES' || match.matchType === 'MIXED';
-    const sideAPlayers = match.participants
-      .filter((p) => p.side === 'A')
-      .sort((a, b) => a.playerId.localeCompare(b.playerId));
-    const sideBPlayers = match.participants
-      .filter((p) => p.side === 'B')
-      .sort((a, b) => a.playerId.localeCompare(b.playerId));
-
-    // Handle Side A Team
-    let teamAId = match.teamAId;
-    let teamAName = '';
-    if (!teamAId && isDoubles && sideAPlayers.length === 2) {
-      teamAId = `pair_${sideAPlayers[0]?.playerId}_${sideAPlayers[1]?.playerId}`;
-      teamAName = `${sideAPlayers[0]?.displayName} & ${sideAPlayers[1]?.displayName}`;
+  for (const match of matches) {
+    if (!isMatchInFormat(match, formatFilter)) {
+      continue;
     }
 
-    // Handle Side B Team
-    let teamBId = match.teamBId;
-    let teamBName = '';
-    if (!teamBId && isDoubles && sideBPlayers.length === 2) {
-      teamBId = `pair_${sideBPlayers[0]?.playerId}_${sideBPlayers[1]?.playerId}`;
-      teamBName = `${sideBPlayers[0]?.displayName} & ${sideBPlayers[1]?.displayName}`;
-    }
+    const fmt = match.scoringFormat || 'RALLY_21';
+    const isServiceMatch = fmt.startsWith('SERVICE');
 
-    if (teamAId && !teamsMap[teamAId]) {
-      teamsMap[teamAId] = initializeTeamStats(
+    const sideAPlayers = match.participants.filter((p) => p.side === 'A');
+    const sideBPlayers = match.participants.filter((p) => p.side === 'B');
+
+    const teamAId =
+      match.teamAId ||
+      (sideAPlayers.length === 2
+        ? `pair_${sideAPlayers.map((p) => p.playerId).sort().join('_')}`
+        : null);
+
+    const teamBId =
+      match.teamBId ||
+      (sideBPlayers.length === 2
+        ? `pair_${sideBPlayers.map((p) => p.playerId).sort().join('_')}`
+        : null);
+
+    if (teamAId && !teamStatsMap[teamAId]) {
+      const name =
+        match.teamAId && match.matchType !== 'DOUBLES'
+          ? `Team ${teamAId}`
+          : sideAPlayers.map((p) => p.displayName).join(' / ');
+      teamStatsMap[teamAId] = initializeTeamStats(
         teamAId,
-        teamAName || teamAId,
-        'FIXED_PAIR',
+        name,
+        match.teamAId ? 'CLUB_TEAM' : 'FIXED_PAIR',
         sideAPlayers.map((p) => p.playerId)
       );
     }
-    if (teamBId && !teamsMap[teamBId]) {
-      teamsMap[teamBId] = initializeTeamStats(
+
+    if (teamBId && !teamStatsMap[teamBId]) {
+      const name =
+        match.teamBId && match.matchType !== 'DOUBLES'
+          ? `Team ${teamBId}`
+          : sideBPlayers.map((p) => p.displayName).join(' / ');
+      teamStatsMap[teamBId] = initializeTeamStats(
         teamBId,
-        teamBName || teamBId,
-        'FIXED_PAIR',
+        name,
+        match.teamBId ? 'CLUB_TEAM' : 'FIXED_PAIR',
         sideBPlayers.map((p) => p.playerId)
       );
     }
 
-    // Accumulate scores if match is completed
-    const isCompleted =
-      match.status === 'COMPLETED' || match.winnerSide !== null || match.games.length > 0;
-
-    if (isCompleted && (teamAId || teamBId)) {
+    if (match.status === 'COMPLETED' || match.winnerSide) {
       let sideAPoints = 0;
       let sideBPoints = 0;
       let sideAGames = 0;
@@ -310,14 +465,30 @@ export function computeAllTeamStats(matches: RankingMatch[]): Record<string, Tea
       const matchWinnerSide =
         match.winnerSide || (sideAGames > sideBGames ? 'A' : sideBGames > sideAGames ? 'B' : null);
 
-      if (teamAId && teamsMap[teamAId]) {
-        const t = teamsMap[teamAId]!;
+      const isStraightGames =
+        (sideAGames === 2 && sideBGames === 0) || (sideBGames === 2 && sideAGames === 0);
+
+      const winnerRp =
+        (isServiceMatch ? config.serviceWinRp : config.rallyWinRp) +
+        (isStraightGames ? (isServiceMatch ? config.serviceStraightGamesBonus : config.rallyStraightGamesBonus) : 0);
+      const loserRp = isServiceMatch ? config.serviceLossRp : config.rallyLossRp;
+
+      if (teamAId && teamStatsMap[teamAId]) {
+        const t = teamStatsMap[teamAId]!;
         t.matchesPlayed++;
+        if (isServiceMatch) t.serviceMatchesPlayed++;
+        else t.rallyMatchesPlayed++;
+
+        t.rankingPoints += matchWinnerSide === 'A' ? winnerRp : loserRp;
         t.pointsFor += sideAPoints;
         t.pointsAgainst += sideBPoints;
         t.pointDifference = t.pointsFor - t.pointsAgainst;
         t.gamesWon += sideAGames;
         t.gamesLost += sideBGames;
+
+        const totalPts = t.pointsFor + t.pointsAgainst;
+        t.pointSharePct = totalPts > 0 ? Number(((t.pointsFor / totalPts) * 100).toFixed(2)) : 0;
+
         if (matchWinnerSide === 'A') {
           t.wins++;
           t.currentStreak++;
@@ -326,18 +497,25 @@ export function computeAllTeamStats(matches: RankingMatch[]): Record<string, Tea
           t.losses++;
           t.currentStreak = 0;
         }
-        t.winRate =
-          t.matchesPlayed > 0 ? Number(((t.wins / t.matchesPlayed) * 100).toFixed(2)) : 0;
+        t.winRate = t.matchesPlayed > 0 ? Number(((t.wins / t.matchesPlayed) * 100).toFixed(2)) : 0;
       }
 
-      if (teamBId && teamsMap[teamBId]) {
-        const t = teamsMap[teamBId]!;
+      if (teamBId && teamStatsMap[teamBId]) {
+        const t = teamStatsMap[teamBId]!;
         t.matchesPlayed++;
+        if (isServiceMatch) t.serviceMatchesPlayed++;
+        else t.rallyMatchesPlayed++;
+
+        t.rankingPoints += matchWinnerSide === 'B' ? winnerRp : loserRp;
         t.pointsFor += sideBPoints;
         t.pointsAgainst += sideAPoints;
         t.pointDifference = t.pointsFor - t.pointsAgainst;
         t.gamesWon += sideBGames;
         t.gamesLost += sideAGames;
+
+        const totalPts = t.pointsFor + t.pointsAgainst;
+        t.pointSharePct = totalPts > 0 ? Number(((t.pointsFor / totalPts) * 100).toFixed(2)) : 0;
+
         if (matchWinnerSide === 'B') {
           t.wins++;
           t.currentStreak++;
@@ -346,11 +524,10 @@ export function computeAllTeamStats(matches: RankingMatch[]): Record<string, Tea
           t.losses++;
           t.currentStreak = 0;
         }
-        t.winRate =
-          t.matchesPlayed > 0 ? Number(((t.wins / t.matchesPlayed) * 100).toFixed(2)) : 0;
+        t.winRate = t.matchesPlayed > 0 ? Number(((t.wins / t.matchesPlayed) * 100).toFixed(2)) : 0;
       }
     }
   }
 
-  return teamsMap;
+  return teamStatsMap;
 }
