@@ -29,7 +29,27 @@ enum DominantHand {
 enum TeamType {
   SINGLES_ENTRY
   DOUBLES_PAIR
+  FIXED_PAIR
   CLUB_TEAM
+}
+
+enum ShotType {
+  SMASH
+  DROP
+  NET
+  CLEAR
+  DRIVE
+  LOB
+  SERVE
+}
+
+enum RallyEndResult {
+  WINNER
+  UNFORCED_ERROR
+  FORCED_ERROR
+  OUT
+  NET_FAULT
+  SERVICE_FAULT
 }
 
 enum TournamentFormat {
@@ -135,6 +155,7 @@ model Player {
   matchParticipations MatchParticipant[]
   careerStats         PlayerCareerStats?
   formTrend           PlayerFormTrend?
+  rankingSnapshots    PlayerRankingSnapshot[]
 
   @@index([displayName])
   @@index([clubId])
@@ -176,8 +197,9 @@ model Team {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  members    TeamMember[]
-  matchSides MatchSide[]
+  members          TeamMember[]
+  matchSides       MatchSide[]
+  rankingSnapshots TeamRankingSnapshot[]
 
   @@map("teams")
 }
@@ -251,6 +273,7 @@ model Tournament {
 model Match {
   id           String         @id @default(cuid())
   tournamentId String?        @map("tournament_id")
+  seasonId     String?        @map("season_id")
   courtId      String?        @map("court_id")
   matchType    MatchType      @default(SINGLES) @map("match_type")
   bestOf       Int            @default(3) @map("best_of")
@@ -264,9 +287,10 @@ model Match {
   createdAt    DateTime       @default(now()) @map("created_at")
   updatedAt    DateTime       @updatedAt @map("updated_at")
 
-  tournament   Tournament?        @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
-  court        Court?             @relation(fields: [courtId], references: [id], onDelete: SetNull)
-  scorer       User?              @relation("ScorerMatches", fields: [scorerUserId], references: [id], onDelete: SetNull)
+  tournament      Tournament?           @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  season          Season?               @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  court           Court?                @relation(fields: [courtId], references: [id], onDelete: SetNull)
+  scorer          User?                 @relation("ScorerMatches", fields: [scorerUserId], references: [id], onDelete: SetNull)
   sides           MatchSide[]
   participants    MatchParticipant[]
   games           Game[]
@@ -326,10 +350,14 @@ model MatchEvent {
   matchId        String            @map("match_id")
   gameId         String?           @map("game_id")
   sequenceNumber Int               @map("sequence_number")
-  eventType      MatchEventType    @map("event_type")
-  side           MatchSideEnum?
-  rallyEndType   RallyEndTypeEnum? @map("rally_end_type")
-  serverPlayerId String?           @map("server_player_id")
+  eventType           MatchEventType    @map("event_type")
+  side                MatchSideEnum?
+  rallyEndType        RallyEndTypeEnum? @map("rally_end_type")
+  shotType            ShotType?         @map("shot_type")
+  rallyEndResult      RallyEndResult?   @map("rally_end_result")
+  pointWinnerPlayerId String?           @map("point_winner_player_id")
+  errorPlayerId       String?           @map("error_player_id")
+  serverPlayerId      String?           @map("server_player_id")
   payload        Json?
   occurredAt     DateTime          @map("occurred_at")
   recordedAt     DateTime          @default(now()) @map("recorded_at")
@@ -411,4 +439,67 @@ model MatchAnalyticsRollup {
   match            Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@map("match_analytics_rollups")
+}
+
+
+model Season {
+  id              String                  @id @default(cuid())
+  name            String
+  startDate       DateTime                @map("start_date")
+  endDate         DateTime?               @map("end_date")
+  isActive        Boolean                 @default(true) @map("is_active")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  matches         Match[]
+  playerSnapshots PlayerRankingSnapshot[]
+  teamSnapshots   TeamRankingSnapshot[]
+
+  @@map("seasons")
+}
+
+model PlayerRankingSnapshot {
+  id            String    @id @default(cuid())
+  playerId      String    @map("player_id")
+  seasonId      String?   @map("season_id")
+  category      String
+  period        String    @default("ALL_TIME")
+  rank          Int
+  previousRank  Int?      @map("previous_rank")
+  matchesPlayed Int       @map("matches_played")
+  headlineValue Float     @map("headline_value")
+  stats         Json      @default("{}")
+  snapshotDate  DateTime  @default(now()) @map("snapshot_date")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  player        Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  season        Season?   @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  @@index([playerId])
+  @@index([seasonId])
+  @@index([category, period])
+  @@map("player_ranking_snapshots")
+}
+
+model TeamRankingSnapshot {
+  id            String    @id @default(cuid())
+  teamId        String    @map("team_id")
+  seasonId      String?   @map("season_id")
+  category      String
+  period        String    @default("ALL_TIME")
+  rank          Int
+  previousRank  Int?      @map("previous_rank")
+  matchesPlayed Int       @map("matches_played")
+  headlineValue Float     @map("headline_value")
+  stats         Json      @default("{}")
+  snapshotDate  DateTime  @default(now()) @map("snapshot_date")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  season        Season?   @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  @@index([teamId])
+  @@index([seasonId])
+  @@index([category, period])
+  @@map("team_ranking_snapshots")
 }
