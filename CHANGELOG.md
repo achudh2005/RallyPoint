@@ -2,6 +2,22 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [DB Phase 1] - Core Schema and Master Data (@rallypoint/db)
+### Added
+- Created dedicated `@rallypoint/db` package in `packages/db` with Prisma ORM and TypeScript exports.
+- PostgreSQL 16 3NF master data schema:
+  - `User`: Unique email, bcrypt password hash, roles (`ADMIN`, `SCORER`, `UMPIRE`, `PLAYER`, `VIEWER`).
+  - `Player`: Full biographical profiles, club association, dominant hand, external IDs (BWF ID), soft delete support (`deleted_at`).
+  - `PlayerProfileHistory`: Point-in-time audit snapshots tracking player profile updates and modifications.
+  - `Club`: Badminton clubs and academies with city, branding, and player rosters.
+  - `Team` & `TeamMember`: Singles entries, doubles pairs, and club teams with active membership constraints.
+  - `Venue` & `Court`: Multicourt facility management with coordinates and certified surface specifications.
+  - `Tournament`: Knockout and Round-Robin configurations mapped to venue and age/gender categories.
+- Service hooks: `updatePlayerWithAudit` and `softDeletePlayer`.
+- Comprehensive seed script in `packages/db/src/seed.ts` featuring international players, clubs, and venues.
+- Database architecture documentation in `/docs/database.md`.
+- Unit and integration tests for master data updates, soft deletes, and history snapshots.
+
 ## [Phase 5] - Tournaments, PWA, and Production Polish
 ### Added
 - **Tournament Manager Engine** (`apps/web/src/tournaments/tournamentEngine.ts`):
