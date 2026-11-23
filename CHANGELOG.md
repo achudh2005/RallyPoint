@@ -2,6 +2,28 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Phase 5] - Tournaments, PWA, and Production Polish
+### Added
+- **Tournament Manager Engine** (`apps/web/src/tournaments/tournamentEngine.ts`):
+  - Knockout single-elimination bracket generator with byes and seeded pairings.
+  - Round-robin schedule generator.
+  - BWF tiebreaker standings (Matches won > Head-to-Head > Game differential > Point differential).
+  - Multi-court allocation and scheduling.
+- **Tournament Management UI** (`apps/web/src/components/tournaments/TournamentManager.tsx`):
+  - Interactive bracket and round-robin view with inline winner recording and real-time standings recalculation.
+- **Progressive Web App (PWA)**:
+  - Web App Manifest (`apps/web/public/manifest.json`) and service worker registration (`serviceWorkerRegistration.ts`).
+  - Cache-first Service Worker (`apps/web/public/sw.js`) for full offline scoring.
+  - Crash recovery `ErrorBoundary` component (`apps/web/src/components/ErrorBoundary.tsx`).
+- **DevOps & Production Infrastructure**:
+  - Structured JSON logging module with request duration tracing (`apps/api/src/utils/logger.ts`).
+  - Multi-stage Dockerfiles: `Dockerfile.api` and `Dockerfile.web`.
+  - Comprehensive `docker-compose.yml` orchestrating PostgreSQL, pgAdmin, API, and Web.
+  - GitHub Actions CI workflow (`.github/workflows/ci.yml`) testing, typechecking, and building on push/PR.
+  - Deployment configuration for Vercel SPA (`apps/web/vercel.json`) and Render blueprint (`render.yaml`).
+  - Rollup chunk splitting optimization separating vendor, charts, and export modules.
+  - Unit test suite for tournament engine and tournament UI components.
+
 ## [Phase 4] - Backend, Auth, and Live Sync (apps/api)
 ### Added
 - Node.js + Express + TypeScript API server with Socket.IO and Prisma ORM in `apps/api`.
