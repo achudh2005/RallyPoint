@@ -170,6 +170,30 @@ erDiagram
 
 ---
 
+## Production Database Architecture (`@rallypoint/db`)
+
+For complete details, see [docs/database.md](docs/database.md).
+
+- **DB Phase 1: Core Schema & Master Data (3NF)**:
+  - Master entities: User, Player, Club, Team, Venue, Court, Tournament.
+  - Historical audit snapshots via `PlayerProfileHistory` and soft deletes (`deleted_at`).
+  - Realistic seed script (`packages/db/src/seed.ts`).
+- **DB Phase 2: Append-Only Event History**:
+  - Strict append-only `match_events` with database exception triggers preventing `UPDATE` or `DELETE`.
+  - Declarative monthly partitioning on `occurred_at` (`packages/db/src/partitioning.sql`).
+  - Idempotent event ingestion service (`packages/db/src/eventIngestion.ts`).
+- **DB Phase 3: Derived Analytics Layer & Rollups**:
+  - Fast-read rollup tables: `PlayerCareerStats`, `HeadToHead`, `PlayerFormTrend`, `MatchAnalyticsRollup`.
+  - Stored procedures (`rebuild_player_stats`) and match completion triggers (`trg_match_completed_rollups`).
+- **DB Phase 4: Production Hardening, Performance & Operations**:
+  - Backup & restore automation (`scripts/backup.sh`, `scripts/restore.sh`, `scripts/archive_partitions.sh`).
+  - PgBouncer high-concurrency transaction pooling (`packages/db/src/pgbouncer.ini`).
+  - Row Level Security (RLS) policies (`packages/db/src/rlsPolicies.sql`).
+  - Performance audit with `EXPLAIN ANALYZE` benchmarks (`packages/db/src/performanceAudit.sql`).
+  - End-to-end 16-player tournament simulation and concurrent live scoring tests (`packages/db/src/dbE2E.test.ts`).
+
+---
+
 ## Getting Started
 
 ### Prerequisites

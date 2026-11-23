@@ -2,6 +2,20 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [DB Phase 4] - Production Hardening, Performance & Operations
+### Added
+- Enterprise backup and disaster recovery suite:
+  - `scripts/backup.sh`: Automated `pg_dump -Fc` with SHA256 checksums and 30-day retention pruning.
+  - `scripts/restore.sh`: Safe `pg_restore` with integrity verification and clean drop options.
+  - `scripts/archive_partitions.sh`: Cold storage partition detachment and archival script for aged match events.
+- Row-Level Security (RLS) policies in `packages/db/src/rlsPolicies.sql`:
+  - Granular player profile edit restrictions linked to session user ID.
+  - Scorer and Umpire restricted append access on `match_events`.
+- High-concurrency connection pooling configuration via PgBouncer in `packages/db/src/pgbouncer.ini` (transaction mode, 1,000 client capacity).
+- Indexing and query performance audit suite with `EXPLAIN ANALYZE` benchmarks in `packages/db/src/performanceAudit.sql`.
+- Comprehensive database architecture documentation, table dictionary, and operational runbook in `/docs/database.md`.
+- End-to-end integration test suite (`packages/db/src/dbE2E.test.ts`) covering 16-player tournament lifecycle, concurrent live match scoring, idempotency, and soft-delete/purge workflows.
+
 ## [DB Phase 3] - Derived Analytics Layer & Rollup Tables
 ### Added
 - Rollup database models: `PlayerCareerStats`, `HeadToHead`, `PlayerFormTrend`, `MatchAnalyticsRollup`.

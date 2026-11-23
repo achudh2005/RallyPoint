@@ -149,3 +149,43 @@ erDiagram
 - `rebuild_player_stats(player_id)`: PL/pgSQL function recalculating career stats from raw match & event records.
 - `trg_match_completed_rollups`: Database trigger automatically invoking rollup calculations upon match status transitioning to `COMPLETED`.
 - `calculateCareerStats()`: Pure TypeScript projection in `packages/db/src/statsProjection.ts` for deterministic recomputation.
+
+
+---
+
+## Phase 4: Production Hardening, Performance & Operations
+
+### 1. Connection Pooling & PgBouncer
+- **PgBouncer Configuration** (`packages/db/src/pgbouncer.ini`):
+  - Mode: `transaction` pooling to support up to 1,000 concurrent client connections while keeping PostgreSQL connections capped at 100.
+  - Port: `6432` proxying to Postgres `5432`.
+- **Prisma Connection Tuning**:
+  - Connection URL configured with pool limits: `postgresql://user:pass@host:6432/db?pgbouncer=true&connection_limit=10`.
+
+### 2. Backup & Point-In-Time Recovery (PITR) Runbook
+- **Backup Script** (`scripts/backup.sh`):
+  - Executes `pg_dump -Fc` (custom binary format with compression and blob support).
+  - Calculates SHA256 checksums and automatically prunes backups older than 30 days.
+- **Restore Script** (`scripts/restore.sh`):
+  - Validates checksum, confirms execution with interactive prompt, and runs `pg_restore --clean --if-exists`.
+- **Point-In-Time Recovery (PITR)**:
+  - WAL archiving enabled via `archive_mode = on` and `archive_command = 'cp %p /var/lib/postgresql/wal_archive/%f'`.
+  - Recovery target setting: `recovery_target_time = 'YYYY-MM-DD HH:MM:SS'`.
+
+### 3. Data Retention & Partition Archival
+- Automated cold storage partition script: `scripts/archive_partitions.sh`.
+- Partitions older than 2 years are dumped to compressed gzip SQL files (`match_events_YYYY_MM.sql.gz`), detached via `ALTER TABLE match_events DETACH PARTITION`, and dropped from active OLTP storage.
+
+### 4. Row Level Security (RLS) Policies (`packages/db/src/rlsPolicies.sql`)
+- `players`:
+  - Public SELECT for active players (`deleted_at IS NULL`).
+  - Strict UPDATE policy: `user_id = current_setting('app.current_user_id') OR role = 'ADMIN'`.
+- `match_events`:
+  - Open SELECT for live scoreboard broadcasts.
+  - INSERT restricted to designated match scorer, umpires, and admins.
+  - Absolute block on UPDATE and DELETE operations at RLS level.
+
+### 5. Performance Audit & Index Strategy (`packages/db/src/performanceAudit.sql`)
+- **Fuzzy Search**: `GIN (lower(display_name) gin_trgm_ops)` achieves sub-millisecond prefix/fuzzy lookups without full-table scans.
+- **Live Match Queries**: Partial index `WHERE status = 'LIVE'` keeps working set minimal.
+- **Event Sequence**: Unique composite index `(match_id, sequence_number)` guarantees $O(1)$ sequence verification and indexed replay.
