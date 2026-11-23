@@ -54,3 +54,5 @@ export async function softDeletePlayer(
     tx
   );
 }
+
+export * from './eventIngestion.js';
