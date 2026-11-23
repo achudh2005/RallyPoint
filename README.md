@@ -7,7 +7,7 @@ RallyPoint is a tournament-grade badminton point tracking and analytics applicat
 
 ## Monorepo Structure
 - `packages/engine`: Pure TypeScript BWF rules and event-sourced scoring engine (zero runtime dependencies).
-- `apps/web`: React 18 + Vite + Tailwind CSS + Zustand + Dexie PWA.
+- `apps/web`: React 18 + Vite + Tailwind CSS + Zustand + Recharts + Dexie PWA.
 - `apps/api`: Node.js + Express + TypeScript + Prisma + PostgreSQL + Socket.IO.
 - `packages/db`: Shared Prisma client and repository access layer.
 
@@ -41,3 +41,18 @@ RallyPoint is a tournament-grade badminton point tracking and analytics applicat
 - **Automated Testing**:
   - Vitest + React Testing Library component tests.
   - Playwright end-to-end (e2e) test verifying complete match lifecycle.
+
+## Phase 3: Analytics and Insights
+- **Match Dashboard & Visual Analytics (Recharts)**:
+  - **Momentum Chart**: Dynamic point-difference timeline showing rally-by-rally lead swings, zero baseline, and game boundaries.
+  - **Win-Probability Curve**: Full Bayesian / Markov chain model predicting live game and match win probabilities from any score state.
+  - **Score Progression Chart**: Cumulative point trajectories for both sides across games.
+  - **Pressure Points Tracker**: Clutch performance analytics measuring win rates when scores reach 18+.
+  - **Serve vs. Receive Conversion**: Statistical breakdown of points won on own serve versus receiving.
+  - **Shot-Type Breakdown**: Granular distribution of winners and unforced errors (Smash, Drop, Net, Out, Unforced Error, Service Fault).
+- **Player Profiles & Head-to-Head**:
+  - Head-to-head records across historical matches stored in local database.
+  - Form trend tracker displaying results of the last 10 matches (W/L badges).
+- **Export & Sharing Capabilities**:
+  - **Shareable Scorecard**: Branded 9:16 high-resolution scorecard sized for Instagram and WhatsApp stories, exported as a PNG image (`html-to-image`).
+  - **Data Export**: Full match CSV export and structured JSON export for archival and external analysis.

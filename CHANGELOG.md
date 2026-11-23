@@ -2,6 +2,20 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Phase 3] - Analytics and Insights
+### Added
+- Interactive analytics dashboard using Recharts in `apps/web/src/components/analytics`.
+- Momentum chart visualizing rally-by-rally point differential and lead swings.
+- Markov chain win-probability curve predicting game and match win likelihood from any score.
+- Score progression chart tracking cumulative score development.
+- Pressure points tracker evaluating conversion efficiency at scores 18+.
+- Serve vs receive conversion rate analysis.
+- Shot-type distribution and error breakdown from rally tags.
+- Player profiles with head-to-head match histories and last-10-matches form trends.
+- Story-ready branded scorecard export as PNG (`html-to-image`) for Instagram and WhatsApp.
+- Standard match CSV export and structured JSON export.
+- Comprehensive unit tests for Markov model, export utilities, and analytics dashboard.
+
 ## [Phase 2] - Web App Core (apps/web)
 ### Added
 - React 18 + Vite + TypeScript web application with Tailwind CSS in `apps/web`.
