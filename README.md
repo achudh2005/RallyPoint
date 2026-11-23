@@ -195,11 +195,20 @@ For complete details, see [docs/database.md](docs/database.md).
 
 ---
 
-## Community Ranking and Team League System (`@rallypoint/ranking`)
+## Community Ranking and Team League System (`@rallypoint/ranking` & `apps/web`)
 
-A dedicated pure TypeScript ranking engine for local badminton communities and leagues:
+A dedicated pure TypeScript ranking engine and live marking interface for local badminton communities and leagues:
 - **Event-Sourced Projections**: Recomputable from raw match events at any time with `npm run rebuild-rankings`.
 - **Rally Event Tagging**: Attributed shot types (`SMASH`, `DROP`, `NET`, `CLEAR`, `DRIVE`, `LOB`, `SERVE`) and rally outcomes (`WINNER`, `UNFORCED_ERROR`, `FORCED_ERROR`, `OUT`, `NET_FAULT`, `SERVICE_FAULT`).
+- **Live Mini-Leaderboard Strip**: Top 3 high-contrast live banner atop the scoring screen showing live points, rank movement arrows (`▲`, `▼`, `−`), gold/silver/bronze badges, and mandatory `Matches: N` indicators.
+- **Quick-Mark Layer**:
+  - Fat-finger chips for Shot Types and Winner / Error attribution.
+  - Three tagging modes: `FAST` (0 extra taps, pure scoring), `QUICK` (3-second auto-dismiss chip row), `FULL` (stays until confirmed).
+- **Point History & Correction**:
+  - Review last 10 points in match history, correct shot types/winners, or perform safe undo with instant re-ranking.
+- **Community Match Setup & Auto-Balanced Doubles**:
+  - Community roster picker with instant search and recent player chips.
+  - Balanced doubles pairing algorithm balancing skill ratings to minimize rank differential.
 - **Leaderboards**:
   - `OVERALL`: Weighted composite index:
     $$\text{Score} = 0.40 \times \text{WinRate} + 0.25 \times \text{PtDiff} + 0.15 \times \text{Wins} + 0.10 \times \text{Form} + 0.10 \times \text{Consistency}$$

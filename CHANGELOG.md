@@ -2,6 +2,32 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Ranking Phase 2] - Live Marking UI While Playing (apps/web)
+### Added
+- **Mini-Leaderboard Live Strip (`MiniLeaderboardStrip.tsx`)**:
+  - High-contrast banner mounted directly on the live scoring screen.
+  - Displays top 3 players in the active category with rank movement arrows (`▲`, `▼`, `−`), current score/points, and gold/silver/bronze medals (`🥇`, `🥈`, `🥉`).
+  - Mandatory `Matches: N` indicators on every entry.
+  - Interactive category switcher supporting Overall, Wins, Points, Drops, and Win %.
+- **Quick-Mark Layer (`QuickMarkLayer.tsx`)**:
+  - Fat-finger-friendly chips for Shot Types: Smash (`⚡`), Drop (`🪶`), Net (`🕸️`), Clear (`🏹`), Drive (`💨`), Lob (`🎯`).
+  - Result attribution: Winner (`✓`) vs Unforced Error (`✗`) with player attribution chips.
+  - Three configurable marking modes:
+    - `FAST`: Pure scorekeeper, 0 extra taps.
+    - `QUICK`: 3-second animated auto-dismiss chip row after each point (1 tap to tag, auto-skips if ignored).
+    - `FULL`: Mandatory tagging drawer that stays until dismissed (for dedicated umpires/scorers).
+- **Point Correction & Undo Modal (`PointEditModal.tsx`)**:
+  - Review last 10 points with sequence numbers, winning side, shot type, and result.
+  - Edit winner side, shot type, result, or player attribution with instant recalculation.
+  - "Undo Very Last Point" and warning confirmation dialog before applying recomputations.
+- **Community Match Setup (`CommunityMatchSetup.tsx`)**:
+  - Roster picker filtering community players by name search.
+  - Instant new player creation and quick-select chips for recent players.
+  - Balanced Doubles Pair Suggestion algorithm: balances players by skill ratings to minimize rank differential between teams.
+  - Integrated into main app navigation under `👥 Community`.
+- **RTL & Store Unit Tests (`RankingUI.test.tsx`)**:
+  - 8 comprehensive tests covering MiniLeaderboardStrip, QuickMarkLayer, PointEditModal, and CommunityMatchSetup with 100% pass rate.
+
 ## [Ranking Phase 1] - Data Model and Ranking Engine (@rallypoint/ranking)
 ### Added
 - Created dedicated `@rallypoint/ranking` package (zero external dependencies) with 97.04% test coverage.

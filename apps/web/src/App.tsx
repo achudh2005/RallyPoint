@@ -4,12 +4,13 @@ import { MatchSetup } from './components/MatchSetup.js';
 import { ScoringScreen } from './components/ScoringScreen.js';
 import { MatchSummary } from './components/MatchSummary.js';
 import { TournamentManager } from './components/tournaments/TournamentManager.js';
+import { CommunityMatchSetup } from './components/ranking/CommunityMatchSetup.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 
 export const App: React.FC = () => {
   const { match, theme, largeTextMode, toggleTheme, toggleLargeText, resetMatch } =
     useMatchStore();
-  const [showTournament, setShowTournament] = useState(false);
+  const [activeTab, setActiveTab] = useState<'match' | 'tournament' | 'community'>('match');
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -38,10 +39,21 @@ export const App: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowTournament(!showTournament)}
+              onClick={() => setActiveTab(activeTab === 'community' ? 'match' : 'community')}
+              title="Community Roster & League Setup"
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                activeTab === 'community'
+                  ? 'bg-emerald-600 text-white border-emerald-500'
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              👥 Community
+            </button>
+            <button
+              onClick={() => setActiveTab(activeTab === 'tournament' ? 'match' : 'tournament')}
               title="Tournament Manager"
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                showTournament
+                activeTab === 'tournament'
                   ? 'bg-emerald-600 text-white border-emerald-500'
                   : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
               }`}
@@ -68,7 +80,10 @@ export const App: React.FC = () => {
             </button>
             {match && (
               <button
-                onClick={resetMatch}
+                onClick={() => {
+                  resetMatch();
+                  setActiveTab('match');
+                }}
                 title="Reset or Cancel Match"
                 className="text-xs bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1 rounded-lg font-medium transition-colors"
               >
@@ -80,8 +95,10 @@ export const App: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col items-center justify-center p-3">
-          {showTournament ? (
-            <TournamentManager onClose={() => setShowTournament(false)} />
+          {activeTab === 'community' ? (
+            <CommunityMatchSetup onStart={() => setActiveTab('match')} />
+          ) : activeTab === 'tournament' ? (
+            <TournamentManager onClose={() => setActiveTab('match')} />
           ) : !match ? (
             <MatchSetup />
           ) : match.status === 'COMPLETED' ? (

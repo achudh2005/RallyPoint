@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import type { RallyEndType, Side } from '@rallypoint/engine';
 import { useMatchStore } from '../store/matchStore.js';
+import { useRankingStore } from '../store/rankingStore.js';
 import { CourtView } from './CourtView.js';
 import { RallyTagModal } from './RallyTagModal.js';
 import { PointLog } from './PointLog.js';
+import { MiniLeaderboardStrip } from './ranking/MiniLeaderboardStrip.js';
+import { QuickMarkLayer } from './ranking/QuickMarkLayer.js';
+import { PointEditModal } from './ranking/PointEditModal.js';
 
 export const ScoringScreen: React.FC = () => {
   const {
@@ -20,7 +24,11 @@ export const ScoringScreen: React.FC = () => {
     setPendingPointSide,
   } = useMatchStore();
 
+  const { taggingMode, matches, updateMatchEvents } = useRankingStore();
+
   const [showLog, setShowLog] = useState(false);
+  const [showEditPointModal, setShowEditPointModal] = useState(false);
+  const [quickMarkTarget, setQuickMarkTarget] = useState<{ side: 'A' | 'B' } | null>(null);
   const [sideSwapAlert, setSideSwapAlert] = useState(false);
 
   if (!match) return null;
@@ -42,6 +50,16 @@ export const ScoringScreen: React.FC = () => {
 
   const isLeftServing = serveState.serverSide === leftSide;
   const isRightServing = serveState.serverSide === rightSide;
+
+  // Players formatted for QuickMarkLayer and PointEditModal
+  const playersA = (config.sideA.playerIds || [config.sideA.name]).map((id, idx) => ({
+    id,
+    name: config.mode === 'doubles' && idx === 1 ? 'Partner A' : config.sideA.name,
+  }));
+  const playersB = (config.sideB.playerIds || [config.sideB.name]).map((id, idx) => ({
+    id,
+    name: config.mode === 'doubles' && idx === 1 ? 'Partner B' : config.sideB.name,
+  }));
 
   // Alert when ends swap
   useEffect(() => {
@@ -81,6 +99,9 @@ export const ScoringScreen: React.FC = () => {
       setPendingPointSide(side);
     } else {
       recordPoint(side);
+      if (taggingMode !== 'FAST') {
+        setQuickMarkTarget({ side });
+      }
     }
   };
 
@@ -90,11 +111,44 @@ export const ScoringScreen: React.FC = () => {
     }
   };
 
+  const handleApplyQuickMarkTag = (tag: {
+    shotType?: any;
+    rallyEndResult?: any;
+    pointWinnerPlayerId?: string;
+    errorPlayerId?: string;
+  }) => {
+    const currentRankingMatch = matches.find((m) => m.id === config.id);
+    if (currentRankingMatch && currentRankingMatch.events.length > 0) {
+      const updatedEvents = [...currentRankingMatch.events];
+      const lastPointIdx = updatedEvents.map((e) => e.eventType).lastIndexOf('POINT');
+      if (lastPointIdx !== -1) {
+        const targetEvt = updatedEvents[lastPointIdx]!;
+        updatedEvents[lastPointIdx] = {
+          ...targetEvt,
+          id: targetEvt.id,
+          sequenceNumber: targetEvt.sequenceNumber,
+          eventType: targetEvt.eventType,
+          shotType: tag.shotType,
+          rallyEndResult: tag.rallyEndResult,
+          pointWinnerPlayerId: tag.pointWinnerPlayerId,
+          errorPlayerId: tag.errorPlayerId,
+        };
+        updateMatchEvents(config.id, updatedEvents);
+      }
+    }
+    setQuickMarkTarget(null);
+  };
+
   return (
-    <div className="w-full max-w-lg mx-auto flex flex-col h-[calc(100vh-2rem)] justify-between select-none p-2">
+    <div className="w-full max-w-lg mx-auto flex flex-col h-[calc(100vh-2rem)] justify-between select-none p-2 relative">
       {/* Hidden Live Region for Screen Readers */}
       <div aria-live="polite" className="sr-only">
         {announcement}
+      </div>
+
+      {/* Mini Leaderboard Live Strip */}
+      <div className="mb-2">
+        <MiniLeaderboardStrip />
       </div>
 
       {/* Top Header / Match Status Bar */}
@@ -118,7 +172,14 @@ export const ScoringScreen: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowEditPointModal(true)}
+            title="Edit Past Points"
+            className="text-xs bg-gray-800 hover:bg-gray-700 text-amber-300 px-2.5 py-1.5 rounded-lg font-medium transition-colors"
+          >
+            ✏️ Edit
+          </button>
           <button
             onClick={() => setShowLog(true)}
             className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded-lg font-medium transition-colors"
@@ -263,6 +324,29 @@ export const ScoringScreen: React.FC = () => {
           ⏱️ Interval (I)
         </button>
       </div>
+
+      {/* Quick Mark Chip Layer */}
+      {quickMarkTarget && (
+        <div className="absolute inset-x-2 bottom-16 z-30 shadow-2xl">
+          <QuickMarkLayer
+            pointSide={quickMarkTarget.side}
+            playersA={playersA}
+            playersB={playersB}
+            onApplyTag={handleApplyQuickMarkTag}
+            onDismiss={() => setQuickMarkTarget(null)}
+          />
+        </div>
+      )}
+
+      {/* Point Edit Modal */}
+      {showEditPointModal && (
+        <PointEditModal
+          matchId={config.id}
+          playersA={playersA}
+          playersB={playersB}
+          onClose={() => setShowEditPointModal(false)}
+        />
+      )}
 
       {/* Rally Tag Modal Drawer */}
       {pendingPointSide && (
