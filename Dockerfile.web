@@ -4,15 +4,18 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY packages/engine/package*.json ./packages/engine/
+COPY packages/ranking/package*.json ./packages/ranking/
 COPY apps/web/package*.json ./apps/web/
 
 RUN npm install
 
 COPY packages/engine/ ./packages/engine/
+COPY packages/ranking/ ./packages/ranking/
 COPY apps/web/ ./apps/web/
 COPY tsconfig.base.json ./
 
 RUN npm run build --workspace=@rallypoint/engine
+RUN npm run build --workspace=@rallypoint/ranking
 RUN npm run build --workspace=@rallypoint/web
 
 # Production Serve Stage

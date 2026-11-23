@@ -2,6 +2,42 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Ranking Phase 5 / rank-v1.0.0] - Polish, Performance, and Production Deployment
+### Added
+- **Performance & Materialized Views (`rankingMaterializedViews.sql`)**:
+  - `mv_player_rankings`: High-efficiency materialized projection computing win rates, net points, smash/drop winners, and unforced errors.
+  - `mv_team_rankings`: Standings for Doubles Pairs and Club Teams with promotion and relegation metrics.
+  - Stored procedure `refresh_ranking_views()` with concurrent refresh indexes.
+  - Trigger `trg_match_refresh_rankings` refreshing views on match completion.
+- **Production Query Audit (`rankingPerformanceAudit.sql`)**:
+  - `EXPLAIN (ANALYZE, BUFFERS)` execution plans for the 5 heaviest queries:
+    1. Composite overall index ranking with joins, grouping, and window functions.
+    2. Head-to-Head detailed match and game aggregation.
+    3. Detailed rally event shot and error attribution across partition-pruned streams.
+    4. Team league standings and promotion/relegation cutoff zones.
+    5. Multi-period ranking snapshot time-series with inverted Y-axis history.
+- **Synthetic Load Testing & Benchmark Engine (`loadTest.ts` & `loadTest.test.ts`)**:
+  - Synthetic data generator simulating 200 players, 20,000 matches, and 1,000,000 events.
+  - High-throughput ranking rebuild benchmarks (> 10,000 events/sec, < 500ms for 50k events in CI).
+- **Realistic Community Seed Script (`seedCommunityRankings.ts` / `npm run seed:community`)**:
+  - Populates 12 realistic community players, 4 doubles pairs & club teams, 2 seasons, and 3 weeks of matches.
+  - Generates rich rally events with shot types (`SMASH`, `DROP`, `NET`, `CLEAR`) and outcomes (`WINNER`, `UNFORCED_ERROR`).
+- **PWA Offline Leaderboards & Queue (`apps/web/src/db/index.ts`)**:
+  - Dexie IndexedDB v2 upgrade adding `rankings` snapshot store and `offlineEventQueue`.
+  - Offline status banner: "Offline Mode — Showing cached rankings from [time]" with automatic network reconnection listeners.
+  - Queues match events recorded offline with automatic synchronization.
+- **Accessibility & Color-Blind Safe Theming**:
+  - High-contrast, color-blind-safe badges: `#1 Gold` (yellow border), `#2 Silver` (slate border), `#3 Bronze` (amber-600 border).
+  - ARIA enhancements: `aria-live="polite"` on leaderboard tables and `MiniLeaderboardStrip` for screen reader rank updates.
+- **Comprehensive Documentation (`docs/ranking-system.md`)**:
+  - Mathematical formulas for overall weighted score and normalizations.
+  - Documented tiebreak order for all 7 player categories and 5 team categories.
+  - Mermaid ER diagram and full data dictionary.
+  - Fast scorer user guide for Quick-Mark tap chips (Fast vs Quick vs Full mode).
+- **Docker & DevOps Containerization**:
+  - Multi-stage `Dockerfile.api` and `Dockerfile.web` updated to package `@rallypoint/ranking`.
+  - Production build verification (`npm run build`) passing with optimal code splitting.
+
 ## [Ranking Phase 4] - Backend, Live Sync, and Admin (apps/api)
 ### Added
 - **Ranking REST Endpoints (`rankingRoutes.ts`)**:

@@ -16,9 +16,42 @@ export const MiniLeaderboardStrip: React.FC = () => {
   const currentBoard = (playerLeaderboards[selectedCategory] || []).slice(0, 3);
 
   const getRankBadge = (rank: number) => {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
+    if (rank === 1) {
+      return (
+        <span
+          className="inline-flex items-center gap-0.5 text-amber-300 font-extrabold"
+          title="Rank 1 Gold"
+          aria-label="Rank 1 Gold"
+        >
+          <span>🥇</span>
+          <span className="text-[9px] bg-amber-400/20 px-1 py-0.2 rounded border border-amber-400/40">#1</span>
+        </span>
+      );
+    }
+    if (rank === 2) {
+      return (
+        <span
+          className="inline-flex items-center gap-0.5 text-slate-200 font-extrabold"
+          title="Rank 2 Silver"
+          aria-label="Rank 2 Silver"
+        >
+          <span>🥈</span>
+          <span className="text-[9px] bg-slate-300/20 px-1 py-0.2 rounded border border-slate-300/40">#2</span>
+        </span>
+      );
+    }
+    if (rank === 3) {
+      return (
+        <span
+          className="inline-flex items-center gap-0.5 text-amber-600 font-extrabold"
+          title="Rank 3 Bronze"
+          aria-label="Rank 3 Bronze"
+        >
+          <span>🥉</span>
+          <span className="text-[9px] bg-amber-700/20 px-1 py-0.2 rounded border border-amber-600/40">#3</span>
+        </span>
+      );
+    }
     return `#${rank}`;
   };
 
@@ -29,7 +62,12 @@ export const MiniLeaderboardStrip: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-gray-900/90 backdrop-blur-sm border border-gray-800 rounded-2xl p-2.5 shadow-md flex flex-col gap-1.5 text-xs">
+    <div
+      role="region"
+      aria-label="Community Live Ranking Board"
+      aria-live="polite"
+      className="w-full bg-gray-900/90 backdrop-blur-sm border border-gray-800 rounded-2xl p-2.5 shadow-md flex flex-col gap-1.5 text-xs"
+    >
       {/* Category Tabs & Label */}
       <div className="flex justify-between items-center border-b border-gray-800/80 pb-1.5">
         <span className="font-extrabold text-[11px] uppercase tracking-wider text-emerald-400 flex items-center gap-1">

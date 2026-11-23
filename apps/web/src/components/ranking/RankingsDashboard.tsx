@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { toPng } from 'html-to-image';
 import type { RankingCategory, LeaderboardEntry, PlayerStats } from '@rallypoint/ranking';
 import { useRankingStore } from '../../store/rankingStore.js';
 import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { TeamLeagueStandings } from './TeamLeagueStandings.js';
+import { db } from '../../db/index.js';
 
 export type TimeFilter = 'SEASON' | 'MONTH' | 'WEEK' | 'ALL_TIME';
 
@@ -32,6 +33,10 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
   const [selectedPlayerForProfile, setSelectedPlayerForProfile] =
     useState<PlayerStats | null>(null);
   const [isExportingPng, setIsExportingPng] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+  const [cachedSnapshotDate, setCachedSnapshotDate] = useState<string | null>(null);
 
   const storyCardRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +47,35 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
         ? 'MOST_DROPS_PLAYED'
         : 'MOST_DROPS_CONCEDED'
       : selectedCategory;
+
+  // Monitor online status & cache snapshots to IndexedDB (Dexie)
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Persist current leaderboards to Dexie for offline usage
+    if (playerLeaderboards && Object.keys(playerLeaderboards).length > 0) {
+      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      db.rankings
+        .put({
+          id: 'CURRENT_LEADERBOARDS',
+          category: effectiveCategory,
+          timestamp: Date.now(),
+          formattedDate: nowStr,
+          leaderboards: playerLeaderboards,
+        })
+        .then(() => setCachedSnapshotDate(nowStr))
+        .catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [playerLeaderboards, effectiveCategory]);
 
   const entries: LeaderboardEntry<PlayerStats>[] =
     playerLeaderboards[effectiveCategory] || [];
@@ -228,6 +262,25 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
         </div>
       </div>
 
+      {/* Offline PWA Indicator Banner */}
+      {!isOnline && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="bg-amber-950/70 border border-amber-500/50 text-amber-200 px-4 py-2.5 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-lg backdrop-blur-sm"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base" aria-hidden="true">📡</span>
+            <span>
+              <strong>Offline Mode</strong> — Showing cached rankings{cachedSnapshotDate ? ` from ${cachedSnapshotDate}` : ''}. Match events scored offline are securely queued and will automatically sync once network reconnects.
+            </span>
+          </div>
+          <span className="bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">
+            Cached Snapshot
+          </span>
+        </div>
+      )}
+
       {/* Weekly Awards Ribbon */}
       <div className="bg-gradient-to-r from-gray-900 via-emerald-950/20 to-gray-900 border border-emerald-800/40 rounded-3xl p-4 shadow-xl">
         <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 block mb-2.5 flex items-center gap-1.5">
@@ -361,7 +414,12 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
           </div>
 
           {/* Leaderboard Table */}
-          <div className="overflow-x-auto bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl">
+          <div
+            role="region"
+            aria-label="Community Leaderboard"
+            aria-live="polite"
+            className="overflow-x-auto bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl"
+          >
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-gray-800 text-[10px] uppercase tracking-wider text-gray-400 bg-gray-800/50">
@@ -417,13 +475,34 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
                         {/* Rank Badge */}
                         <td className="py-3 px-3.5 text-center font-black">
                           {entry.rank === 1 ? (
-                            <span className="text-base">🥇</span>
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/50 shadow-sm"
+                              title="Rank 1 Gold Medal"
+                              aria-label="Rank 1 Gold"
+                            >
+                              <span aria-hidden="true">🥇</span>
+                              <span>#1</span>
+                            </span>
                           ) : entry.rank === 2 ? (
-                            <span className="text-base">🥈</span>
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-black bg-slate-300/20 text-slate-200 border border-slate-300/50 shadow-sm"
+                              title="Rank 2 Silver Medal"
+                              aria-label="Rank 2 Silver"
+                            >
+                              <span aria-hidden="true">🥈</span>
+                              <span>#2</span>
+                            </span>
                           ) : entry.rank === 3 ? (
-                            <span className="text-base">🥉</span>
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-black bg-amber-700/20 text-amber-600 border border-amber-600/50 shadow-sm"
+                              title="Rank 3 Bronze Medal"
+                              aria-label="Rank 3 Bronze"
+                            >
+                              <span aria-hidden="true">🥉</span>
+                              <span>#3</span>
+                            </span>
                           ) : (
-                            <span className="text-gray-400 font-mono text-sm">{entry.rank}</span>
+                            <span className="text-gray-400 font-mono text-sm">#{entry.rank}</span>
                           )}
                         </td>
 

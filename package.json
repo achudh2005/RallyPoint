@@ -17,6 +17,7 @@
     "db:migrate": "npm run --workspace=@rallypoint/db migrate",
     "db:seed": "npm run --workspace=@rallypoint/db seed",
     "db:rebuild-stats": "npm run --workspace=@rallypoint/db rebuild-stats",
+    "seed:community": "tsx packages/db/src/seedCommunityRankings.ts",
     "rebuild-rankings": "tsx packages/ranking/src/cli.ts"
   },
   "devDependencies": {

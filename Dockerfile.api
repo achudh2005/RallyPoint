@@ -7,17 +7,20 @@ RUN apk add --no-cache openssl
 
 COPY package*.json ./
 COPY packages/engine/package*.json ./packages/engine/
+COPY packages/ranking/package*.json ./packages/ranking/
 COPY apps/api/package*.json ./apps/api/
 
 RUN npm install
 
 COPY packages/engine/ ./packages/engine/
+COPY packages/ranking/ ./packages/ranking/
 COPY apps/api/ ./apps/api/
 COPY tsconfig.base.json ./
 
 # Generate Prisma Client & compile
 RUN cd apps/api && npx prisma generate
 RUN npm run build --workspace=@rallypoint/engine
+RUN npm run build --workspace=@rallypoint/ranking
 RUN npm run build --workspace=@rallypoint/api
 
 # Production Runner Stage
@@ -32,6 +35,8 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/engine/dist ./packages/engine/dist
 COPY --from=builder /app/packages/engine/package*.json ./packages/engine/
+COPY --from=builder /app/packages/ranking/dist ./packages/ranking/dist
+COPY --from=builder /app/packages/ranking/package*.json ./packages/ranking/
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package*.json ./apps/api/
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma

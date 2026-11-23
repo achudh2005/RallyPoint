@@ -55,6 +55,6 @@ export async function softDeletePlayer(
   );
 }
 
+export * from './seedCommunityRankings.js';
 export * from './eventIngestion.js';
-
 export * from './statsProjection.js';

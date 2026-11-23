@@ -228,6 +228,15 @@ A dedicated pure TypeScript ranking engine and live marking interface for local 
   - Endpoints: `GET /api/rankings/:category`, `GET /api/rankings/player/:id`, `GET /api/rankings/head-to-head`, `GET /api/teams/rankings`.
   - Live ranking updates via Socket.IO `/rankings` namespace with 500ms debounce emitting minimal diffs (`rankings:update`).
   - Admin controls (`/api/admin/rebuild-rankings`, `/api/admin/recalculate-streaks`, `/api/admin/audit-log`, `/api/admin/daily-rollup`) secured with JWT RBAC.
+- **Polish, Performance & Deployment (Phase 5 / `rank-v1.0.0`)**:
+  - Full technical documentation in [docs/ranking-system.md](docs/ranking-system.md).
+  - Materialized views (`mv_player_rankings`, `mv_team_rankings`) with concurrent refresh trigger on match completion.
+  - `EXPLAIN (ANALYZE, BUFFERS)` audit of 5 heaviest queries (`packages/db/src/rankingPerformanceAudit.sql`).
+  - Synthetic load benchmark testing 200 players, 20,000 matches, and 1,000,000 events (`loadTest.ts`).
+  - Realistic community seed script (`seedCommunityRankings.ts` / `npm run seed:community`) with 12 players, 4 teams, and 3 weeks of matches.
+  - PWA offline caching via Dexie IndexedDB with offline banner indicator and queued event sync.
+  - Color-blind-safe badges (`#1 Gold`, `#2 Silver`, `#3 Bronze`) and `aria-live="polite"` screen-reader accessibility.
+  - Multi-stage Docker configuration supporting `@rallypoint/ranking`.
 
 ---
 
