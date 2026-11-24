@@ -1,8 +1,11 @@
-import { Server, Socket } from 'socket.io';
+import { Server, Socket, Namespace } from 'socket.io';
 import { getMatchState } from '../services/eventSyncService.js';
+
+let matchNamespaceInstance: Namespace | null = null;
 
 export function setupMatchSockets(io: Server): void {
   const matchNamespace = io.of('/match');
+  matchNamespaceInstance = matchNamespace;
 
   matchNamespace.on('connection', (socket: Socket) => {
     let currentRoom: string | null = null;
@@ -41,3 +44,11 @@ export function setupMatchSockets(io: Server): void {
     });
   });
 }
+
+export function emitMatchEndWithAwards(matchId: string, state: any, awards: any): void {
+  if (matchNamespaceInstance) {
+    const room = `match:${matchId}`;
+    matchNamespaceInstance.to(room).emit('matchEnded', { matchId, state, awards });
+  }
+}
+

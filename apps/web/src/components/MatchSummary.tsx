@@ -3,6 +3,8 @@ import { getStats, type MatchState } from '@rallypoint/engine';
 import { useMatchStore } from '../store/matchStore.js';
 import { PointLog } from './PointLog.js';
 import { AnalyticsDashboard } from './analytics/AnalyticsDashboard.js';
+import { nativeShare } from '../mobile/nativeShare.js';
+import { Share2, Check } from 'lucide-react';
 
 interface MatchSummaryProps {
   state: MatchState;
@@ -12,11 +14,90 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
   const { events, resetMatch } = useMatchStore();
   const [showLog, setShowLog] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const stats = getStats(events, state.config);
   const nameA = state.config.sideA.name;
   const nameB = state.config.sideB.name;
   const winnerName = state.winnerSide === 'A' ? nameA : nameB;
+  const loserName = state.winnerSide === 'A' ? nameB : nameA;
+
+  // Compute player performance for MVP & Needs Warm-Up
+  const playerIdsA: string[] = state.config.sideA?.playerIds || [];
+  const playerIdsB: string[] = state.config.sideB?.playerIds || [];
+  const playerNamesA = state.config.sideA?.playerNames || [];
+  const playerNamesB = state.config.sideB?.playerNames || [];
+
+  const playerStatsMap: Record<
+    string,
+    { id: string; name: string; pointsWon: number; drops: number; net: number; teamSide: 'A' | 'B' }
+  > = {};
+
+  playerIdsA.forEach((id: string, idx: number) => {
+    playerStatsMap[id] = {
+      id,
+      name: playerNamesA[idx] || (playerIdsA.length === 1 ? nameA : id),
+      pointsWon: 0,
+      drops: 0,
+      net: 0,
+      teamSide: 'A',
+    };
+  });
+
+  playerIdsB.forEach((id: string, idx: number) => {
+    playerStatsMap[id] = {
+      id,
+      name: playerNamesB[idx] || (playerIdsB.length === 1 ? nameB : id),
+      pointsWon: 0,
+      drops: 0,
+      net: 0,
+      teamSide: 'B',
+    };
+  });
+
+  for (const ev of events || []) {
+    if (ev.type === 'PLAYER_ACTION' || (ev as any).action) {
+      const pId = (ev as any).playerId;
+      const act = (ev as any).action;
+      if (pId && playerStatsMap[pId]) {
+        if (act === 'POINT') playerStatsMap[pId].pointsWon++;
+        else if (act === 'DROP') playerStatsMap[pId].drops++;
+      }
+    }
+  }
+
+  for (const p of Object.values(playerStatsMap)) {
+    p.net = p.pointsWon - p.drops;
+  }
+
+  const playerList = Object.values(playerStatsMap);
+  const mvp =
+    playerList.length > 0
+      ? [...playerList].sort((a, b) => (b.net !== a.net ? b.net - a.net : b.pointsWon - a.pointsWon))[0]
+      : null;
+
+  const teamTotalPointsA = state.games.reduce((acc, g) => acc + g.scoreA, 0);
+  const teamTotalPointsB = state.games.reduce((acc, g) => acc + g.scoreB, 0);
+  const mvpTeamPoints = mvp ? (mvp.teamSide === 'A' ? teamTotalPointsA : teamTotalPointsB) : 0;
+  const mvpShare = mvp && mvpTeamPoints > 0 ? Math.round((mvp.pointsWon / mvpTeamPoints) * 100) : 0;
+
+  const needsWarmup =
+    playerList.length > 1
+      ? [...playerList].sort((a, b) => (b.drops !== a.drops ? b.drops - a.drops : a.net - b.net))[0]
+      : null;
+
+  const handleShare = async () => {
+    const scoresStr = state.games.map((g) => `${g.scoreA}-${g.scoreB}`).join(', ');
+    const mvpStr = mvp ? ` | MVP: ${mvp.name} (${mvp.net >= 0 ? `+${mvp.net}` : mvp.net} net)` : '';
+    const text = `🏸 Match Result: ${winnerName} defeated ${loserName} (${scoresStr})${mvpStr} on RallyPoint!`;
+
+    const shared = await nativeShare.shareText('RallyPoint Match Result', text);
+    if (!shared && typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (showAnalytics) {
     return (
@@ -100,6 +181,119 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
           </div>
         </div>
       </div>
+
+      {/* Match Highlights: MVP & Needs Warm-Up */}
+      <div className="space-y-3">
+        {mvp && (
+          <div
+            data-testid="mvp-highlight-card"
+            className="p-4 rounded-xl bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-gray-900 border border-amber-600/40 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🌟</span>
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded">
+                  MVP of the Match
+                </span>
+                <h3 className="text-sm font-bold text-white mt-0.5">
+                  {mvp.name}
+                </h3>
+                <p className="text-[11px] text-gray-400">
+                  {mvp.pointsWon} pts won • {mvp.drops} drops • {mvpShare}% team share
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-base font-mono font-bold text-amber-400">
+                {mvp.net >= 0 ? `+${mvp.net}` : mvp.net}
+              </span>
+              <span className="block text-[10px] text-gray-500">Net Contrib</span>
+            </div>
+          </div>
+        )}
+
+        {needsWarmup && (
+          <div
+            data-testid="warmup-highlight-card"
+            className="p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">⚡️</span>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-gray-400">
+                  Needs Warm-Up
+                </span>
+                <p className="text-xs font-bold text-gray-200">
+                  {needsWarmup.name}
+                </p>
+                <p className="text-[10px] text-gray-400">
+                  {needsWarmup.drops} drops conceded. Great hustle—ready for the next game!
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-semibold text-rose-400 px-2 py-1 rounded bg-rose-500/10">
+              {needsWarmup.drops} Drops
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Weekly Accolades */}
+      <div className="space-y-1.5">
+        <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wide px-1">
+          Weekly Accolades
+        </h4>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 text-center">
+            <span className="text-sm block">🎯</span>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Top Scorer</span>
+            <span className="text-xs font-bold text-gray-200 truncate block mt-0.5">
+              {mvp ? mvp.name : winnerName}
+            </span>
+            <span className="text-[10px] text-emerald-400 font-mono font-semibold">
+              {mvp ? `${mvp.pointsWon} pts` : 'Leader'}
+            </span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 text-center">
+            <span className="text-sm block">🛡️</span>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Iron Defense</span>
+            <span className="text-xs font-bold text-gray-200 truncate block mt-0.5">
+              {playerList.length > 0 ? [...playerList].sort((a, b) => a.drops - b.drops)[0]?.name : winnerName}
+            </span>
+            <span className="text-[10px] text-blue-400 font-mono font-semibold">
+              Min drops
+            </span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 text-center">
+            <span className="text-sm block">🔥</span>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Clutch Player</span>
+            <span className="text-xs font-bold text-gray-200 truncate block mt-0.5">
+              {winnerName}
+            </span>
+            <span className="text-[10px] text-amber-400 font-mono font-semibold">
+              Deuce Winner
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Share Button */}
+      <button
+        onClick={handleShare}
+        className="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-bold tracking-wider uppercase transition-colors flex items-center justify-center gap-2"
+      >
+        {copied ? (
+          <>
+            <Check className="w-4 h-4 text-emerald-400" />
+            <span>Copied to Clipboard!</span>
+          </>
+        ) : (
+          <>
+            <Share2 className="w-4 h-4" />
+            <span>Share Match Summary</span>
+          </>
+        )}
+      </button>
 
       {/* Action Buttons */}
       <button

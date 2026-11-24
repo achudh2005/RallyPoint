@@ -2,6 +2,45 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Streaks & MVP Phase 1] - Pure Streak & MVP Calculation Engines, Prisma Models & Endpoints
+### Added
+- **Streak Calculation Engine (`@rallypoint/scoring-rules/src/streaks.ts`)**:
+  - Pure, deterministic, dependency-free streak calculation function `computeStreaks(events, config, lookup)`.
+  - Player POINT streak: consecutive points won by the same player (broken by player's DROP, unaffected by opponent points in default non-strict mode).
+  - Player DROP streak: consecutive drops with gentle, empathetic wording (e.g. "Rahul: 3 drops in a row, take a breath"), disableable via settings.
+  - Team run: consecutive points scored by a team without opponent scoring. In Service Point scoring, side-outs do NOT break runs, only opponent scoring does.
+  - Strict mode support: counts consecutive rallies won by a player, broken if any other player wins a rally.
+  - Multi-language localization dictionaries (`STREAK_LOCALIZATIONS` in English and Malayalam `ml`).
+  - Milestone deduplication per streak instance with replay & UNDO rollback safety.
+- **Match MVP Calculation Engine (`@rallypoint/ranking/src/mvp.ts`)**:
+  - Pure, deterministic calculation function `computeMatchAwards(events, config, meta)`.
+  - Formula `v1.0.0`:
+    - Points won: +3.0
+    - Serve regained: +2.5 &times; (1.5 in Service Point scoring, 1.0 in Rally Point scoring)
+    - Clutch points: +2.0 (score &ge; target - 5, setting phase, or deciding game end)
+    - Comeback points: +1.5 (scored while trailing by &ge; 4 points)
+    - Streak bonus: +1.0 &times; max(0, bestPointStreak - 2)
+    - Drops: -2.0
+    - Clutch drops: -1.0
+    - Result bonus: +5.0 (for winning side)
+  - 5-stage tie-breaker resolution: fewer drops &rarr; more serve regained &rarr; more clutch points &rarr; winning side &rarr; co-MVPs.
+  - Fighter Award for top performer on the losing side.
+  - Singles match default MVP resolution with optional rating.
+  - Reason chips generation (e.g. `8 points`, `3 serve regains`, `2 clutch points`).
+  - Qualification minimum of 5 attributed player actions.
+- **New Ranking Categories (`@rallypoint/ranking`)**:
+  - Added `MOST_MVPS`, `BEST_CLUTCH_PLAYER`, `SERVE_WINNER`, and `LONGEST_STREAK` categories.
+  - Updated career statistics calculation with `mvpCount`, `fighterCount`, `mvpRate`, `serveRegainedTotal`, `clutchPointsTotal`, and `bestMatchStreak`.
+- **Database Persistence (`Prisma`)**:
+  - Added `AwardType` enum (`MVP`, `FIGHTER`, `CO_MVP`).
+  - Added `model MatchAward` and `model PlayerMatchStreak`.
+  - Extended `PlayerCareerStats` with MVP, streak, and clutch aggregates.
+- **API Endpoints (`apps/api`)**:
+  - Added `GET /api/matches/:id/awards` and `GET /api/matches/:id/streaks`.
+  - Real-time Socket.IO emission `match:ended` with calculated awards payload and rank updates.
+- **Test Coverage**:
+  - Full unit test suites with 100% pass rate in `@rallypoint/scoring-rules` and `@rallypoint/ranking` including property-based tests with `fast-check`.
+
 ## [Mobile Actions Phase 2] - Mobile Live Scoring Screen (Core UX)
 ### Added
 - **Mobile Live Scoring Screen Redesign (`AppleScoringScreen.tsx`)**:

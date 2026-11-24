@@ -48,6 +48,13 @@ export function rebuildRankings(
   const playerCategories: RankingCategory[] = [
     'OVERALL',
     'LEAGUE_TABLE',
+    'TOP_POINT_SCORERS',
+    'MOST_DROPS',
+    'BEST_NET_CONTRIBUTION',
+    'MOST_MVPS',
+    'BEST_CLUTCH_PLAYER',
+    'SERVE_WINNER',
+    'LONGEST_STREAK',
     'MOST_WINS',
     'MOST_POINTS',
     'MOST_LOSSES',

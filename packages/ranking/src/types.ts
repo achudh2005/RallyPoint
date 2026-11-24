@@ -128,6 +128,14 @@ export interface PlayerStats {
   bestPointStreak: number;
   sideOutsCaused: number;
 
+  // Streak & MVP aggregate stats
+  mvpCount: number;
+  fighterCount: number;
+  mvpRate: number;
+  serveRegainedTotal: number;
+  clutchPointsTotal: number;
+  bestMatchStreak: number;
+
   dropShotsPlayed: number;
   dropShotWinners: number;
   dropShotErrors: number;
@@ -183,6 +191,10 @@ export type RankingCategory =
   | 'TOP_POINT_SCORERS'
   | 'MOST_DROPS'
   | 'BEST_NET_CONTRIBUTION'
+  | 'MOST_MVPS'
+  | 'BEST_CLUTCH_PLAYER'
+  | 'SERVE_WINNER'
+  | 'LONGEST_STREAK'
   | 'MOST_WINS'
   | 'MOST_POINTS'
   | 'MOST_LOSSES'
@@ -225,10 +237,44 @@ export interface OverallRankingWeights {
   consistencyWeight: number; // Default 0.10
   minMatchesThreshold: number; // Default 5
   netContributionWeight?: number;
+  mvpRateWeight?: number; // Optional MVP rate weight
 }
+
+export interface MvpWeights {
+  pointsWonWeight: number; // Default 3.0
+  serveRegainedWeight: number; // Default 2.5
+  clutchPointsWeight: number; // Default 2.0
+  comebackPointsWeight: number; // Default 1.5
+  streakBonusWeight: number; // Default 1.0
+  dropsPenalty: number; // Default 2.0
+  clutchDropsPenalty: number; // Default 1.0
+  resultBonus: number; // Default 5.0
+  servicePointServeRegainMultiplier: number; // Default 1.5
+  rallyPointServeRegainMultiplier: number; // Default 1.0
+  qualificationMinActions: number; // Default 5
+  singlesMvpEnabled: boolean; // Default false
+  formulaVersion: string; // 'v1.0.0'
+}
+
+export const DEFAULT_MVP_WEIGHTS: MvpWeights = {
+  pointsWonWeight: 3.0,
+  serveRegainedWeight: 2.5,
+  clutchPointsWeight: 2.0,
+  comebackPointsWeight: 1.5,
+  streakBonusWeight: 1.0,
+  dropsPenalty: 2.0,
+  clutchDropsPenalty: 1.0,
+  resultBonus: 5.0,
+  servicePointServeRegainMultiplier: 1.5,
+  rallyPointServeRegainMultiplier: 1.0,
+  qualificationMinActions: 5,
+  singlesMvpEnabled: false,
+  formulaVersion: 'v1.0.0',
+};
 
 export interface RankingConfig {
   weights: OverallRankingWeights;
+  mvpWeights: MvpWeights;
   minMatchesThreshold: number;
   // RP Defaults
   rallyWinRp: number;
@@ -252,10 +298,12 @@ export const DEFAULT_RANKING_WEIGHTS: OverallRankingWeights = {
   consistencyWeight: 0.1,
   minMatchesThreshold: 5,
   netContributionWeight: 0.05,
+  mvpRateWeight: 0.0,
 };
 
 export const DEFAULT_RANKING_CONFIG: RankingConfig = {
   weights: DEFAULT_RANKING_WEIGHTS,
+  mvpWeights: DEFAULT_MVP_WEIGHTS,
   minMatchesThreshold: 5,
   rallyWinRp: 3,
   rallyLossRp: 1,
@@ -269,3 +317,46 @@ export const DEFAULT_RANKING_CONFIG: RankingConfig = {
   rallyMultiplier: 1.0,
   serviceMultiplier: 1.0,
 };
+
+export interface PlayerMvpContribution {
+  playerId: string;
+  name: string;
+  teamSide: 'A' | 'B';
+  isWinner: boolean;
+  pointsWon: number;
+  serveRegained: number;
+  clutchPoints: number;
+  comebackPoints: number;
+  streakBonusPoints: number;
+  drops: number;
+  clutchDrops: number;
+  bestPointStreak: number;
+  totalAttributedActions: number;
+  isQualified: boolean;
+  mvpScore: number;
+  reasonChips: string[];
+  summaryLine: string;
+}
+
+export interface MatchAwardRecord {
+  matchId: string;
+  playerId: string;
+  playerName: string;
+  awardType: 'MVP' | 'FIGHTER' | 'CO_MVP';
+  score: number;
+  reasons: string[];
+  summaryLine: string;
+  formulaVersion: string;
+  createdAt?: string;
+}
+
+export interface MatchAwardsResult {
+  mvp: PlayerMvpContribution | null;
+  fighter: PlayerMvpContribution | null;
+  coMvps: PlayerMvpContribution[];
+  allContributions: PlayerMvpContribution[];
+  isQualified: boolean;
+  disqualificationReason?: string;
+  formulaVersion: string;
+}
+

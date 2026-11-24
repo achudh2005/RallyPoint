@@ -97,6 +97,20 @@ describe('RallyPoint API Integration Tests', () => {
     expect(res.body.spectators).toBeGreaterThanOrEqual(1);
   });
 
+  it('serves match streaks and milestones via GET /api/matches/:id/streaks', async () => {
+    const res = await request(app).get(`/api/matches/${testMatchId}/streaks`);
+    expect(res.status).toBe(200);
+    expect(res.body.teamRuns).toBeDefined();
+    expect(res.body.playerStreaks).toBeDefined();
+  });
+
+  it('serves match awards and MVP calculations via GET /api/matches/:id/awards', async () => {
+    const res = await request(app).get(`/api/matches/${testMatchId}/awards`);
+    expect(res.status).toBe(200);
+    expect(res.body.formulaVersion).toBeDefined();
+    expect(res.body.allContributions).toBeDefined();
+  });
+
   it('searches players via player API', async () => {
     const res = await request(app).get('/api/players?q=viktor');
     expect(res.status).toBe(200);

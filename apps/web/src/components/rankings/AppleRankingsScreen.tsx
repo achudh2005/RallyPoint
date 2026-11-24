@@ -19,14 +19,17 @@ import type {
   PlayerStats,
   TeamStats,
 } from '@rallypoint/ranking';
-import { Filter, ChevronRight } from 'lucide-react';
+import { Filter, ChevronRight, Download } from 'lucide-react';
+import { exportRankingsCSV } from '../../analytics/exportUtils.js';
 
 const CATEGORY_CHIPS: { id: RankingCategory; label: string }[] = [
   { id: 'OVERALL', label: 'Top Players' },
+  { id: 'TOP_POINT_SCORERS', label: 'Top Point Scorers' },
+  { id: 'MOST_DROPS', label: 'Most Drops' },
+  { id: 'BEST_NET_CONTRIBUTION', label: 'Best Net Contribution' },
   { id: 'MOST_WINS', label: 'Most Wins' },
   { id: 'MOST_POINTS', label: 'Most Points' },
   { id: 'MOST_LOSSES', label: 'Most Losses' },
-  { id: 'MOST_DROPS_PLAYED', label: 'Most Drops' },
 ];
 
 export const AppleRankingsScreen: React.FC = () => {
@@ -44,6 +47,7 @@ export const AppleRankingsScreen: React.FC = () => {
   const [viewType, setViewType] = useState<'players' | 'teams'>('players');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerProfileData | null>(null);
+  const [dropsSubFilter, setDropsSubFilter] = useState<'ALL' | 'UNFORCED' | 'FORCED'>('ALL');
 
   const activeLeaderboard: LeaderboardEntry<PlayerStats>[] =
     playerLeaderboards?.[selectedCategory] || [];
@@ -61,11 +65,14 @@ export const AppleRankingsScreen: React.FC = () => {
       wins: entry.stats?.wins ?? 0,
       losses: entry.stats?.losses ?? 0,
       totalMatches: entry.matchesPlayed ?? 0,
-      totalPointsWon: entry.stats?.pointsScored ?? 0,
-      totalPointsConceded: entry.stats?.pointsConceded ?? 0,
+      totalPointsWon: entry.stats?.pointsWon ?? entry.stats?.pointsScored ?? 0,
+      totalPointsConceded: entry.stats?.drops ?? entry.stats?.pointsConceded ?? 0,
       dropsWon: entry.stats?.dropShotWinners ?? 0,
       longestStreak: entry.stats?.longestWinStreak ?? 0,
       currentForm: entry.stats?.currentForm ?? [],
+      netContribution: entry.stats?.netContribution ?? ((entry.stats?.pointsWon ?? 0) - (entry.stats?.drops ?? 0)),
+      pointsWon: entry.stats?.pointsWon,
+      drops: entry.stats?.drops,
     };
     setSelectedPlayer(stats);
   };
@@ -75,17 +82,30 @@ export const AppleRankingsScreen: React.FC = () => {
       {/* Top Header */}
       <div className="px-4 mb-2 flex items-center justify-between">
         <LargeTitle>Rankings</LargeTitle>
-        <button
-          aria-label="Filter Rankings"
-          onClick={() => {
-            Haptics.selection();
-            setShowFilterSheet(true);
-          }}
-          className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all text-neutral-500"
-          title="Filter and Scope"
-        >
-          <Filter className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            aria-label="Export Rankings CSV"
+            onClick={() => {
+              Haptics.selection();
+              exportRankingsCSV(activeLeaderboard, selectedCategory, scoringSystemFilter);
+            }}
+            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all text-neutral-500"
+            title="Export Rankings CSV"
+          >
+            <Download className="w-5 h-5" />
+          </button>
+          <button
+            aria-label="Filter Rankings"
+            onClick={() => {
+              Haptics.selection();
+              setShowFilterSheet(true);
+            }}
+            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all text-neutral-500"
+            title="Filter and Scope"
+          >
+            <Filter className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Segmented Control: Players | Teams & Pairs */}
@@ -104,10 +124,35 @@ export const AppleRankingsScreen: React.FC = () => {
         />
       </div>
 
+      {/* Quick Scoring Format Filters */}
+      <div className="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto no-scrollbar">
+        <span className="text-[11px] text-neutral-400 font-medium mr-0.5">Format:</span>
+        {[
+          { id: 'ALL', label: 'All' },
+          { id: 'RALLY', label: 'Rally Point Only' },
+          { id: 'SERVICE', label: 'Service Point Only' },
+        ].map((fmt) => (
+          <button
+            key={fmt.id}
+            onClick={() => {
+              Haptics.selection();
+              setScoringSystemFilter(fmt.id as any);
+            }}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap ${
+              scoringSystemFilter === fmt.id
+                ? 'bg-emerald-500 text-white shadow-xs'
+                : 'bg-black/5 dark:bg-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-black/10'
+            }`}
+          >
+            {fmt.label}
+          </button>
+        ))}
+      </div>
+
       {viewType === 'players' ? (
         <>
           {/* Horizontally scrolling category chips */}
-          <div className="flex gap-2 px-4 overflow-x-auto no-scrollbar pb-3">
+          <div className="flex gap-2 px-4 overflow-x-auto no-scrollbar pb-2.5">
             {CATEGORY_CHIPS.map((chip) => {
               const isActive = selectedCategory === chip.id;
               return (
@@ -128,6 +173,32 @@ export const AppleRankingsScreen: React.FC = () => {
               );
             })}
           </div>
+
+          {/* Sub-toggle for MOST_DROPS */}
+          {selectedCategory === 'MOST_DROPS' && (
+            <div className="flex gap-2 px-4 pb-3">
+              {[
+                { id: 'ALL', label: 'All Drops' },
+                { id: 'UNFORCED', label: 'Unforced Only' },
+                { id: 'FORCED', label: 'Forced Only' },
+              ].map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => {
+                    Haptics.selection();
+                    setDropsSubFilter(sub.id as any);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${
+                    dropsSubFilter === sub.id
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 font-bold'
+                      : 'border-black/5 dark:border-white/10 text-neutral-500 hover:bg-black/5'
+                  }`}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Top 3 Podium (1st Center Elevated) */}
           {topThree.length >= 3 && topThree[0] && topThree[1] && topThree[2] && (
@@ -225,8 +296,11 @@ export const AppleRankingsScreen: React.FC = () => {
                         <p className="text-sm font-semibold truncate leading-tight">
                           {entry.name}
                         </p>
-                        <p className="text-[11px] text-neutral-400 mt-0.5">
-                          {entry.matchesPlayed || 0} matches
+                        <p
+                          data-testid="matches-played-count"
+                          className="text-[11px] text-neutral-400 mt-0.5"
+                        >
+                          Matches: {entry.matchesPlayed || 0}
                         </p>
                       </div>
                     </div>

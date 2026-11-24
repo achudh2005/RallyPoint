@@ -7,6 +7,7 @@ import {
   DEFAULT_RANKING_CONFIG,
   ScoringSystemFilter,
 } from './types.js';
+import { computeMatchAwards } from './mvp.js';
 
 export function initializePlayerStats(playerId: string, displayName = ''): PlayerStats {
   return {
@@ -36,6 +37,14 @@ export function initializePlayerStats(playerId: string, displayName = ''): Playe
     currentPointStreak: 0,
     bestPointStreak: 0,
     sideOutsCaused: 0,
+
+    // Streak & MVP aggregate stats
+    mvpCount: 0,
+    fighterCount: 0,
+    mvpRate: 0,
+    serveRegainedTotal: 0,
+    clutchPointsTotal: 0,
+    bestMatchStreak: 0,
 
     dropShotsPlayed: 0,
     dropShotWinners: 0,
@@ -467,7 +476,45 @@ export function computeAllPlayerStats(
           p2.dropShareWithinTeam = totDrp > 0 ? Math.round((p2.drops / totDrp) * 100) : 0;
         }
       }
+
+      // Compute match awards and streak contributions
+      const awards = computeMatchAwards(validEvents, config, {
+        matchType: match.matchType,
+        scoringFormat: match.scoringFormat,
+        targetPoints: match.targetPoints,
+        winnerSide: matchWinnerSide || undefined,
+        participants: match.participants,
+      });
+
+      if (awards.mvp) {
+        const mvpId = awards.mvp.playerId;
+        if (statsMap[mvpId]) {
+          statsMap[mvpId]!.mvpCount += 1;
+        }
+      }
+
+      if (awards.fighter) {
+        const fighterId = awards.fighter.playerId;
+        if (statsMap[fighterId]) {
+          statsMap[fighterId]!.fighterCount += 1;
+        }
+      }
+
+      for (const contrib of awards.allContributions) {
+        if (statsMap[contrib.playerId]) {
+          const p = statsMap[contrib.playerId]!;
+          p.serveRegainedTotal += contrib.serveRegained;
+          p.clutchPointsTotal += contrib.clutchPoints;
+          if (contrib.bestPointStreak > p.bestMatchStreak) {
+            p.bestMatchStreak = contrib.bestPointStreak;
+          }
+        }
+      }
     }
+  }
+
+  for (const p of Object.values(statsMap)) {
+    p.mvpRate = p.matchesPlayed > 0 ? Number((p.mvpCount / p.matchesPlayed).toFixed(2)) : 0;
   }
 
   return statsMap;

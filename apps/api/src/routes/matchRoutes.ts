@@ -7,7 +7,11 @@ import {
   getMatchState,
   registerMatch,
   syncMatchEvents,
+  getMatchAwards,
+  getMatchStreaks,
 } from '../services/eventSyncService.js';
+import { emitMatchEndWithAwards } from '../sockets/matchSocket.js';
+import { computeAndEmitRankingDiffs } from '../sockets/rankingSocket.js';
 import type { MatchConfig, MatchEvent } from '@rallypoint/engine';
 
 const router = Router();
@@ -139,6 +143,28 @@ router.get('/:id/live', (req: Request, res: Response) => {
   });
 });
 
+// Match MVP and Performance Awards Endpoint
+router.get('/:id/awards', (req: Request, res: Response) => {
+  const matchId = req.params.id ?? '';
+  const awards = getMatchAwards(matchId);
+  if (!awards) {
+    res.status(404).json({ error: 'Match not found' });
+    return;
+  }
+  res.json(awards);
+});
+
+// Match Streaks and Milestones Endpoint
+router.get('/:id/streaks', (req: Request, res: Response) => {
+  const matchId = req.params.id ?? '';
+  const streaks = getMatchStreaks(matchId);
+  if (!streaks) {
+    res.status(404).json({ error: 'Match not found' });
+    return;
+  }
+  res.json(streaks);
+});
+
 // Batch events endpoint (Scorer, Umpire, Admin)
 router.post(
   '/:id/events',
@@ -149,6 +175,11 @@ router.post(
     const matchId = req.params.id ?? '';
     try {
       const result = syncMatchEvents(matchId, req.body.events as MatchEvent[]);
+      if (result.isCompleted) {
+        const awards = getMatchAwards(matchId);
+        emitMatchEndWithAwards(matchId, result.state, awards);
+        computeAndEmitRankingDiffs();
+      }
       res.json(result);
     } catch (err: any) {
       res.status(404).json({ error: err.message });
@@ -166,6 +197,11 @@ router.post(
     const matchId = req.params.id ?? '';
     try {
       const result = syncMatchEvents(matchId, req.body.events as MatchEvent[]);
+      if (result.isCompleted) {
+        const awards = getMatchAwards(matchId);
+        emitMatchEndWithAwards(matchId, result.state, awards);
+        computeAndEmitRankingDiffs();
+      }
       res.json(result);
     } catch (err: any) {
       res.status(404).json({ error: err.message });

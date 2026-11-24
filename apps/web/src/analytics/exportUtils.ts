@@ -15,6 +15,10 @@ export function exportMatchCSV(state: MatchState, events: MatchEvent[]): void {
       'Rally_End_Tag',
       'Server_Side',
       'Service_Court',
+      'Player_Id',
+      'Points_Won',
+      'Drops',
+      'Net_Contribution',
     ],
   ];
 
@@ -24,20 +28,44 @@ export function exportMatchCSV(state: MatchState, events: MatchEvent[]): void {
   let scoreB = 0;
 
   for (const event of events) {
-    if (event.type === 'POINT' || event.type === 'SERVE_FAULT') {
+    if (
+      event.type === 'POINT' ||
+      event.type === 'SERVE_FAULT' ||
+      event.type === 'PLAYER_ACTION'
+    ) {
       seq++;
-      const winnerSide =
-        event.type === 'POINT'
-          ? event.side
-          : event.faultySide === 'A'
-            ? 'B'
-            : 'A';
+      let winnerSide: 'A' | 'B';
+      let actionType = 'POINT';
+      let playerId = '';
+      let ptsWon = 0;
+      let drps = 0;
+
+      if (event.type === 'PLAYER_ACTION') {
+        const pa = event as any;
+        winnerSide =
+          pa.resultingWinnerSide ||
+          (pa.action === 'POINT' ? pa.side : pa.side === 'A' ? 'B' : 'A');
+        actionType = pa.action;
+        playerId = pa.playerId || '';
+        if (pa.action === 'POINT') {
+          ptsWon = 1;
+        } else {
+          drps = 1;
+        }
+      } else if (event.type === 'POINT') {
+        winnerSide = event.side;
+        ptsWon = 1;
+      } else {
+        winnerSide = event.faultySide === 'A' ? 'B' : 'A';
+        drps = 1;
+      }
+
       if (winnerSide === 'A') scoreA++;
       else scoreB++;
 
       const winnerName =
         winnerSide === 'A' ? state.config.sideA.name : state.config.sideB.name;
-      const tag = event.type === 'POINT' ? (event.rallyEndType ?? 'NONE') : 'SERVICE_FAULT';
+      const tag = (event as any).rallyEndType ?? actionType;
 
       rows.push([
         seq.toString(),
@@ -51,6 +79,10 @@ export function exportMatchCSV(state: MatchState, events: MatchEvent[]): void {
         tag,
         state.serveState.serverSide,
         state.serveState.serviceCourt,
+        playerId,
+        ptsWon.toString(),
+        drps.toString(),
+        (ptsWon - drps).toString(),
       ]);
     } else if (event.type === 'GAME_END') {
       game = event.gameNumber + 1;
@@ -123,3 +155,64 @@ export async function exportScorecardPNG(
     console.error('Failed to export scorecard PNG:', error);
   }
 }
+
+export function exportRankingsCSV(
+  entries: any[],
+  category = 'OVERALL',
+  scoringFilter = 'ALL'
+): void {
+  const rows: string[][] = [
+    [
+      'Rank',
+      'Name',
+      'Matches_Played',
+      'Category_Score',
+      'Points_Won',
+      'Drops',
+      'Net_Contribution',
+      'Win_Rate_Pct',
+      'Category',
+      'Scoring_Filter',
+    ],
+  ];
+
+  entries.forEach((e, idx) => {
+    const rank = e.rank || idx + 1;
+    const name = `"${(e.name || '').replace(/"/g, '""')}"`;
+    const matches = (e.matchesPlayed ?? e.stats?.matchesPlayed ?? 0).toString();
+    const score = (e.headlineValue ?? 0).toString();
+    const ptsWon = (e.stats?.pointsWon ?? e.stats?.pointsScored ?? 0).toString();
+    const drops = (e.stats?.drops ?? e.stats?.pointsConceded ?? 0).toString();
+    const net = (e.stats?.netContribution ?? ((e.stats?.pointsWon ?? 0) - (e.stats?.drops ?? 0))).toString();
+    const winRate = (e.stats?.winRate ?? 0).toString();
+
+    rows.push([
+      rank.toString(),
+      name,
+      matches,
+      score,
+      ptsWon,
+      drops,
+      net,
+      winRate,
+      category,
+      scoringFilter,
+    ]);
+  });
+
+  const csvContent =
+    'data:text/csv;charset=utf-8,' +
+    rows.map((row) => row.join(',')).join('\n');
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute(
+    'download',
+    `rallypoint_rankings_${category}_${Date.now()}.csv`
+  );
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+

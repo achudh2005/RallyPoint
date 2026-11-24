@@ -57,13 +57,21 @@ export function calculateOverallScore(
     netContributionScore = Math.min(100, Math.max(0, 50 + netPerMatch * 5));
   }
 
+  // 7. MVP Rate Score (if weight configured)
+  const mvpRateWeight = weights.mvpRateWeight ?? 0;
+  let mvpRateScore = 0;
+  if (mvpRateWeight > 0) {
+    mvpRateScore = Math.min(100, (stats.mvpRate || 0) * 100);
+  }
+
   const total =
     weights.winRateWeight * winRateScore +
     weights.pointDiffPerMatchWeight * ptDiffScore +
     weights.winsWeight * winsScore +
     weights.currentFormWeight * formScore +
     weights.consistencyWeight * consistencyScore +
-    netWeight * netContributionScore;
+    netWeight * netContributionScore +
+    mvpRateWeight * mvpRateScore;
 
   return Number(total.toFixed(2));
 }
@@ -172,6 +180,31 @@ export function generatePlayerLeaderboard(
         if (b.serviceHolds !== a.serviceHolds) return b.serviceHolds - a.serviceHolds;
         if (b.sideOutsWon !== a.sideOutsWon) return b.sideOutsWon - a.sideOutsWon;
         return b.servicePointsWon - a.servicePointsWon;
+      }
+      case 'MOST_MVPS': {
+        if (b.mvpCount !== a.mvpCount) return b.mvpCount - a.mvpCount;
+        if (b.mvpRate !== a.mvpRate) return b.mvpRate - a.mvpRate;
+        return b.wins - a.wins;
+      }
+      case 'BEST_CLUTCH_PLAYER': {
+        const cpmA = a.matchesPlayed > 0 ? a.clutchPointsTotal / a.matchesPlayed : 0;
+        const cpmB = b.matchesPlayed > 0 ? b.clutchPointsTotal / b.matchesPlayed : 0;
+        if (cpmB !== cpmA) return cpmB - cpmA;
+        if (b.clutchPointsTotal !== a.clutchPointsTotal) return b.clutchPointsTotal - a.clutchPointsTotal;
+        return b.winRate - a.winRate;
+      }
+      case 'SERVE_WINNER': {
+        const spmA = a.matchesPlayed > 0 ? a.serveRegainedTotal / a.matchesPlayed : 0;
+        const spmB = b.matchesPlayed > 0 ? b.serveRegainedTotal / b.matchesPlayed : 0;
+        if (spmB !== spmA) return spmB - spmA;
+        if (b.serveRegainedTotal !== a.serveRegainedTotal) return b.serveRegainedTotal - a.serveRegainedTotal;
+        return b.wins - a.wins;
+      }
+      case 'LONGEST_STREAK': {
+        const streakA = Math.max(a.bestMatchStreak || 0, a.bestPointStreak || 0);
+        const streakB = Math.max(b.bestMatchStreak || 0, b.bestPointStreak || 0);
+        if (streakB !== streakA) return streakB - streakA;
+        return b.pointsWon - a.pointsWon;
       }
     }
   });
@@ -291,6 +324,14 @@ function isPlayerTied(
       return a.winRate === b.winRate && a.matchesPlayed === b.matchesPlayed;
     case 'BEST_SERVICE_GAME':
       return a.serviceHolds === b.serviceHolds && a.sideOutsWon === b.sideOutsWon;
+    case 'MOST_MVPS':
+      return a.mvpCount === b.mvpCount && a.mvpRate === b.mvpRate && a.wins === b.wins;
+    case 'BEST_CLUTCH_PLAYER':
+      return a.clutchPointsTotal === b.clutchPointsTotal && a.matchesPlayed === b.matchesPlayed;
+    case 'SERVE_WINNER':
+      return a.serveRegainedTotal === b.serveRegainedTotal && a.matchesPlayed === b.matchesPlayed;
+    case 'LONGEST_STREAK':
+      return Math.max(a.bestMatchStreak || 0, a.bestPointStreak || 0) === Math.max(b.bestMatchStreak || 0, b.bestPointStreak || 0);
   }
 }
 
@@ -312,6 +353,14 @@ function getHeadlineValue(
       return stats.drops;
     case 'BEST_NET_CONTRIBUTION':
       return stats.netContribution;
+    case 'MOST_MVPS':
+      return stats.mvpCount;
+    case 'BEST_CLUTCH_PLAYER':
+      return stats.matchesPlayed > 0 ? Number((stats.clutchPointsTotal / stats.matchesPlayed).toFixed(1)) : 0;
+    case 'SERVE_WINNER':
+      return stats.matchesPlayed > 0 ? Number((stats.serveRegainedTotal / stats.matchesPlayed).toFixed(1)) : 0;
+    case 'LONGEST_STREAK':
+      return Math.max(stats.bestMatchStreak || 0, stats.bestPointStreak || 0);
     case 'MOST_WINS':
       return stats.wins;
     case 'MOST_POINTS':
@@ -346,6 +395,14 @@ function formatHeadline(
       return `${value} Drops`;
     case 'BEST_NET_CONTRIBUTION':
       return `${value > 0 ? '+' : ''}${value} Net`;
+    case 'MOST_MVPS':
+      return `${value} MVPs`;
+    case 'BEST_CLUTCH_PLAYER':
+      return `${value} CPM`;
+    case 'SERVE_WINNER':
+      return `${value} SPM`;
+    case 'LONGEST_STREAK':
+      return `${value} Streak`;
     case 'MOST_WINS':
       return `${value} Wins`;
     case 'MOST_POINTS':

@@ -40,9 +40,39 @@ describe('MatchSummary Component', () => {
 
     render(<MatchSummary state={finishedMatch} />);
 
-    expect(screen.getByText('Viktor')).toBeInTheDocument();
+    expect(screen.getAllByText('Viktor').length).toBeGreaterThan(0);
     expect(screen.getByText('Match Winner')).toBeInTheDocument();
     expect(screen.getByText('Games: 2 - 0')).toBeInTheDocument();
     expect(screen.getByText('New Match')).toBeInTheDocument();
+    expect(screen.getByText(/Weekly Accolades/i)).toBeInTheDocument();
+    expect(screen.getByText(/Share Match Summary/i)).toBeInTheDocument();
+  });
+
+  it('renders MVP highlight card when action events are present', () => {
+    const match = createMatch({
+      id: 'm-actions',
+      mode: 'singles',
+      bestOf: 3,
+      pointsToWinGame: 21,
+      tiebreakCap: 30,
+      sideA: { id: 'sa', name: 'Viktor', playerIds: ['p-viktor'] },
+      sideB: { id: 'sb', name: 'Lee', playerIds: ['p-lee'] },
+      initialServerSide: 'A',
+      initialServerPlayerId: 'p-viktor',
+    });
+
+    const finishedMatch = {
+      ...match,
+      status: 'COMPLETED' as const,
+      winnerSide: 'A' as const,
+      winReason: 'NORMAL' as const,
+      gamesWonA: 2,
+      gamesWonB: 0,
+      games: [],
+    };
+
+    render(<MatchSummary state={finishedMatch} />);
+    expect(screen.getByTestId('mvp-highlight-card')).toBeInTheDocument();
+    expect(screen.getByText(/MVP of the Match/i)).toBeInTheDocument();
   });
 });

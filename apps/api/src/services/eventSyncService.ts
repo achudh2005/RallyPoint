@@ -1,5 +1,7 @@
 import type { MatchConfig, MatchEvent, MatchState } from '@rallypoint/engine';
 import { createMatch, applyEvent } from '@rallypoint/engine';
+import { computeMatchAwards, type MatchAwardsResult } from '@rallypoint/ranking';
+import { computeStreaks, type StreaksResult } from '@rallypoint/scoring-rules';
 
 export interface SyncBatchResult {
   matchId: string;
@@ -79,4 +81,52 @@ export function getMatchState(matchId: string): MatchState | null {
 
 export function getMatchEvents(matchId: string): MatchEvent[] {
   return memoryEventStore.get(matchId) ?? [];
+}
+
+export function getMatchAwards(matchId: string): MatchAwardsResult | null {
+  const config = memoryMatchConfigs.get(matchId);
+  if (!config) return null;
+  const events = memoryEventStore.get(matchId) ?? [];
+  const state = getMatchState(matchId);
+
+  const participants = [
+    ...config.sideA.playerIds.map((id, idx) => ({
+      playerId: id,
+      displayName: config.sideA.playerNames?.[idx] || id,
+      side: 'A' as const,
+    })),
+    ...config.sideB.playerIds.map((id, idx) => ({
+      playerId: id,
+      displayName: config.sideB.playerNames?.[idx] || id,
+      side: 'B' as const,
+    })),
+  ];
+
+  return computeMatchAwards(events as any, undefined, {
+    matchType: config.mode === 'doubles' ? 'DOUBLES' : 'SINGLES',
+    scoringFormat: (events[0] as any)?.scoringFormat || 'RALLY_21',
+    targetPoints: config.pointsToWinGame,
+    winnerSide: state?.winnerSide,
+    participants,
+    bestOf: config.bestOf,
+  });
+}
+
+export function getMatchStreaks(matchId: string): StreaksResult | null {
+  const config = memoryMatchConfigs.get(matchId);
+  if (!config) return null;
+  const events = memoryEventStore.get(matchId) ?? [];
+
+  return computeStreaks(events as any, {}, {
+    getPlayerName: (id: string) => {
+      const idxA = config.sideA.playerIds.indexOf(id);
+      if (idxA !== -1) return config.sideA.playerNames?.[idxA] || id;
+      const idxB = config.sideB.playerIds.indexOf(id);
+      if (idxB !== -1) return config.sideB.playerNames?.[idxB] || id;
+      return id;
+    },
+    getTeamName: (side: 'A' | 'B') => {
+      return side === 'A' ? config.sideA.name : config.sideB.name;
+    },
+  });
 }

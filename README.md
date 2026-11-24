@@ -13,6 +13,24 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
 
 ---
 
+## Streak Alerts & Match MVP Engine
+- **Streak Calculation Engine (`@rallypoint/scoring-rules`)**:
+  - Live, deterministic detection of player POINT streaks (thresholds 3, 5, 7, 10), player DROP streaks (thresholds 3, 5 with empathetic wording), and team runs (thresholds 5, 8, 10).
+  - Dual scoring system support: In Service Point scoring, side-outs do NOT break a team's scoring run; runs are only broken when the opponent scores points.
+  - Strict mode toggle: by default, a player streak counts consecutive actions by that player; strict mode requires consecutive rallies won.
+  - Multi-language localization ready (English and Malayalam `ml`).
+  - Full UNDO and replay rollback safety without duplicate banner firings.
+- **Match MVP & Performance Engine (`@rallypoint/ranking`)**:
+  - Deterministic evaluation formula `v1.0.0`:
+    $$\text{MVP Score} = 3.0 \times \text{pointsWon} + 2.5 \times \text{serveRegained} \times M + 2.0 \times \text{clutchPoints} + 1.5 \times \text{comebackPoints} + 1.0 \times \text{streakBonus} - 2.0 \times \text{drops} - 1.0 \times \text{clutchDrops} + \text{resultBonus}$$
+    where $M = 1.5$ for Service Point scoring and $1.0$ for Rally Point scoring, and $\text{resultBonus} = 5.0$ for the winning side.
+  - 5-stage tie-breaker resolution: fewer drops &rarr; more serve regained &rarr; more clutch points &rarr; winning side &rarr; co-MVPs.
+  - Fighter Award automatically honoring top contributor on the losing side.
+  - New community ranking categories: Most MVPs, Best Clutch Player, Serve Winner, and Longest Streak.
+  - Database schema models `MatchAward` and `PlayerMatchStreak` with REST endpoints `GET /api/matches/:id/awards` and `GET /api/matches/:id/streaks`.
+
+---
+
 ## Player Action Buttons & Mobile Storage Architecture
 - **Mobile Live Scoring Screen (Core UX)**:
   - Ergonomically tuned for one-handed thumb use on tall 6.8" 144Hz AMOLED displays (e.g. iQOO Neo 10).

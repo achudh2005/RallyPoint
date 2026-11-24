@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AppleRankingsScreen } from './AppleRankingsScreen.js';
 
@@ -10,8 +10,9 @@ describe('AppleRankingsScreen Component (Phase 3)', () => {
     expect(screen.getByText('Players')).toBeInTheDocument();
     expect(screen.getByText('Teams & Pairs')).toBeInTheDocument();
     expect(screen.getByText('Top Players')).toBeInTheDocument();
-    expect(screen.getByText('Most Wins')).toBeInTheDocument();
+    expect(screen.getByText('Top Point Scorers')).toBeInTheDocument();
     expect(screen.getByText('Most Drops')).toBeInTheDocument();
+    expect(screen.getByText('Best Net Contribution')).toBeInTheDocument();
   });
 
   it('switches between Players and Teams views', () => {
@@ -32,4 +33,39 @@ describe('AppleRankingsScreen Component (Phase 3)', () => {
     expect(screen.getByText('Rankings Filter')).toBeInTheDocument();
     expect(screen.getByText('All Scoring Formats')).toBeInTheDocument();
   });
+
+  it('shows sub-toggle options when Most Drops category is selected', () => {
+    render(<AppleRankingsScreen />);
+
+    const dropsChip = screen.getByText('Most Drops');
+    fireEvent.click(dropsChip);
+
+    expect(screen.getByText('All Drops')).toBeInTheDocument();
+    expect(screen.getByText('Unforced Only')).toBeInTheDocument();
+    expect(screen.getByText('Forced Only')).toBeInTheDocument();
+  });
+
+  it('allows filtering by scoring format using quick filter chips', () => {
+    render(<AppleRankingsScreen />);
+
+    const servicePill = screen.getByText('Service Point Only');
+    fireEvent.click(servicePill);
+    expect(servicePill).toHaveClass('bg-emerald-500');
+
+    const rallyPill = screen.getByText('Rally Point Only');
+    fireEvent.click(rallyPill);
+    expect(rallyPill).toHaveClass('bg-emerald-500');
+  });
+
+  it('exports CSV when export button is clicked', () => {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    render(<AppleRankingsScreen />);
+
+    const exportBtn = screen.getByLabelText('Export Rankings CSV');
+    fireEvent.click(exportBtn);
+
+    expect(clickSpy).toHaveBeenCalled();
+    clickSpy.mockRestore();
+  });
 });
+

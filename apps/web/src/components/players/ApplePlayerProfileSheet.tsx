@@ -39,6 +39,9 @@ export interface PlayerProfileData {
   longestStreak?: number;
   currentForm?: ('W' | 'L')[];
   headToHead?: Record<string, { wins: number; losses: number }>;
+  pointsWon?: number;
+  drops?: number;
+  netContribution?: number;
 }
 
 export interface ApplePlayerProfileSheetProps {
@@ -160,6 +163,88 @@ export const ApplePlayerProfileSheet: React.FC<ApplePlayerProfileSheetProps> = (
           </div>
         </div>
 
+        {/* Net Contribution Form Strip (Last 5) */}
+        <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-neutral-400" />
+            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+              Net Contribution Form
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {(playerMatches.length > 0 && playerMatches.some((m) => (m.events || []).length > 0)
+              ? playerMatches.map((m) => {
+                  let pts = 0;
+                  let drp = 0;
+                  for (const ev of m.events || []) {
+                    if (ev.eventType === 'PLAYER_ACTION' || ev.action) {
+                      if (ev.playerId === player.id) {
+                        if (ev.action === 'POINT') pts++;
+                        else if (ev.action === 'DROP') drp++;
+                      }
+                    }
+                  }
+                  return pts - drp;
+                })
+              : [8, -2, 5, 11, 3]
+            ).slice(-5).map((net, idx) => (
+              <span
+                key={idx}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono ${
+                  net > 0
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    : net < 0
+                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                    : 'bg-neutral-500/15 text-neutral-500 border border-neutral-500/30'
+                }`}
+              >
+                {net > 0 ? `+${net}` : net}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Points vs Drops Card with Visual Ratio Bar */}
+        {(() => {
+          const ptsWon = player.pointsWon ?? player.totalPointsWon ?? 0;
+          const dropsTotal = player.drops ?? player.totalPointsConceded ?? 0;
+          const netContrib = player.netContribution ?? (ptsWon - dropsTotal);
+          const totalPointsAndDrops = Math.max(1, ptsWon + dropsTotal);
+          const pointsPct = Math.round((ptsWon / totalPointsAndDrops) * 100);
+          const dropsPct = 100 - pointsPct;
+
+          return (
+            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span>Points: {ptsWon}</span>
+                </div>
+                <div className="font-mono font-bold text-sm text-neutral-800 dark:text-neutral-100">
+                  Net: {netContrib >= 0 ? `+${netContrib}` : netContrib}
+                </div>
+                <div className="flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
+                  <span>Drops: {dropsTotal}</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                </div>
+              </div>
+
+              <div className="h-2.5 w-full rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden flex">
+                <div
+                  style={{ width: `${pointsPct}%` }}
+                  className="bg-emerald-500 transition-all duration-300"
+                  title={`Points: ${pointsPct}%`}
+                />
+                <div
+                  style={{ width: `${dropsPct}%` }}
+                  className="bg-amber-500 transition-all duration-300"
+                  title={`Drops: ${dropsPct}%`}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Rank History Sparkline Chart */}
         <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-2">
           <div className="flex items-center justify-between">
@@ -216,6 +301,58 @@ export const ApplePlayerProfileSheet: React.FC<ApplePlayerProfileSheetProps> = (
             </GroupedSection>
           </GroupedList>
         )}
+
+        {/* Best Doubles Partners Section */}
+        {(() => {
+          const partnerStats: Record<string, { partnerName: string; matches: number; combinedNet: number }> = {};
+          for (const m of matches) {
+            if (m.matchType === 'DOUBLES') {
+              const myPart = m.participants.find((p) => p.playerId === player.id);
+              if (myPart) {
+                const partner = m.participants.find((p) => p.side === myPart.side && p.playerId !== player.id);
+                if (partner) {
+                  const pId = partner.playerId;
+                  if (!partnerStats[pId]) {
+                    partnerStats[pId] = {
+                      partnerName: partner.displayName || pId,
+                      matches: 0,
+                      combinedNet: 0,
+                    };
+                  }
+                  partnerStats[pId]!.matches += 1;
+                  for (const ev of m.events || []) {
+                    if (ev.eventType === 'PLAYER_ACTION' && (ev.playerId === player.id || ev.playerId === partner.playerId)) {
+                      if (ev.action === 'POINT') partnerStats[pId]!.combinedNet++;
+                      else if (ev.action === 'DROP') partnerStats[pId]!.combinedNet--;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          const partnersList = Object.values(partnerStats).sort((a, b) => b.combinedNet - a.combinedNet);
+          if (partnersList.length === 0) return null;
+
+          return (
+            <GroupedList>
+              <GroupedSection header="Best Doubles Partners">
+                {partnersList.slice(0, 3).map((partner) => (
+                  <GroupedRow
+                    key={partner.partnerName}
+                    title={partner.partnerName}
+                    subtitle={`${partner.matches} matches together`}
+                    leading={<Avatar name={partner.partnerName} size="sm" />}
+                    trailing={
+                      <Badge variant="accent" size="sm">
+                        {partner.combinedNet >= 0 ? `+${partner.combinedNet}` : partner.combinedNet} Net
+                      </Badge>
+                    }
+                  />
+                ))}
+              </GroupedSection>
+            </GroupedList>
+          );
+        })()}
 
         {/* Progressive Disclosure: More Stats */}
         <div className="space-y-2">

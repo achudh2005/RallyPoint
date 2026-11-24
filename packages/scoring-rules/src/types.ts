@@ -329,3 +329,53 @@ export interface MatchState {
   playerStats: Record<string, PlayerMatchActionStats>;
   unassignedPoints: { sideA: number; sideB: number };
 }
+
+export type StreakType = 'PLAYER_POINT' | 'PLAYER_DROP' | 'TEAM_RUN' | 'STREAK_SNAPPED';
+
+export interface StreakMilestoneAlert {
+  id: string;
+  type: StreakType;
+  playerId?: string;
+  playerName?: string;
+  side?: 'A' | 'B';
+  teamName?: string;
+  count: number;
+  snappedCount?: number;
+  message: string;
+  priority: number;
+  timestamp: number;
+}
+
+export interface PlayerStreakRecord {
+  playerId: string;
+  currentPointStreak: number;
+  currentDropStreak: number;
+  bestPointStreak: number;
+  longestDropStreak: number;
+}
+
+export interface StreakAlertsConfig {
+  pointStreakThresholds?: number[];
+  dropStreakThresholds?: number[];
+  teamRunThresholds?: number[];
+  strictMode?: boolean;
+  streakSnappedEnabled?: boolean;
+  hapticsEnabled?: boolean;
+  dropStreaksEnabled?: boolean;
+  language?: 'en' | 'ml';
+}
+
+export interface StreaksResult {
+  playerStreaks: Record<string, PlayerStreakRecord>;
+  teamRuns: {
+    A: number;
+    B: number;
+  };
+  bestTeamRuns: {
+    A: number;
+    B: number;
+  };
+  currentMilestone: StreakMilestoneAlert | null;
+  milestoneHistory: StreakMilestoneAlert[];
+}
+

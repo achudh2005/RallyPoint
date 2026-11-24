@@ -167,6 +167,8 @@ model Player {
   careerStats         PlayerCareerStats?
   formTrend           PlayerFormTrend?
   rankingSnapshots    PlayerRankingSnapshot[]
+  awards              MatchAward[]
+  streaks             PlayerMatchStreak[]
 
   @@index([displayName])
   @@index([clubId])
@@ -313,6 +315,8 @@ model Match {
   games           Game[]
   events          MatchEvent[]
   analyticsRollup MatchAnalyticsRollup?
+  awards          MatchAward[]
+  streaks         PlayerMatchStreak[]
 
   @@index([status])
   @@map("matches")
@@ -391,23 +395,72 @@ model MatchEvent {
 
 
 model PlayerCareerStats {
-  playerId      String    @id @map("player_id")
-  matchesPlayed Int       @default(0) @map("matches_played")
-  matchesWon    Int       @default(0) @map("matches_won")
-  matchesLost   Int       @default(0) @map("matches_lost")
-  gamesWon      Int       @default(0) @map("games_won")
-  gamesLost     Int       @default(0) @map("games_lost")
-  pointsWon     Int       @default(0) @map("points_won")
-  pointsLost    Int       @default(0) @map("points_lost")
-  winRate       Float     @default(0.0) @map("win_rate")
-  currentStreak Int       @default(0) @map("current_streak")
-  bestStreak    Int       @default(0) @map("best_streak")
-  lastPlayedAt  DateTime? @map("last_played_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  playerId            String    @id @map("player_id")
+  matchesPlayed       Int       @default(0) @map("matches_played")
+  matchesWon          Int       @default(0) @map("matches_won")
+  matchesLost         Int       @default(0) @map("matches_lost")
+  gamesWon            Int       @default(0) @map("games_won")
+  gamesLost           Int       @default(0) @map("games_lost")
+  pointsWon           Int       @default(0) @map("points_won")
+  pointsLost          Int       @default(0) @map("points_lost")
+  winRate             Float     @default(0.0) @map("win_rate")
+  currentStreak       Int       @default(0) @map("current_streak")
+  bestStreak          Int       @default(0) @map("best_streak")
+  mvpCount            Int       @default(0) @map("mvp_count")
+  fighterCount        Int       @default(0) @map("fighter_count")
+  mvpRate             Float     @default(0.0) @map("mvp_rate")
+  bestPointStreak     Int       @default(0) @map("best_point_streak")
+  serveRegainedTotal  Int       @default(0) @map("serve_regained_total")
+  clutchPointsTotal   Int       @default(0) @map("clutch_points_total")
+  lastPlayedAt        DateTime? @map("last_played_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  player        Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  player              Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@map("player_career_stats")
+}
+
+enum AwardType {
+  MVP
+  FIGHTER
+  CO_MVP
+}
+
+model MatchAward {
+  id             String    @id @default(cuid())
+  matchId        String    @map("match_id")
+  playerId       String    @map("player_id")
+  awardType      AwardType @map("award_type")
+  score          Float
+  reasons        Json      @default("[]")
+  formulaVersion String    @default("v1.0.0") @map("formula_version")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  match          Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+  @@index([playerId])
+  @@index([awardType])
+  @@map("match_awards")
+}
+
+model PlayerMatchStreak {
+  id                String   @id @default(cuid())
+  matchId           String   @map("match_id")
+  playerId          String   @map("player_id")
+  bestPointStreak   Int      @default(0) @map("best_point_streak")
+  longestDropStreak Int      @default(0) @map("longest_drop_streak")
+  teamRun           Int      @default(0) @map("team_run")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  match             Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player            Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
+  @@index([matchId])
+  @@index([playerId])
+  @@map("player_match_streaks")
 }
 
 model HeadToHead {

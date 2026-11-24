@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { exportMatchCSV, exportMatchJSON } from './exportUtils.js';
+import { exportMatchCSV, exportMatchJSON, exportRankingsCSV } from './exportUtils.js';
 import { createMatch } from '@rallypoint/engine';
 
 describe('Export Utilities', () => {
@@ -50,6 +50,29 @@ describe('Export Utilities', () => {
     window.URL.revokeObjectURL = vi.fn();
 
     exportMatchJSON(match, []);
+    expect(clickSpy).toHaveBeenCalled();
+    clickSpy.mockRestore();
+  });
+
+  it('generates valid rankings CSV export', () => {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    exportRankingsCSV([
+      {
+        rank: 1,
+        id: 'p-viktor',
+        name: 'Viktor Axelsen',
+        matchesPlayed: 10,
+        headlineValue: 120,
+        stats: {
+          pointsWon: 120,
+          drops: 25,
+          netContribution: 95,
+          winRate: 90,
+        },
+      },
+    ], 'TOP_POINT_SCORERS', 'RALLY');
+
     expect(clickSpy).toHaveBeenCalled();
     clickSpy.mockRestore();
   });
