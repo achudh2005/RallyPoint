@@ -1,10 +1,12 @@
 package com.rallypoint.app;
 
+import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
 
@@ -29,6 +31,10 @@ public class MainActivity extends BridgeActivity {
 
         // 3. 120Hz & 144Hz AMOLED Smoothness (iQOO Neo 10 Display Mode Preference)
         requestHighRefreshRate(window);
+
+        // 4. Secure WebView: disable remote debugging in production release builds
+        boolean isDebuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        WebView.setWebContentsDebuggingEnabled(isDebuggable);
     }
 
     private void requestHighRefreshRate(Window window) {

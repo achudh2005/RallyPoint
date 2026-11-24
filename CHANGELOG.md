@@ -2,6 +2,22 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Android Phase 5] - Production Security Hardening, QA & v1.0.0 Release
+### Added
+- **Network Security Configuration (`network_security_config.xml`)**:
+  - Disabled cleartext HTTP traffic across all production release endpoints.
+  - Enforced system CA trust anchors for HTTPS/TLS traffic.
+- **WebView Security Hardening**:
+  - Dynamically disabled WebView remote debugging in production release builds via `ApplicationInfo.FLAG_DEBUGGABLE` in `MainActivity.java`.
+- **Android 12+ Backup & Extraction Rules (`data_extraction_rules.xml` & `backup_rules.xml`)**:
+  - Configured secure cloud backup for IndexedDB match events and app preferences while explicitly excluding transient cache directories.
+- **Comprehensive Android Guide (`docs/android.md`)**:
+  - Documented end-to-end architecture, hardware optimizations for iQOO Neo 10, headless cloud compilation workflow, keystore rotation, and security specifications.
+- **Production Verification**:
+  - Confirmed APK size budget: Release APK is 1.39 MB (under 6% of the 25 MB budget limit).
+  - Confirmed targetSdk 35 (Android 15), minSdk 26, and ABIs `arm64-v8a` + `armeabi-v7a`.
+  - Full suite of 77 web tests, 30 engine tests, 27 ranking tests, and 12 scoring tests passed.
+
 ## [Android Phase 4] - Easy Install Portal & In-App Updates
 ### Added
 - **Public Mobile Install Portal (`docs/install/index.html`)**:

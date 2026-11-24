@@ -53,6 +53,8 @@ To configure production release signing for future updates:
   - `npm run android:debug` - Assembles debug APK locally or in CI
   - `npm run android:release` - Assembles release APK with R8 shrinking and ProGuard optimization
 
+> 📖 **Comprehensive Guide**: See [`docs/android.md`](docs/android.md) for full architecture, hardware optimizations, cloud build pipelines, and security configurations.
+
 ---
 
 ## Architecture
