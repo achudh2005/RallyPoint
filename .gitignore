@@ -46,6 +46,7 @@ Thumbs.db
 apps/web/android/.gradle/
 apps/web/android/build/
 apps/web/android/app/build/
+downloaded-apks/
 *.apk
 *.aab
 *.keystore
