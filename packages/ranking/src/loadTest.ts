@@ -87,7 +87,10 @@ export function runRankingLoadTest(
   const rebuildDuration = performance.now() - rebuildStart;
 
   const throughput = Math.round((totalEvents / (rebuildDuration / 1000)));
-  const memoryUsage = process.memoryUsage ? process.memoryUsage().heapUsed / (1024 * 1024) : 0;
+  const memoryUsage =
+    typeof process !== 'undefined' && process.memoryUsage
+      ? process.memoryUsage().heapUsed / (1024 * 1024)
+      : 0;
 
   const overallLeaderboard = result.playerLeaderboards.OVERALL || [];
   const topRankedPlayerId = overallLeaderboard[0]?.id || 'none';
@@ -104,7 +107,7 @@ export function runRankingLoadTest(
   };
 }
 
-if (process.argv[1]?.endsWith('loadTest.ts')) {
+if (typeof process !== 'undefined' && process.argv && process.argv[1]?.endsWith('loadTest.ts')) {
   console.log('⚡ Running Synthetic Load Test: 200 Players, 20,000 Matches, 1,000,000 Events...');
   const metrics = runRankingLoadTest(200, 20000, 50);
   console.log('🏁 Load Test Complete!');

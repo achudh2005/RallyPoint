@@ -8,7 +8,7 @@ export async function runRebuildCli() {
   console.log(`Leaderboards built: ${Object.keys(res.playerLeaderboards).length} individual, ${Object.keys(res.teamLeaderboards).length} team.`);
 }
 
-if (process.argv[1]?.includes('cli')) {
+if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes('cli')) {
   runRebuildCli()
     .then(() => process.exit(0))
     .catch((err) => {
