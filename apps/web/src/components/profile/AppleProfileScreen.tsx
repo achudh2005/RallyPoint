@@ -24,7 +24,13 @@ import {
   Info,
   Sliders,
   ExternalLink,
+  BatteryCharging,
+  Bell,
 } from 'lucide-react';
+import { nativeShare } from '../../mobile/nativeShare.js';
+import { registerBackHandler } from '../../mobile/backButton.js';
+import { nativePermissions } from '../../mobile/permissions.js';
+import { FuntouchBatteryModal } from '../mobile/FuntouchBatteryModal.js';
 
 export const AppleProfileScreen: React.FC = () => {
   const { accent, setAccent } = useTheme();
@@ -34,8 +40,33 @@ export const AppleProfileScreen: React.FC = () => {
 
   const [showGallery, setShowGallery] = useState(false);
   const [showExportNotice, setShowExportNotice] = useState(false);
+  const [showBatteryGuide, setShowBatteryGuide] = useState(false);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [rebuilding, setRebuilding] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
+
+  // Hardware Back Button handling for subscreen and sheets
+  React.useEffect(() => {
+    if (!showGallery) return;
+    return registerBackHandler(() => {
+      setShowGallery(false);
+      return true;
+    });
+  }, [showGallery]);
+
+  React.useEffect(() => {
+    if (!showExportNotice) return;
+    return registerBackHandler(() => {
+      setShowExportNotice(false);
+      return true;
+    });
+  }, [showExportNotice]);
+
+  const handleRequestNotification = async () => {
+    Haptics.selection();
+    const granted = await nativePermissions.requestNotificationPermission();
+    setNotificationStatus(granted ? 'Enabled' : 'Denied');
+  };
 
   const handleRebuild = () => {
     setRebuilding(true);
@@ -47,17 +78,12 @@ export const AppleProfileScreen: React.FC = () => {
     }, 600);
   };
 
-  const handleExportData = () => {
+  const handleExportData = async () => {
     Haptics.selection();
-    const dataStr =
-      'data:text/json;charset=utf-8,' +
-      encodeURIComponent(JSON.stringify({ matches, exportedAt: new Date().toISOString() }, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `rallypoint-export-${Date.now()}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    const fileName = `rallypoint-events-${Date.now()}.json`;
+    const jsonStr = JSON.stringify({ matches, exportedAt: new Date().toISOString() }, null, 2);
+    const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+    await nativeShare.shareFile(fileName, b64, 'application/json');
     setShowExportNotice(true);
   };
 
@@ -170,6 +196,34 @@ export const AppleProfileScreen: React.FC = () => {
                     setHapticsEnabled(val);
                   }}
                 />
+              }
+            />
+
+            <GroupedRow
+              title="Notifications"
+              subtitle="Match alerts & community announcements"
+              leading={<Bell className="w-5 h-5 text-indigo-500" />}
+              trailing={
+                notificationStatus ? (
+                  <Badge variant={notificationStatus === 'Enabled' ? 'success' : 'neutral'}>
+                    {notificationStatus}
+                  </Badge>
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={handleRequestNotification}>
+                    Request
+                  </Button>
+                )
+              }
+            />
+
+            <GroupedRow
+              title="Background Activity Guide"
+              subtitle="Optimizations for iQOO Neo 10 & Funtouch OS"
+              leading={<BatteryCharging className="w-5 h-5 text-emerald-500" />}
+              trailing={
+                <Button variant="secondary" size="sm" onClick={() => setShowBatteryGuide(true)}>
+                  View Guide
+                </Button>
               }
             />
           </GroupedSection>
@@ -307,6 +361,12 @@ export const AppleProfileScreen: React.FC = () => {
           </Button>
         </div>
       </BottomSheet>
+
+      {/* Funtouch OS / OriginOS Background Activity Modal */}
+      <FuntouchBatteryModal
+        forceOpen={showBatteryGuide}
+        onClose={() => setShowBatteryGuide(false)}
+      />
     </div>
   );
 };

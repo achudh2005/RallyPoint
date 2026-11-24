@@ -42,7 +42,7 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, onChange, className =
               role="tab"
               aria-selected={isActive}
               onClick={() => handleTabSelect(tab.id)}
-              className="flex-1 py-1 flex flex-col items-center justify-center relative focus:outline-none group"
+              className="flex-1 py-1 min-h-[48px] flex flex-col items-center justify-center relative focus:outline-none group touch-target-48"
             >
               <div className="relative p-1">
                 <Icon

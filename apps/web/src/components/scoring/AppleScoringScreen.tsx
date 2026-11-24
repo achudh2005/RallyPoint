@@ -20,6 +20,8 @@ import {
 import { useMatchStore } from '../../store/matchStore.js';
 import { Side, RallyEndType } from '@rallypoint/engine';
 import { TVScoreboardScreen } from '../scoreboard/TVScoreboardScreen.js';
+import { nativeKeepAwake } from '../../mobile/keepAwake.js';
+import { registerBackHandler } from '../../mobile/backButton.js';
 
 export const AppleScoringScreen: React.FC = () => {
   const {
@@ -78,24 +80,24 @@ export const AppleScoringScreen: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   });
 
-  // Wake lock management
+  // Android Back Button handler for options bottom sheet
   useEffect(() => {
-    let wakeLockSentinel: any = null;
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator && match && match.status === 'IN_PROGRESS') {
-          wakeLockSentinel = await (navigator as any).wakeLock.request('screen');
-        }
-      } catch {
-        // WakeLock unsupported or denied
-      }
-    };
-    requestWakeLock();
+    if (!showMoreMenu) return;
+    return registerBackHandler(() => {
+      setShowMoreMenu(false);
+      return true;
+    });
+  }, [showMoreMenu]);
 
+  // Screen Keep-Awake management during live scoring
+  useEffect(() => {
+    if (match && match.status === 'IN_PROGRESS') {
+      nativeKeepAwake.enable();
+    } else {
+      nativeKeepAwake.disable();
+    }
     return () => {
-      if (wakeLockSentinel) {
-        wakeLockSentinel.release().catch(() => {});
-      }
+      nativeKeepAwake.disable();
     };
   }, [match?.status]);
 
@@ -184,9 +186,9 @@ export const AppleScoringScreen: React.FC = () => {
     pendingSettingChoice || scoringRulesState?.pendingSettingChoice;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-black text-slate-900 dark:text-white select-none overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-black text-slate-900 dark:text-white select-none overflow-hidden safe-left safe-right">
       {/* Top Quiet Bar */}
-      <header className="flex items-center justify-between px-5 pt-3 pb-2 border-b border-black/5 dark:border-white/10 shrink-0">
+      <header className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top,0px),12px)] pb-2 border-b border-black/5 dark:border-white/10 shrink-0">
         <button
           onClick={() => {
             Haptics.selection();
@@ -249,8 +251,8 @@ export const AppleScoringScreen: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Main Split Screen: Two massive tappable halves */}
-      <main className="flex-1 flex flex-col sm:flex-row relative">
+      {/* Main Split Screen: Two massive tappable halves (Supports Portrait & Landscape on Neo 10) */}
+      <main className="flex-1 flex flex-col landscape:flex-row sm:flex-row relative">
         {/* Side A Half */}
         <button
           type="button"
@@ -287,7 +289,7 @@ export const AppleScoringScreen: React.FC = () => {
         </button>
 
         {/* Quiet Subtle Divider */}
-        <div className="h-px sm:h-auto sm:w-px bg-black/5 dark:bg-white/10 shrink-0 relative flex items-center justify-center">
+        <div className="h-px sm:h-auto sm:w-px landscape:h-auto landscape:w-px bg-black/5 dark:bg-white/10 shrink-0 relative flex items-center justify-center">
           <div className="absolute bg-white dark:bg-zinc-900 px-3 py-1 rounded-full border border-black/5 dark:border-white/10 text-[10px] font-mono font-medium text-slate-400 dark:text-zinc-500 shadow-xs">
             VS
           </div>
@@ -355,7 +357,7 @@ export const AppleScoringScreen: React.FC = () => {
       </AnimatePresence>
 
       {/* Quiet Bottom Controls */}
-      <footer className="px-6 py-4 border-t border-black/5 dark:border-white/10 flex items-center justify-between shrink-0 bg-white dark:bg-black">
+      <footer className="px-6 pt-3 pb-[max(env(safe-area-inset-bottom,0px),16px)] border-t border-black/5 dark:border-white/10 flex items-center justify-between shrink-0 bg-white dark:bg-black">
         {/* Left: Court info */}
         <div className="text-xs text-slate-400 dark:text-zinc-500 font-medium">
           {serveState?.serviceCourt ? `${serveState.serviceCourt.toUpperCase()} court` : ''}
@@ -365,7 +367,7 @@ export const AppleScoringScreen: React.FC = () => {
         <button
           onClick={handleUndo}
           disabled={events.length === 0}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 hover:bg-slate-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none transition-colors shadow-xs"
+          className="flex items-center gap-1.5 px-5 py-2.5 min-h-[48px] touch-target-48 rounded-full text-xs font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 hover:bg-slate-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none transition-colors shadow-xs"
           aria-label="Undo last point"
         >
           <RotateCcw className="w-3.5 h-3.5" />

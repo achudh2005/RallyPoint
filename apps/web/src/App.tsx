@@ -12,6 +12,9 @@ import { OnboardingSheet } from './components/onboarding/OnboardingSheet.js';
 import { ConfettiCelebration } from './components/effects/ConfettiCelebration.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Moon, Sun, Type } from 'lucide-react';
+import { nativeStatusBar } from './mobile/statusBar.js';
+import { initNativeBackButton } from './mobile/backButton.js';
+import { FuntouchBatteryModal } from './components/mobile/FuntouchBatteryModal.js';
 
 export const AppContent: React.FC = () => {
   const {
@@ -22,10 +25,25 @@ export const AppContent: React.FC = () => {
     toggleTheme,
     toggleLargeText,
     resetMatch,
+    resumeLastMatch,
   } = useMatchStore();
 
   const [activeTab, setActiveTab] = useState<MainTab>('play');
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showExitToast, setShowExitToast] = useState(false);
+
+  // Resume active match on launch (Crash & Kill Recovery)
+  useEffect(() => {
+    resumeLastMatch();
+  }, [resumeLastMatch]);
+
+  // Hardware Back Button & Double-Back to Exit on Android
+  useEffect(() => {
+    initNativeBackButton(() => {
+      setShowExitToast(true);
+      setTimeout(() => setShowExitToast(false), 2000);
+    });
+  }, []);
 
   useEffect(() => {
     try {
@@ -48,8 +66,10 @@ export const AppContent: React.FC = () => {
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      nativeStatusBar.setDark();
     } else {
       document.documentElement.classList.remove('dark');
+      nativeStatusBar.setLight();
     }
   }, [theme]);
 
@@ -156,6 +176,16 @@ export const AppContent: React.FC = () => {
           isOpen={showOnboarding}
           onComplete={handleCompleteOnboarding}
         />
+
+        {/* Funtouch OS / OriginOS Background Activity Guide */}
+        <FuntouchBatteryModal />
+
+        {/* Android Double-Back to Exit Toast Notice */}
+        {showExitToast && (
+          <div className="fixed bottom-20 inset-x-0 mx-auto w-fit z-50 px-4 py-2 bg-neutral-900/90 text-white text-xs font-medium rounded-full shadow-lg border border-white/10 backdrop-blur-md animate-fade-in">
+            Press back again to exit RallyPoint
+          </div>
+        )}
 
         {/* ARIA Announcement Region */}
         <div aria-live="polite" className="sr-only">

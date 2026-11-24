@@ -10,6 +10,8 @@ import {
 import type { MatchState, PointEvent } from '@rallypoint/engine';
 import { getStats } from '@rallypoint/engine';
 import { Share2, ListChecks, Check } from 'lucide-react';
+import { nativeShare } from '../../mobile/nativeShare.js';
+import { registerBackHandler } from '../../mobile/backButton.js';
 
 export interface AppleMatchSummarySheetProps {
   state: MatchState;
@@ -22,9 +24,24 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
   state,
   onDone,
   onClose,
+  isOpen = false,
 }) => {
   const [showPointDetails, setShowPointDetails] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const handleFinish = () => {
+    Haptics.selection();
+    if (onClose) onClose();
+    if (onDone) onDone();
+  };
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    return registerBackHandler(() => {
+      handleFinish();
+      return true;
+    });
+  }, [isOpen]);
 
   const { config, games, winnerSide, history } = state;
   const stats = getStats(history, config);
@@ -45,26 +62,21 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
   const totalPoints = history.filter((e) => e.type === 'POINT').length;
   const maxStreak = Math.max(stats.longestStreak.sideA, stats.longestStreak.sideB);
 
-  const handleShare = () => {
+  const handleShare = async () => {
     Haptics.selection();
     const scoresStr = gameBreakdowns
       .map((g) => `${g.scoreA}-${g.scoreB}`)
       .join(', ');
     const text = `🏸 Match Result: ${winner} defeated ${loser} (${scoresStr}) on RallyPoint!`;
 
-    if (navigator.share) {
-      navigator.share({ title: 'RallyPoint Match Result', text }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    const shared = await nativeShare.shareText('RallyPoint Match Result', text);
+    if (!shared) {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     }
-  };
-
-  const handleFinish = () => {
-    Haptics.selection();
-    if (onClose) onClose();
-    if (onDone) onDone();
   };
 
   const pointEvents = history.filter((e): e is PointEvent => e.type === 'POINT');
