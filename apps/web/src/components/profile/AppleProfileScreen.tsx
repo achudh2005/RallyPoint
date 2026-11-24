@@ -37,7 +37,18 @@ import { Sparkles } from 'lucide-react';
 
 export const AppleProfileScreen: React.FC = () => {
   const { accent, setAccent } = useTheme();
-  const { theme, toggleTheme, largeTextMode, toggleLargeText } = useMatchStore();
+  const {
+    theme,
+    toggleTheme,
+    largeTextMode,
+    toggleLargeText,
+    showPlayerActionButtons,
+    setShowPlayerActionButtons,
+    playerActionButtonLabels,
+    setPlayerActionButtonLabels,
+    playerActionButtonLayout,
+    setPlayerActionButtonLayout,
+  } = useMatchStore();
   const { activeSeason, setActiveSeason, recalculateLiveRankings, matches } =
     useRankingStore();
 
@@ -217,6 +228,85 @@ export const AppleProfileScreen: React.FC = () => {
                     toggleLargeText();
                   }}
                 />
+              }
+            />
+          </GroupedSection>
+        </GroupedList>
+
+        {/* Scoring & Player Action Buttons Group */}
+        <GroupedList>
+          <GroupedSection header="Scoring Controls">
+            <GroupedRow
+              title="Show Player Action Buttons"
+              subtitle="Show individual POINT & DROP buttons for all players"
+              leading={<Sliders className="w-5 h-5 text-emerald-500" />}
+              trailing={
+                <Toggle
+                  checked={showPlayerActionButtons}
+                  onChange={(val) => {
+                    Haptics.selection();
+                    setShowPlayerActionButtons(val);
+                  }}
+                />
+              }
+            />
+
+            <GroupedRow
+              title="Button Labels"
+              subtitle="Terminology displayed on scoring buttons"
+              leading={<Type className="w-5 h-5 text-blue-500" />}
+              trailing={
+                <div className="flex gap-1">
+                  {[
+                    { id: 'POINT_DROP', label: 'POINT / DROP' },
+                    { id: 'WINNER_ERROR', label: 'WIN / ERR' },
+                    { id: 'PLUS_MINUS', label: '+1 / -1' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        Haptics.selection();
+                        setPlayerActionButtonLabels(opt.id as any);
+                      }}
+                      className={`px-2 py-1 text-xs rounded-lg font-bold transition-colors ${
+                        playerActionButtonLabels === opt.id
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-black/5 dark:bg-white/10 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
+
+            <GroupedRow
+              title="Button Layout"
+              subtitle="Touch target sizing (64dp comfortable vs 52dp compact)"
+              leading={<Sliders className="w-5 h-5 text-indigo-500" />}
+              trailing={
+                <div className="flex gap-1">
+                  {[
+                    { id: 'comfortable', label: 'Comfortable' },
+                    { id: 'compact', label: 'Compact' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        Haptics.selection();
+                        setPlayerActionButtonLayout(opt.id as any);
+                      }}
+                      className={`px-2.5 py-1 text-xs rounded-lg font-bold transition-colors ${
+                        playerActionButtonLayout === opt.id
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-black/5 dark:bg-white/10 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               }
             />
           </GroupedSection>
