@@ -16,6 +16,7 @@ export type RallyEndType =
 
 export type EventType =
   | 'POINT'
+  | 'PLAYER_ACTION'
   | 'UNDO'
   | 'GAME_END'
   | 'MATCH_END'
@@ -101,6 +102,18 @@ export interface PointEvent extends BaseEvent {
   gameNumber?: number;
 }
 
+export interface PlayerActionEvent extends BaseEvent {
+  type: 'PLAYER_ACTION';
+  side: Side;
+  action: 'POINT' | 'DROP';
+  playerId: string;
+  resultingWinnerSide: Side;
+  isPoint?: boolean;
+  isSideOut?: boolean;
+  shotType?: string;
+  rallyEndType?: RallyEndType;
+}
+
 export interface UndoEvent extends BaseEvent {
   type: 'UNDO';
 }
@@ -145,6 +158,7 @@ export interface IntervalEvent extends BaseEvent {
 
 export type MatchEvent =
   | PointEvent
+  | PlayerActionEvent
   | UndoEvent
   | GameEndEvent
   | MatchEndEvent

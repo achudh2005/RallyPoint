@@ -158,13 +158,15 @@ export function applyEvent(state: MatchState, event: MatchEvent): MatchState {
     };
   }
 
-  if (event.type === 'POINT' || event.type === 'SERVE_FAULT') {
+  if (event.type === 'POINT' || event.type === 'SERVE_FAULT' || event.type === 'PLAYER_ACTION') {
     const winningSide: Side =
       event.type === 'POINT'
         ? event.side
-        : event.faultySide === 'A'
-          ? 'B'
-          : 'A';
+        : event.type === 'PLAYER_ACTION'
+          ? event.resultingWinnerSide
+          : event.faultySide === 'A'
+            ? 'B'
+            : 'A';
 
     let scoreA = state.currentScoreA;
     let scoreB = state.currentScoreB;

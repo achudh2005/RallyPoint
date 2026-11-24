@@ -15,6 +15,9 @@ import {
   CourtPosition,
   ShotType,
   RallyEndResult,
+  PlayerActionEvent,
+  PlayerActionType,
+  PlayerMatchActionStats,
 } from './types.js';
 
 export function createMatch(config: MatchConfig): MatchState {
@@ -60,6 +63,26 @@ export function createMatch(config: MatchConfig): MatchState {
   const receivingPlayerId =
     servingSide === 'A' ? sideBCourt.rightPlayerId : sideACourt.rightPlayerId;
 
+  const playerStats: Record<string, PlayerMatchActionStats> = {};
+  const initStats = (pId: string) => {
+    playerStats[pId] = {
+      playerId: pId,
+      pointsWon: 0,
+      drops: 0,
+      netContribution: 0,
+      pointShareWithinTeam: 0,
+      dropShareWithinTeam: 0,
+      currentPointStreak: 0,
+      bestPointStreak: 0,
+      servicePointsWon: 0,
+      sideOutsCaused: 0,
+    };
+  };
+  initStats(config.sideA.player1.id);
+  if (config.sideA.player2) initStats(config.sideA.player2.id);
+  initStats(config.sideB.player1.id);
+  if (config.sideB.player2) initStats(config.sideB.player2.id);
+
   return {
     config,
     formatConfig,
@@ -79,6 +102,9 @@ export function createMatch(config: MatchConfig): MatchState {
     sidesSwappedInDecidingGame: false,
     pendingSettingChoice: null,
     events: [],
+    actionHistory: [],
+    playerStats,
+    unassignedPoints: { sideA: 0, sideB: 0 },
   };
 }
 
@@ -464,13 +490,17 @@ export function undo(state: MatchState): MatchState {
   // If the last event is MATCH_END / GAME_END, we need to roll back to the state before the point
   const allEvents = [...state.events];
 
-  // Pop events until we have popped a RALLY_WON or SETTING_CHOICE
-  let poppedRallyOrSetting = false;
-  while (allEvents.length > 0 && !poppedRallyOrSetting) {
+  // Pop events until we have popped a RALLY_WON, SETTING_CHOICE, or PLAYER_ACTION
+  let poppedPrimary = false;
+  while (allEvents.length > 0 && !poppedPrimary) {
     const last = allEvents[allEvents.length - 1]!;
     allEvents.pop();
-    if (last.type === 'RALLY_WON' || last.type === 'SETTING_CHOICE') {
-      poppedRallyOrSetting = true;
+    if (
+      last.type === 'RALLY_WON' ||
+      last.type === 'SETTING_CHOICE' ||
+      last.type === 'PLAYER_ACTION'
+    ) {
+      poppedPrimary = true;
     }
   }
 
@@ -485,6 +515,17 @@ export function replay(events: ScoringEvent[], config: MatchConfig): MatchState 
     if (ev.type === 'SETTING_CHOICE') {
       const res = chooseSetting(current, ev.setGame);
       current = res.state;
+    } else if (ev.type === 'PLAYER_ACTION') {
+      const res = recordPlayerAction(current, {
+        clientUuid: ev.clientUuid,
+        playerId: ev.playerId,
+        action: ev.action,
+        deviceId: ev.deviceId,
+        shotType: ev.shotType,
+        rallyEndResult: ev.rallyEndResult,
+        occurredAt: ev.occurredAt,
+      });
+      current = res.state;
     } else if (ev.type === 'RALLY_WON') {
       const res = recordRally(current, {
         winningSide: ev.winningSide,
@@ -494,10 +535,248 @@ export function replay(events: ScoringEvent[], config: MatchConfig): MatchState 
         errorPlayerId: ev.errorPlayerId,
       });
       current = res.state;
+      if (!ev.pointWinnerPlayerId) {
+        if (ev.winningSide === 'A') {
+          current.unassignedPoints.sideA += 1;
+        } else {
+          current.unassignedPoints.sideB += 1;
+        }
+      }
     }
   }
 
   return current;
+}
+
+export interface PlayerActionInput {
+  clientUuid?: string;
+  playerId: string;
+  action: PlayerActionType;
+  deviceId?: string;
+  shotType?: ShotType;
+  rallyEndResult?: RallyEndResult;
+  occurredAt?: string;
+}
+
+export function recordPlayerAction(
+  state: MatchState,
+  input: PlayerActionInput
+): { state: MatchState; events: ScoringEvent[]; actionEvent: PlayerActionEvent } {
+  if (state.status !== 'IN_PROGRESS') {
+    throw new Error('Cannot record player action: Match is not in progress');
+  }
+
+  // Identify player side
+  let playerSide: 'A' | 'B' | null = null;
+  const { sideA, sideB } = state.config;
+  if (sideA.player1.id === input.playerId || sideA.player2?.id === input.playerId) {
+    playerSide = 'A';
+  } else if (sideB.player1.id === input.playerId || sideB.player2?.id === input.playerId) {
+    playerSide = 'B';
+  }
+
+  if (!playerSide) {
+    throw new Error(`Player ${input.playerId} is not playing in match ${state.config.id}`);
+  }
+
+  const opposingSide: 'A' | 'B' = playerSide === 'A' ? 'B' : 'A';
+  const winningSide: 'A' | 'B' = input.action === 'POINT' ? playerSide : opposingSide;
+
+  const serverAtRally = state.servingPlayerId;
+  const servingSideAtRally = state.servingSide;
+
+  // Execute underlying rally logic
+  const rallyResult = recordRally(state, {
+    winningSide,
+    pointWinnerPlayerId: input.action === 'POINT' ? input.playerId : undefined,
+    errorPlayerId: input.action === 'DROP' ? input.playerId : undefined,
+    shotType: input.shotType,
+    rallyEndResult: input.rallyEndResult,
+  });
+
+  const isPoint = rallyResult.events.some((e) => e.type === 'POINT_SCORED');
+  const isSideOut = rallyResult.events.some((e) => e.type === 'SIDE_OUT');
+
+  const nextSeq = state.events.length + 1;
+  const uuid = input.clientUuid || `act_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+  const actionEvent: PlayerActionEvent = {
+    id: uuid,
+    clientUuid: uuid,
+    type: 'PLAYER_ACTION',
+    sequenceNumber: nextSeq,
+    timestamp: Date.now(),
+    matchId: state.config.id,
+    gameNumber: state.currentGameNumber,
+    playerId: input.playerId,
+    side: playerSide,
+    action: input.action,
+    resultingWinnerSide: winningSide,
+    serverAtRally,
+    servingSideAtRally,
+    isPoint,
+    isSideOut,
+    scoringFormat: state.formatConfig.format,
+    occurredAt: input.occurredAt || new Date().toISOString(),
+    deviceId: input.deviceId,
+    shotType: input.shotType,
+    rallyEndResult: input.rallyEndResult,
+  };
+
+  const nextState = cloneMatchState(rallyResult.state);
+
+  // Initialize or fetch stats
+  if (!nextState.playerStats[input.playerId]) {
+    nextState.playerStats[input.playerId] = {
+      playerId: input.playerId,
+      pointsWon: 0,
+      drops: 0,
+      netContribution: 0,
+      pointShareWithinTeam: 0,
+      dropShareWithinTeam: 0,
+      currentPointStreak: 0,
+      bestPointStreak: 0,
+      servicePointsWon: 0,
+      sideOutsCaused: 0,
+    };
+  }
+
+  const pStats = nextState.playerStats[input.playerId]!;
+
+  if (input.action === 'POINT') {
+    pStats.pointsWon += 1;
+    pStats.currentPointStreak += 1;
+    if (pStats.currentPointStreak > pStats.bestPointStreak) {
+      pStats.bestPointStreak = pStats.currentPointStreak;
+    }
+    if (state.formatConfig.scoringType === 'SERVICE') {
+      if (playerSide === servingSideAtRally && isPoint) {
+        pStats.servicePointsWon += 1;
+      }
+      if (playerSide !== servingSideAtRally && isSideOut) {
+        pStats.sideOutsCaused += 1;
+      }
+    }
+  } else {
+    pStats.drops += 1;
+    pStats.currentPointStreak = 0;
+  }
+
+  pStats.netContribution = pStats.pointsWon - pStats.drops;
+
+  updateTeamStatsShare(nextState);
+
+  // Replace the plain RallyWonEvent with actionEvent
+  const otherNewEvents = rallyResult.events.filter((e) => e.type !== 'RALLY_WON');
+  nextState.events = [...state.events, actionEvent, ...otherNewEvents];
+  nextState.actionHistory.push(actionEvent);
+
+  return {
+    state: nextState,
+    events: [actionEvent, ...otherNewEvents],
+    actionEvent,
+  };
+}
+
+export function recordUnattributedPoint(
+  state: MatchState,
+  side: 'A' | 'B'
+): { state: MatchState; events: ScoringEvent[] } {
+  if (state.status !== 'IN_PROGRESS') {
+    throw new Error('Cannot score point: Match is not in progress');
+  }
+
+  const res = recordRally(state, { winningSide: side });
+  const nextState = cloneMatchState(res.state);
+  if (side === 'A') {
+    nextState.unassignedPoints.sideA += 1;
+  } else {
+    nextState.unassignedPoints.sideB += 1;
+  }
+
+  return {
+    state: nextState,
+    events: res.events,
+  };
+}
+
+export function undoLastAction(state: MatchState): {
+  state: MatchState;
+  undoneEvent: ScoringEvent | null;
+} {
+  if (state.events.length === 0) {
+    return { state, undoneEvent: null };
+  }
+
+  const allEvents = [...state.events];
+  let undoneEvent: ScoringEvent | null = null;
+  while (allEvents.length > 0 && !undoneEvent) {
+    const last = allEvents.pop()!;
+    if (
+      last.type === 'RALLY_WON' ||
+      last.type === 'SETTING_CHOICE' ||
+      last.type === 'PLAYER_ACTION'
+    ) {
+      undoneEvent = last;
+    }
+  }
+
+  const replayed = replay(allEvents, state.config);
+  return {
+    state: replayed,
+    undoneEvent,
+  };
+}
+
+export function editAction(
+  state: MatchState,
+  eventId: string,
+  updates: { playerId?: string; action?: PlayerActionType }
+): { state: MatchState; success: boolean } {
+  const idx = state.events.findIndex(
+    (e) => e.id === eventId || ('clientUuid' in e && (e as PlayerActionEvent).clientUuid === eventId)
+  );
+  if (idx === -1) {
+    return { state, success: false };
+  }
+
+  const ev = state.events[idx]!;
+  if (ev.type !== 'PLAYER_ACTION') {
+    return { state, success: false };
+  }
+
+  const updatedAction: PlayerActionEvent = {
+    ...ev,
+    playerId: updates.playerId || ev.playerId,
+    action: updates.action || ev.action,
+  };
+
+  const newEvents = [...state.events];
+  newEvents[idx] = updatedAction;
+
+  const replayed = replay(newEvents, state.config);
+  return { state: replayed, success: true };
+}
+
+function updateTeamStatsShare(state: MatchState): void {
+  const calcSide = (p1Id: string, p2Id?: string) => {
+    const s1 = state.playerStats[p1Id];
+    const s2 = p2Id ? state.playerStats[p2Id] : undefined;
+    if (!s1) return;
+    const totalPoints = s1.pointsWon + (s2 ? s2.pointsWon : 0);
+    const totalDrops = s1.drops + (s2 ? s2.drops : 0);
+
+    s1.pointShareWithinTeam = totalPoints > 0 ? Math.round((s1.pointsWon / totalPoints) * 100) : 0;
+    s1.dropShareWithinTeam = totalDrops > 0 ? Math.round((s1.drops / totalDrops) * 100) : 0;
+
+    if (s2) {
+      s2.pointShareWithinTeam = totalPoints > 0 ? Math.round((s2.pointsWon / totalPoints) * 100) : 0;
+      s2.dropShareWithinTeam = totalDrops > 0 ? Math.round((s2.drops / totalDrops) * 100) : 0;
+    }
+  };
+
+  calcSide(state.config.sideA.player1.id, state.config.sideA.player2?.id);
+  calcSide(state.config.sideB.player1.id, state.config.sideB.player2?.id);
 }
 
 function checkGameWon(game: GameState, format: FormatConfig): 'A' | 'B' | null {
@@ -547,5 +826,10 @@ function cloneMatchState(s: MatchState): MatchState {
     sideBCourt: { ...s.sideBCourt },
     pendingSettingChoice: s.pendingSettingChoice ? { ...s.pendingSettingChoice } : null,
     events: [...s.events],
+    actionHistory: [...(s.actionHistory || [])],
+    playerStats: Object.fromEntries(
+      Object.entries(s.playerStats || {}).map(([k, v]) => [k, { ...v }])
+    ),
+    unassignedPoints: { ...(s.unassignedPoints || { sideA: 0, sideB: 0 }) },
   };
 }

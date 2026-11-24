@@ -131,6 +131,7 @@ export interface MatchConfig {
 export type ScoringEventType =
   | 'RALLY_WON'
   | 'POINT_SCORED'
+  | 'PLAYER_ACTION'
   | 'SIDE_OUT'
   | 'SETTING_CHOICE'
   | 'SERVICE_FAULT'
@@ -166,6 +167,42 @@ export interface PointScoredEvent extends BaseScoringEvent {
   scoreA: number;
   scoreB: number;
   scorerPlayerId?: string;
+}
+
+export type PlayerActionType = 'POINT' | 'DROP';
+
+export interface PlayerActionEvent extends BaseScoringEvent {
+  type: 'PLAYER_ACTION';
+  clientUuid: string;
+  matchId: string;
+  gameNumber: number;
+  sequenceNumber: number;
+  playerId: string;
+  side: 'A' | 'B';
+  action: PlayerActionType;
+  resultingWinnerSide: 'A' | 'B';
+  serverAtRally: string;
+  servingSideAtRally: 'A' | 'B';
+  isPoint: boolean;
+  isSideOut: boolean;
+  scoringFormat: ScoringFormat;
+  occurredAt: string;
+  deviceId?: string;
+  shotType?: ShotType;
+  rallyEndResult?: RallyEndResult;
+}
+
+export interface PlayerMatchActionStats {
+  playerId: string;
+  pointsWon: number;
+  drops: number;
+  netContribution: number;
+  pointShareWithinTeam: number;
+  dropShareWithinTeam: number;
+  currentPointStreak: number;
+  bestPointStreak: number;
+  servicePointsWon: number;
+  sideOutsCaused: number;
 }
 
 export interface SideOutEvent extends BaseScoringEvent {
@@ -226,6 +263,7 @@ export interface WalkoverEvent extends BaseScoringEvent {
 export type ScoringEvent =
   | RallyWonEvent
   | PointScoredEvent
+  | PlayerActionEvent
   | SideOutEvent
   | SettingChoiceEvent
   | ServiceFaultEvent
@@ -287,4 +325,7 @@ export interface MatchState {
   } | null;
 
   events: ScoringEvent[];
+  actionHistory: PlayerActionEvent[];
+  playerStats: Record<string, PlayerMatchActionStats>;
+  unassignedPoints: { sideA: number; sideB: number };
 }
