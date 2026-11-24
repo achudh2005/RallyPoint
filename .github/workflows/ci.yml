@@ -7,9 +7,24 @@ on:
     branches: [main]
 
 jobs:
-  quality-gate:
-    name: Lint, Test, Typecheck & Build
+  database-gate:
+    name: Postgres 16 Migration, Drift & Test Gate
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rallypoint
+          POSTGRES_PASSWORD: rallypoint_secret
+          POSTGRES_DB: rallypoint_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -24,8 +39,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma Client
-        run: cd apps/api && npx prisma generate
+      - name: Generate Prisma Clients
+        run: |
+          npm run --workspace=@rallypoint/db prisma:generate
+          cd apps/api && npx prisma generate
+
+      - name: Run Prisma Schema Migrations on Clean DB
+        env:
+          DATABASE_URL: postgres://rallypoint:rallypoint_secret@localhost:5432/rallypoint_db
+        run: |
+          cd packages/db && npx prisma db push --skip-generate
+
+      - name: Verify Prisma Schema Drift
+        env:
+          DATABASE_URL: postgres://rallypoint:rallypoint_secret@localhost:5432/rallypoint_db
+        run: |
+          cd packages/db && npx prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code
+
+      - name: Apply SQL Procedures, Triggers & Partitioning
+        env:
+          PGPASSWORD: rallypoint_secret
+        run: |
+          psql -h localhost -U rallypoint -d rallypoint_db -f packages/db/src/partitioning.sql
+          psql -h localhost -U rallypoint -d rallypoint_db -f packages/db/src/auditLog.sql
+          psql -h localhost -U rallypoint -d rallypoint_db -f packages/db/src/rlsPolicies.sql
+          psql -h localhost -U rallypoint -d rallypoint_db -f packages/db/src/analyticsRollups.sql
+          psql -h localhost -U rallypoint -d rallypoint_db -f packages/db/src/rankingMaterializedViews.sql
+
+      - name: Seed Master Data & Community Rankings
+        env:
+          DATABASE_URL: postgres://rallypoint:rallypoint_secret@localhost:5432/rallypoint_db
+        run: |
+          npm run seed:community
 
       - name: Typecheck
         run: npm run typecheck
@@ -33,7 +78,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run Unit & Integration Tests
+      - name: Run All Tests (Database, Engine, Web, API)
+        env:
+          DATABASE_URL: postgres://rallypoint:rallypoint_secret@localhost:5432/rallypoint_db
         run: npm run test
 
       - name: Build Monorepo Workspaces

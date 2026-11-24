@@ -7,6 +7,8 @@ import {
   TeamStats,
   RankingMatch,
   RankingMatchEvent,
+  ScoringSystemFilter,
+  DEFAULT_RANKING_CONFIG,
   rebuildRankings,
 } from '@rallypoint/ranking';
 
@@ -32,6 +34,7 @@ interface RankingStore {
   activeSeason: string;
   taggingMode: TaggingMode;
   selectedCategory: RankingCategory;
+  scoringSystemFilter: ScoringSystemFilter;
   communityPlayers: CommunityPlayer[];
   recentPlayerIds: string[];
   matches: RankingMatch[];
@@ -42,6 +45,7 @@ interface RankingStore {
   // Actions
   setTaggingMode: (mode: TaggingMode) => void;
   setSelectedCategory: (cat: RankingCategory) => void;
+  setScoringSystemFilter: (filter: ScoringSystemFilter) => void;
   setActiveSeason: (season: string) => void;
   addCommunityPlayer: (name: string) => CommunityPlayer;
   autoSuggestDoublesPairs: (playerIds: string[]) => {
@@ -116,6 +120,7 @@ export const useRankingStore = create<RankingStore>((set, get) => ({
   activeSeason: 'Spring 2026 Community League',
   taggingMode: 'QUICK',
   selectedCategory: 'OVERALL',
+  scoringSystemFilter: 'ALL',
   communityPlayers: INITIAL_COMMUNITY_PLAYERS,
   recentPlayerIds: ['cp-viktor', 'cp-lee', 'cp-momota', 'cp-shi'],
   matches: INITIAL_MATCHES,
@@ -125,6 +130,10 @@ export const useRankingStore = create<RankingStore>((set, get) => ({
 
   setTaggingMode: (mode) => set({ taggingMode: mode }),
   setSelectedCategory: (cat) => set({ selectedCategory: cat }),
+  setScoringSystemFilter: (filter) => {
+    set({ scoringSystemFilter: filter });
+    get().recalculateLiveRankings();
+  },
   setActiveSeason: (season) => set({ activeSeason: season }),
 
   addCommunityPlayer: (name) => {
@@ -172,8 +181,14 @@ export const useRankingStore = create<RankingStore>((set, get) => ({
   },
 
   recalculateLiveRankings: () => {
-    const { matches, previousPlayerRanks } = get();
-    const result = rebuildRankings(matches, { OVERALL: previousPlayerRanks });
+    const { matches, previousPlayerRanks, scoringSystemFilter } = get();
+    const result = rebuildRankings(
+      matches,
+      { OVERALL: previousPlayerRanks },
+      {},
+      DEFAULT_RANKING_CONFIG,
+      scoringSystemFilter
+    );
 
     // Update previousPlayerRanks for next movement delta
     const currentRanks: Record<string, number> = {};

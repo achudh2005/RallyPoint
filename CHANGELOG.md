@@ -2,6 +2,28 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Database Phase 4 & db-v1.0.0] - Production Hardening, Operations, Repository Layer & CI
+### Added
+- **Typed Repository & Service Layer (`@rallypoint/db`)**:
+  - `getPlayerProfile`, `searchPlayers`, `getMatchHistory`, `getPlayerStats`, `getHeadToHead`, `getLeaderboard`, and `ingestEvents`.
+  - Full Zod runtime validation on all inputs and cursor-based pagination for $O(1)$ scalable queries.
+  - Bidirectional head-to-head resolution handling arbitrary player pairing orders.
+- **GDPR Privacy & Audit Logging**:
+  - `anonymizePlayer(playerId)`: Scrubs personal fields (name, email, phone, bio, photo) while preserving match history, sequence order, and analytics.
+  - `exportPlayerData(playerId)`: Compiles complete GDPR-compliant JSON data portability dossiers.
+  - Master data CDC audit logging table `audit_logs` and automated database trigger `trg_audit_log_capture` tracking all INSERT, UPDATE, DELETE actions.
+- **Performance & Benchmark Suite**:
+  - Audited 10 critical EXPLAIN ANALYZE queries with trigram fuzzy search and partial index optimization.
+  - Synthetic streaming load test generator (`packages/db/src/loadTestSeed.ts`) capable of generating 100k players and 5M events.
+- **Complete Database Documentation**:
+  - Entity Relationship Diagram in Mermaid (`/docs/erd.md`).
+  - Comprehensive Data Dictionary detailing all tables, types, constraints, and PII markers (`/docs/data-dictionary.md`).
+  - Migration and Operations Guide covering provisioning, partition lifecycle, and zero-downtime rollouts (`/docs/migration-guide.md`).
+- **Enhanced Continuous Integration (`.github/workflows/ci.yml`)**:
+  - Automated PostgreSQL 16 container service.
+  - Clean database migrations and zero schema drift check via `prisma migrate diff`.
+  - Automatic seed verification and multi-package test execution.
+
 ## [Scoring Systems & Ranking Phase 2] - Live Marking UI While Playing (apps/web)
 ### Added
 - **Match Setup with Scoring System Picker (`CommunityMatchSetup.tsx`)**:

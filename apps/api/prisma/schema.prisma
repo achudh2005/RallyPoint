@@ -543,3 +543,18 @@ model RankingConfig {
 
   @@map("ranking_configs")
 }
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tableName String   @map("table_name")
+  rowId     String   @map("row_id")
+  action    String   // INSERT, UPDATE, DELETE
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  changedBy String   @map("changed_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tableName, rowId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

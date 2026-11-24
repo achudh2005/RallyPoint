@@ -262,6 +262,15 @@ A dedicated pure TypeScript ranking engine and live marking interface for local 
     - Setting Choice Modal on setting thresholds (13-all / 14-all, 9-all / 10-all) prompting the eligible side to set or play on.
     - 3-second auto-dismiss Quick-Mark detail bar for fast shot attribution and full undo across side-outs and points.
 
+  - **Database Architecture & Operations (Phases 1 - 4 - Production Grade)**:
+    - **Master Data Layer (3NF)**: Users, Players (with pg_trgm fuzzy search & FTS), Clubs, Teams, Members, Venues, Courts, Tournaments, Seasons.
+    - **Append-Only Event Layer**: Declarative monthly partitioned `match_events` table on `occurred_at`, strictly blocking UPDATE/DELETE via database triggers, with client-UUID idempotent ingestion.
+    - **Continuous Derived Layer**: Recomputable stats (`player_career_stats`, `head_to_head_stats`, `player_form_trends`, `match_analytics_rollups`, `player_ranking_snapshots`), completely reconstructible via `npm run db:rebuild-stats`.
+    - **Data Safety, GDPR & Audit**: Automated change data capture (`audit_logs`), Row-Level Security (RLS) policies, GDPR personal data scrubbing (`anonymizePlayer`), and full JSON dossier export (`exportPlayerData`).
+    - **Repository & Service Layer (`packages/db`)**: Fully typed repository with Zod validation and cursor-based pagination on all list queries.
+    - **Database Documentation**: Detailed ERD in Mermaid ([/docs/erd.md](docs/erd.md)), comprehensive Data Dictionary ([/docs/data-dictionary.md](docs/data-dictionary.md)), and Migration Guide ([/docs/migration-guide.md](docs/migration-guide.md)).
+    - **Performance & Benchmarks**: 10 critical EXPLAIN ANALYZE queries audited, PgBouncer pooling config, and synthetic load generator for 100k players and 5M events.
+
 ---
 
 ## Getting Started

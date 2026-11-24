@@ -24,6 +24,8 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
     activeSeason,
     selectedCategory,
     setSelectedCategory,
+    scoringSystemFilter,
+    setScoringSystemFilter,
     playerLeaderboards,
   } = useRankingStore();
 
@@ -161,11 +163,16 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
       'Rank',
       'Player Name',
       'Matches Played',
+      'Format Split',
+      'Scoring System Filter',
+      'Ranking Points (RP)',
       'Headline Value',
       'Wins',
       'Losses',
       'Win Rate %',
       'Pt Diff',
+      'Service Holds',
+      'Side-Outs Won',
       'Smash Winners',
       'Drop Winners',
       'Unforced Errors',
@@ -174,11 +181,16 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
       e.rank,
       `"${e.name}"`,
       e.matchesPlayed,
+      `"${e.stats.matchesSplitFormatted || `R:${e.matchesPlayed} S:0`}"`,
+      `"${scoringSystemFilter}"`,
+      e.stats.rankingPoints || 0,
       e.headlineValue,
       e.stats.wins,
       e.stats.losses,
       e.stats.winRate,
       e.stats.pointDifference,
+      e.stats.serviceHolds || 0,
+      e.stats.sideOutsWon || 0,
       e.stats.smashWinners,
       e.stats.dropShotWinners,
       e.stats.unforcedErrors,
@@ -253,6 +265,43 @@ export const RankingsDashboard: React.FC<{ currentUserId?: string }> = ({
               className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors ${
                 timeFilter === id
                   ? 'bg-emerald-500 text-gray-950 font-black shadow'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Global Scoring System Filter (3-Way Pill Toggle) */}
+      <div className="bg-gray-900 border border-gray-800 p-2.5 rounded-3xl shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div className="flex items-center gap-2 pl-2">
+          <span className="text-base">🏸</span>
+          <div>
+            <span className="font-extrabold text-xs text-white block">Scoring System View</span>
+            <span className="text-[10px] text-gray-400">
+              {scoringSystemFilter === 'ALL' && 'Combined standings across all match formats'}
+              {scoringSystemFilter === 'RALLY' && 'Showing matches played under Rally 21 / 15 / 11'}
+              {scoringSystemFilter === 'SERVICE' && 'Showing matches played under Service 15 / 11'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex bg-gray-800/80 p-1 rounded-2xl border border-gray-700/80 gap-1 w-full sm:w-auto">
+          {(
+            [
+              { id: 'ALL', label: 'All Systems' },
+              { id: 'RALLY', label: 'Rally Point' },
+              { id: 'SERVICE', label: 'Service Point' },
+            ] as const
+          ).map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setScoringSystemFilter(id)}
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                scoringSystemFilter === id
+                  ? 'bg-emerald-500 text-gray-950 font-black shadow-md'
                   : 'text-gray-400 hover:text-gray-200'
               }`}
             >

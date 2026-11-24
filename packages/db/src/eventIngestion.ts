@@ -14,7 +14,9 @@ export interface IngestibleMatchEvent {
     | 'RETIRE'
     | 'WALKOVER'
     | 'GAME_END'
-    | 'MATCH_END';
+    | 'MATCH_END'
+    | 'SIDE_OUT'
+    | 'SETTING_CHOICE';
   side?: 'A' | 'B' | null;
   rallyEndType?:
     | 'SMASH'
@@ -25,6 +27,10 @@ export interface IngestibleMatchEvent {
     | 'SERVICE_FAULT'
     | 'WINNER'
     | null;
+  shotType?: 'SMASH' | 'DROP' | 'NET' | 'CLEAR' | 'DRIVE' | 'LOB' | 'SERVE' | null;
+  rallyEndResult?: 'WINNER' | 'UNFORCED_ERROR' | 'FORCED_ERROR' | 'OUT' | 'NET_FAULT' | 'SERVICE_FAULT' | null;
+  pointWinnerPlayerId?: string | null;
+  errorPlayerId?: string | null;
   serverPlayerId?: string | null;
   payload?: Record<string, unknown> | null;
   occurredAt: Date | string;
@@ -83,6 +89,10 @@ export async function ingestMatchEvent(
       eventType: event.eventType as any,
       side: event.side as any,
       rallyEndType: event.rallyEndType as any,
+      shotType: event.shotType as any,
+      rallyEndResult: event.rallyEndResult as any,
+      pointWinnerPlayerId: event.pointWinnerPlayerId,
+      errorPlayerId: event.errorPlayerId,
       serverPlayerId: event.serverPlayerId,
       payload: (event.payload || {}) as unknown as Prisma.InputJsonValue,
       occurredAt: new Date(event.occurredAt),
