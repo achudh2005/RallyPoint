@@ -2,6 +2,41 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Android Phase 2] - Native Adaptation for iQOO Neo 10 & Android 15
+### Added
+- **Edge-to-Edge & Punch-hole Camera Display**:
+  - Implemented Android 15 edge-to-edge display drawing behind system status bar and navigation bar.
+  - Configured `LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES` in `MainActivity.java` for the iQOO Neo 10 punch-hole camera.
+  - Added CSS safe area variables and utility classes (`.safe-top`, `.safe-bottom`, `.safe-left`, `.safe-right`) in `index.css`.
+  - Added `viewport-fit=cover` in `index.html`.
+- **120Hz & 144Hz AMOLED Smoothness**:
+  - `MainActivity.java` dynamically requests the highest supported display refresh rate (120Hz / 144Hz) via `WindowManager.LayoutParams.preferredDisplayModeId`.
+  - Kept mobile animations strictly on the compositor (`transform` and `opacity` only).
+- **Live Scoring Screen Behavior**:
+  - Screen Keep-Awake during active matches via `@capacitor-community/keep-awake` (released on pause/game end).
+  - Unlocked landscape and portrait scoring view: automatically switches from vertical split to horizontal court view.
+  - Status bar style matched to theme with transparent edge-to-edge overlay.
+- **Hardware Back Button & Predictive Back Gestures**:
+  - Integrated `@capacitor/app` hardware back listener with LIFO modal/sheet stack management.
+  - Double-back within 2 seconds to exit with a non-intrusive on-screen notice.
+  - Enabled `android:enableOnBackInvokedCallback="true"` for Android 13+ predictive back gesture.
+- **Linear Motor Native Haptics**:
+  - Wired native `@capacitor/haptics` into `@rallypoint/ui` global delegate:
+    - Point scored: `ImpactStyle.Medium`
+    - Undo: `ImpactStyle.Light`
+    - Side change: `ImpactStyle.Heavy`
+    - Game end: `NotificationType.Warning`
+    - Match win: `NotificationType.Success`
+- **Funtouch OS / OriginOS Battery Guide**:
+  - Added `FuntouchBatteryModal` explaining background restrictions on Vivo/iQOO devices and how to grant unrestricted battery permissions.
+  - State persisted via `@capacitor/preferences` to prevent nagging.
+- **Mid-Match Crash & Kill Recovery**:
+  - Seamless auto-resumption from Dexie IndexedDB event log upon app launch if terminated mid-match.
+- **Native Share & File Export**:
+  - Match scorecard results and JSON event logs shared through the Android system share sheet via `@capacitor/share` and `@capacitor/filesystem`.
+- **Accessibility & Touch Targets**:
+  - Guaranteed 48dp minimum touch target size across navigation and scoring buttons.
+
 ## [Android Phase 1] - Capacitor Setup & Native Android Project Foundation
 ### Added
 - **Capacitor Mobile Architecture**:

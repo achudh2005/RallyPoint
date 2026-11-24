@@ -16,7 +16,17 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
 ## Android Mobile App (Capacitor)
 - **Application ID**: `com.rallypoint.app`
 - **Target OS**: Android 15 (`compileSdk 35`, `targetSdk 35`, `minSdk 26`)
+- **Target Device**: iQOO Neo 10 (Android 15, Funtouch OS / OriginOS, Snapdragon 8 Gen 3 class, 144Hz AMOLED)
 - **ABIs Supported**: `arm64-v8a`, `armeabi-v7a`
+- **Native Hardware Optimizations**:
+  - Edge-to-edge layout with punch-hole camera cutout handling (`shortEdges`)
+  - 120Hz & 144Hz display mode preference for ultra-fluid courtside scoring
+  - Linear vibration motor haptics (distinct impact intensities for points, undo, side change, and victory)
+  - Screen Keep-Awake during active rallies
+  - Android 13+ predictive back gesture & modal back navigation stack
+  - Funtouch OS battery optimization guide modal
+  - Event-sourced mid-match crash recovery from IndexedDB
+  - Android native share sheet integration for match results and event logs
 - **Cloud Build**: Built headlessly via GitHub Actions without requiring local Android Studio.
 - **Key Mobile Scripts**:
   - `npm run build:web` - Compiles TypeScript and builds the Vite production SPA
