@@ -13,6 +13,20 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
 
 ---
 
+## Player Action Buttons & Mobile Storage Architecture
+- **Per-Player Action Tracking (`PLAYER_ACTION`)**:
+  - Direct POINT and DROP buttons for every player on court (2 in singles, 4 in doubles).
+  - Automatically adheres to match scoring system (Rally Point vs Service Point).
+  - Computes player action metrics: points won, drops, net contribution (`pointsWon - drops`), intra-team point and drop share percentages, point streaks, and side-outs caused.
+  - Three new competitive leaderboards: Top Point Scorers, Most Drops, and Best Net Contribution.
+- **Unified Mobile Storage & Local-First Queue**:
+  - `IMobileStorage` interface with local SQLite on Android (`@capacitor-community/sqlite`) and IndexedDB fallback on web (`Dexie`).
+  - Every tap writes locally first and enqueues to an idempotent background sync queue with client UUIDs.
+  - Legacy IndexedDB auto-migration on launch.
+  - Fast undo and attribution correction with instant state recomputation.
+
+---
+
 ## Android Mobile App (Capacitor)
 - **Application ID**: `com.rallypoint.app`
 - **Target OS**: Android 15 (`compileSdk 35`, `targetSdk 35`, `minSdk 26`)

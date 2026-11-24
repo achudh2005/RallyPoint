@@ -2,6 +2,29 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Mobile Actions Phase 1] - Pure Action Engine, Mobile SQLite Storage & Batch Sync
+### Added
+- **`PLAYER_ACTION` Event Architecture (`@rallypoint/scoring-rules`, `@rallypoint/engine`)**:
+  - Added append-only `PLAYER_ACTION` domain event (`clientUuid`, `sequenceNumber`, `timestamp`, `matchId`, `gameNumber`, `playerId`, `side`, `action` (`POINT` | `DROP`), `resultingWinnerSide`, `serverAtRally`, `servingSideAtRally`, `isPoint`, `isSideOut`, `scoringFormat`, `occurredAt`, `deviceId`).
+  - Replaces plain rally won events for attributed rallies while guaranteeing 100% backward-compatible replay for legacy unattributed events.
+- **Player & Team Match Action Stats**:
+  - Added live `playerStats` tracking to `MatchState`: `pointsWon`, `drops`, `netContribution` (`pointsWon - drops`), `pointShareWithinTeam` (%), `dropShareWithinTeam` (%), `currentPointStreak`, `bestPointStreak`, `servicePointsWon`, and `sideOutsCaused`.
+  - Added `totalPointsWon`, `totalDrops`, and `netContribution` to `TeamStats`.
+  - Added `TOP_POINT_SCORERS`, `MOST_DROPS`, and `BEST_NET_CONTRIBUTION` ranking categories to `@rallypoint/ranking`.
+- **Dual Scoring Rules Resolution (`recordPlayerAction`)**:
+  - Service Point System: Server POINT = +1 & serve held; Receiver POINT = side-out (no score change, serve rotates); Server DROP = side-out; Receiver DROP = +1 to serving side.
+  - Rally Point System: Player POINT = +1 & serve held/won; Player DROP = +1 to opponent & opponent serves.
+- **Unattributed Points & Reversible History**:
+  - Added `recordUnattributedPoint(state, side)` with `unassignedPoints` counter for quick scorekeeping without immediate attribution.
+  - Added `undoLastAction(state)` and `editAction(state, eventId, updates)` with pure state replay.
+  - Added fast-check property-based tests proving replay determinism.
+- **Unified Mobile Storage & Offline Queue (`apps/web/src/db/storage.ts`)**:
+  - Created `IMobileStorage` interface supporting `@capacitor-community/sqlite` on Android and Dexie IndexedDB fallback on web.
+  - Every action writes locally first and enqueues to an idempotent offline sync queue.
+  - Added migration utility from legacy IndexedDB databases.
+- **API Batch Endpoint (`apps/api/src/routes/matchRoutes.ts`)**:
+  - Added `POST /matches/:id/events` accepting batches of `PLAYER_ACTION` events idempotently.
+
 ## [Android Phase 5] - Production Security Hardening, QA & v1.0.0 Release
 ### Added
 - **Network Security Configuration (`network_security_config.xml`)**:
