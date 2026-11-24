@@ -66,6 +66,13 @@ jobs:
           psql -h localhost -U rallypoint -d rallypoint_db -f packages/db/src/analyticsRollups.sql
           psql -h localhost -U rallypoint -d rallypoint_db -f packages/db/src/rankingMaterializedViews.sql
 
+      - name: Build Shared Packages
+        run: |
+          npm run --workspace=@rallypoint/engine build --if-present
+          npm run --workspace=@rallypoint/scoring-rules build --if-present
+          npm run --workspace=@rallypoint/ranking build --if-present
+          npm run --workspace=@rallypoint/ui build --if-present
+
       - name: Seed Master Data & Community Rankings
         env:
           DATABASE_URL: postgres://rallypoint:rallypoint_secret@localhost:5432/rallypoint_db

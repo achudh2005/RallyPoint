@@ -15,7 +15,23 @@ jobs:
     name: Build Native Android APKs (Cloud)
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rallypoint
+          POSTGRES_PASSWORD: rallypoint_secret
+          POSTGRES_DB: rallypoint_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
+      DATABASE_URL: postgres://rallypoint:rallypoint_secret@localhost:5432/rallypoint_db
       VITE_API_URL: ${{ vars.VITE_API_URL || 'https://rallypoint.54.79.20.200.sslip.io' }}
       VERSION_CODE: ${{ github.run_number }}
       VERSION_NAME: ${{ github.ref_name }}
@@ -32,6 +48,22 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Generate Prisma Clients & Sync DB
+        run: |
+          npm run --workspace=@rallypoint/db prisma:generate
+          cd apps/api && npx prisma generate
+          cd ../..
+          cd packages/db && npx prisma db push --skip-generate
+          cd ../..
+
+      - name: Build Shared Packages
+        run: |
+          npm run --workspace=@rallypoint/engine build --if-present
+          npm run --workspace=@rallypoint/scoring-rules build --if-present
+          npm run --workspace=@rallypoint/ranking build --if-present
+          npm run --workspace=@rallypoint/ui build --if-present
+          npm run --workspace=@rallypoint/db build --if-present
 
       - name: Fast Test & Typecheck Verification
         run: |
