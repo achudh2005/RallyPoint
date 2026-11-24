@@ -39,6 +39,7 @@ export interface RankingMatchEvent {
   eventType:
     | 'POINT'
     | 'RALLY_WON'
+    | 'PLAYER_ACTION'
     | 'SIDE_OUT'
     | 'SETTING_CHOICE'
     | 'UNDO'
@@ -49,6 +50,8 @@ export interface RankingMatchEvent {
     | 'GAME_END'
     | 'MATCH_END';
   side?: 'A' | 'B' | null;
+  action?: 'POINT' | 'DROP' | null;
+  playerId?: string | null;
   shotType?: ShotType | null;
   rallyEndResult?: RallyEndResult | null;
   pointWinnerPlayerId?: string | null;
@@ -57,6 +60,7 @@ export interface RankingMatchEvent {
   occurredAt?: Date | string;
   isPoint?: boolean;
   isSideOut?: boolean;
+  isCompensated?: boolean;
   payload?: Record<string, unknown> | null;
 }
 
@@ -113,6 +117,17 @@ export interface PlayerStats {
   pointSharePct: number; // pointsScored / (pointsScored + pointsConceded) * 100
   gamesWon: number;
   gamesLost: number;
+
+  // Player action stats
+  pointsWon: number;
+  drops: number;
+  netContribution: number;
+  pointShareWithinTeam: number;
+  dropShareWithinTeam: number;
+  currentPointStreak: number;
+  bestPointStreak: number;
+  sideOutsCaused: number;
+
   dropShotsPlayed: number;
   dropShotWinners: number;
   dropShotErrors: number;
@@ -155,6 +170,9 @@ export interface TeamStats {
   pointSharePct: number;
   gamesWon: number;
   gamesLost: number;
+  totalPointsWon: number;
+  totalDrops: number;
+  netContribution: number;
   currentStreak: number;
   bestStreak: number;
 }
@@ -162,6 +180,9 @@ export interface TeamStats {
 export type RankingCategory =
   | 'OVERALL'
   | 'LEAGUE_TABLE'
+  | 'TOP_POINT_SCORERS'
+  | 'MOST_DROPS'
+  | 'BEST_NET_CONTRIBUTION'
   | 'MOST_WINS'
   | 'MOST_POINTS'
   | 'MOST_LOSSES'
@@ -203,6 +224,7 @@ export interface OverallRankingWeights {
   currentFormWeight: number; // Default 0.10
   consistencyWeight: number; // Default 0.10
   minMatchesThreshold: number; // Default 5
+  netContributionWeight?: number;
 }
 
 export interface RankingConfig {
@@ -229,6 +251,7 @@ export const DEFAULT_RANKING_WEIGHTS: OverallRankingWeights = {
   currentFormWeight: 0.1,
   consistencyWeight: 0.1,
   minMatchesThreshold: 5,
+  netContributionWeight: 0.05,
 };
 
 export const DEFAULT_RANKING_CONFIG: RankingConfig = {

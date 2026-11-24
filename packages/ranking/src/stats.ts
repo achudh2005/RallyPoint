@@ -26,6 +26,17 @@ export function initializePlayerStats(playerId: string, displayName = ''): Playe
     pointSharePct: 0,
     gamesWon: 0,
     gamesLost: 0,
+
+    // Player action stats
+    pointsWon: 0,
+    drops: 0,
+    netContribution: 0,
+    pointShareWithinTeam: 0,
+    dropShareWithinTeam: 0,
+    currentPointStreak: 0,
+    bestPointStreak: 0,
+    sideOutsCaused: 0,
+
     dropShotsPlayed: 0,
     dropShotWinners: 0,
     dropShotErrors: 0,
@@ -75,6 +86,9 @@ export function initializeTeamStats(
     pointSharePct: 0,
     gamesWon: 0,
     gamesLost: 0,
+    totalPointsWon: 0,
+    totalDrops: 0,
+    netContribution: 0,
     currentStreak: 0,
     bestStreak: 0,
   };
@@ -92,6 +106,7 @@ export function replayValidEvents(events: RankingMatchEvent[]): RankingMatchEven
           candidate &&
           (candidate.eventType === 'POINT' ||
             candidate.eventType === 'RALLY_WON' ||
+            candidate.eventType === 'PLAYER_ACTION' ||
             candidate.eventType === 'SERVE_FAULT')
         ) {
           stack.splice(i, 1);
@@ -161,12 +176,46 @@ export function computeAllPlayerStats(
       if (
         event.eventType === 'POINT' ||
         event.eventType === 'RALLY_WON' ||
+        event.eventType === 'PLAYER_ACTION' ||
         event.eventType === 'SIDE_OUT' ||
         event.eventType === 'SERVE_FAULT'
       ) {
+        // Player Action specific tracking
+        if (event.eventType === 'PLAYER_ACTION') {
+          const actPlayerId =
+            event.playerId ||
+            (event.action === 'POINT' ? event.pointWinnerPlayerId : event.errorPlayerId);
+          if (actPlayerId && statsMap[actPlayerId]) {
+            const pStats = statsMap[actPlayerId]!;
+            if (event.action === 'POINT') {
+              pStats.pointsWon++;
+              pStats.currentPointStreak++;
+              if (pStats.currentPointStreak > pStats.bestPointStreak) {
+                pStats.bestPointStreak = pStats.currentPointStreak;
+              }
+              if (isServiceMatch) {
+                if (event.isPoint) pStats.servicePointsWon++;
+                if (event.isSideOut) pStats.sideOutsCaused++;
+              }
+            } else if (event.action === 'DROP') {
+              pStats.drops++;
+              pStats.currentPointStreak = 0;
+            }
+            pStats.netContribution = pStats.pointsWon - pStats.drops;
+          }
+        }
+
         // Point winner attribution
         if (event.pointWinnerPlayerId && statsMap[event.pointWinnerPlayerId]) {
           const winnerStats = statsMap[event.pointWinnerPlayerId]!;
+          if (event.eventType !== 'PLAYER_ACTION') {
+            winnerStats.pointsWon++;
+            winnerStats.currentPointStreak++;
+            if (winnerStats.currentPointStreak > winnerStats.bestPointStreak) {
+              winnerStats.bestPointStreak = winnerStats.currentPointStreak;
+            }
+            winnerStats.netContribution = winnerStats.pointsWon - winnerStats.drops;
+          }
           if (event.shotType === 'DROP') {
             winnerStats.dropShotsPlayed++;
             if (event.rallyEndResult === 'WINNER') {
@@ -228,6 +277,11 @@ export function computeAllPlayerStats(
         // Error attribution
         if (event.errorPlayerId && statsMap[event.errorPlayerId]) {
           const errorStats = statsMap[event.errorPlayerId]!;
+          if (event.eventType !== 'PLAYER_ACTION') {
+            errorStats.drops++;
+            errorStats.currentPointStreak = 0;
+            errorStats.netContribution = errorStats.pointsWon - errorStats.drops;
+          }
           if (
             event.rallyEndResult === 'UNFORCED_ERROR' ||
             event.rallyEndResult === 'OUT' ||
@@ -387,6 +441,32 @@ export function computeAllPlayerStats(
             : 0;
         pStats.matchesSplitFormatted = `R:${pStats.rallyMatchesPlayed} S:${pStats.serviceMatchesPlayed}`;
       }
+
+      // Compute within-team shares for doubles
+      if (sideAPlayers.length === 2) {
+        const p1 = statsMap[sideAPlayers[0]!.playerId];
+        const p2 = statsMap[sideAPlayers[1]!.playerId];
+        if (p1 && p2) {
+          const totPts = p1.pointsWon + p2.pointsWon;
+          const totDrp = p1.drops + p2.drops;
+          p1.pointShareWithinTeam = totPts > 0 ? Math.round((p1.pointsWon / totPts) * 100) : 0;
+          p2.pointShareWithinTeam = totPts > 0 ? Math.round((p2.pointsWon / totPts) * 100) : 0;
+          p1.dropShareWithinTeam = totDrp > 0 ? Math.round((p1.drops / totDrp) * 100) : 0;
+          p2.dropShareWithinTeam = totDrp > 0 ? Math.round((p2.drops / totDrp) * 100) : 0;
+        }
+      }
+      if (sideBPlayers.length === 2) {
+        const p1 = statsMap[sideBPlayers[0]!.playerId];
+        const p2 = statsMap[sideBPlayers[1]!.playerId];
+        if (p1 && p2) {
+          const totPts = p1.pointsWon + p2.pointsWon;
+          const totDrp = p1.drops + p2.drops;
+          p1.pointShareWithinTeam = totPts > 0 ? Math.round((p1.pointsWon / totPts) * 100) : 0;
+          p2.pointShareWithinTeam = totPts > 0 ? Math.round((p2.pointsWon / totPts) * 100) : 0;
+          p1.dropShareWithinTeam = totDrp > 0 ? Math.round((p1.drops / totDrp) * 100) : 0;
+          p2.dropShareWithinTeam = totDrp > 0 ? Math.round((p2.drops / totDrp) * 100) : 0;
+        }
+      }
     }
   }
 
@@ -473,6 +553,35 @@ export function computeAllTeamStats(
         (isStraightGames ? (isServiceMatch ? config.serviceStraightGamesBonus : config.rallyStraightGamesBonus) : 0);
       const loserRp = isServiceMatch ? config.serviceLossRp : config.rallyLossRp;
 
+      const validEvents = (match.events || []).filter((e) => !e.isCompensated);
+      let teamAPts = 0;
+      let teamADrps = 0;
+      let teamBPts = 0;
+      let teamBDrps = 0;
+
+      for (const ev of validEvents) {
+        if (ev.eventType === 'PLAYER_ACTION') {
+          const isSideA = sideAPlayers.some((p) => p.playerId === ev.playerId);
+          const isSideB = sideBPlayers.some((p) => p.playerId === ev.playerId);
+          if (isSideA) {
+            if (ev.action === 'POINT') teamAPts++;
+            else if (ev.action === 'DROP') teamADrps++;
+          } else if (isSideB) {
+            if (ev.action === 'POINT') teamBPts++;
+            else if (ev.action === 'DROP') teamBDrps++;
+          }
+        } else {
+          if (ev.pointWinnerPlayerId) {
+            if (sideAPlayers.some((p) => p.playerId === ev.pointWinnerPlayerId)) teamAPts++;
+            else if (sideBPlayers.some((p) => p.playerId === ev.pointWinnerPlayerId)) teamBPts++;
+          }
+          if (ev.errorPlayerId) {
+            if (sideAPlayers.some((p) => p.playerId === ev.errorPlayerId)) teamADrps++;
+            else if (sideBPlayers.some((p) => p.playerId === ev.errorPlayerId)) teamBDrps++;
+          }
+        }
+      }
+
       if (teamAId && teamStatsMap[teamAId]) {
         const t = teamStatsMap[teamAId]!;
         t.matchesPlayed++;
@@ -498,6 +607,9 @@ export function computeAllTeamStats(
           t.currentStreak = 0;
         }
         t.winRate = t.matchesPlayed > 0 ? Number(((t.wins / t.matchesPlayed) * 100).toFixed(2)) : 0;
+        t.totalPointsWon += teamAPts;
+        t.totalDrops += teamADrps;
+        t.netContribution = t.totalPointsWon - t.totalDrops;
       }
 
       if (teamBId && teamStatsMap[teamBId]) {
@@ -525,6 +637,9 @@ export function computeAllTeamStats(
           t.currentStreak = 0;
         }
         t.winRate = t.matchesPlayed > 0 ? Number(((t.wins / t.matchesPlayed) * 100).toFixed(2)) : 0;
+        t.totalPointsWon += teamBPts;
+        t.totalDrops += teamBDrps;
+        t.netContribution = t.totalPointsWon - t.totalDrops;
       }
     }
   }

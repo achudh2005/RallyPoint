@@ -49,12 +49,21 @@ export function calculateOverallScore(
   // 5. Consistency Score (0 - 100 based on match volume engagement)
   const consistencyScore = maxMatches > 0 ? (stats.matchesPlayed / maxMatches) * 100 : 0;
 
+  // 6. Net Contribution Score (if weight configured)
+  const netWeight = weights.netContributionWeight ?? 0;
+  let netContributionScore = 50;
+  if (netWeight > 0) {
+    const netPerMatch = stats.matchesPlayed > 0 ? stats.netContribution / stats.matchesPlayed : 0;
+    netContributionScore = Math.min(100, Math.max(0, 50 + netPerMatch * 5));
+  }
+
   const total =
     weights.winRateWeight * winRateScore +
     weights.pointDiffPerMatchWeight * ptDiffScore +
     weights.winsWeight * winsScore +
     weights.currentFormWeight * formScore +
-    weights.consistencyWeight * consistencyScore;
+    weights.consistencyWeight * consistencyScore +
+    netWeight * netContributionScore;
 
   return Number(total.toFixed(2));
 }
@@ -94,6 +103,21 @@ export function generatePlayerLeaderboard(
         if (b.wins !== a.wins) return b.wins - a.wins;
         if (b.winRate !== a.winRate) return b.winRate - a.winRate;
         return b.pointDifference - a.pointDifference;
+      }
+      case 'TOP_POINT_SCORERS': {
+        if (b.pointsWon !== a.pointsWon) return b.pointsWon - a.pointsWon;
+        if (b.pointDifference !== a.pointDifference) return b.pointDifference - a.pointDifference;
+        return b.wins - a.wins;
+      }
+      case 'MOST_DROPS': {
+        if (b.drops !== a.drops) return b.drops - a.drops;
+        if (b.pointsConceded !== a.pointsConceded) return b.pointsConceded - a.pointsConceded;
+        return b.losses - a.losses;
+      }
+      case 'BEST_NET_CONTRIBUTION': {
+        if (b.netContribution !== a.netContribution) return b.netContribution - a.netContribution;
+        if (b.pointsWon !== a.pointsWon) return b.pointsWon - a.pointsWon;
+        return b.winRate - a.winRate;
       }
       case 'MOST_WINS': {
         if (b.wins !== a.wins) return b.wins - a.wins;
@@ -238,6 +262,12 @@ function isPlayerTied(
         a.winRate === b.winRate &&
         a.pointDifference === b.pointDifference
       );
+    case 'TOP_POINT_SCORERS':
+      return a.pointsWon === b.pointsWon && a.pointDifference === b.pointDifference;
+    case 'MOST_DROPS':
+      return a.drops === b.drops && a.pointsConceded === b.pointsConceded;
+    case 'BEST_NET_CONTRIBUTION':
+      return a.netContribution === b.netContribution && a.pointsWon === b.pointsWon;
     case 'MOST_WINS':
       return (
         a.wins === b.wins &&
@@ -276,6 +306,12 @@ function getHeadlineValue(
       return calculateOverallScore(stats, maxWins, maxMatches, weights);
     case 'LEAGUE_TABLE':
       return stats.rankingPoints;
+    case 'TOP_POINT_SCORERS':
+      return stats.pointsWon;
+    case 'MOST_DROPS':
+      return stats.drops;
+    case 'BEST_NET_CONTRIBUTION':
+      return stats.netContribution;
     case 'MOST_WINS':
       return stats.wins;
     case 'MOST_POINTS':
@@ -304,6 +340,12 @@ function formatHeadline(
       return `${value.toFixed(1)} Pts`;
     case 'LEAGUE_TABLE':
       return `${value} RP`;
+    case 'TOP_POINT_SCORERS':
+      return `${value} Pts Won`;
+    case 'MOST_DROPS':
+      return `${value} Drops`;
+    case 'BEST_NET_CONTRIBUTION':
+      return `${value > 0 ? '+' : ''}${value} Net`;
     case 'MOST_WINS':
       return `${value} Wins`;
     case 'MOST_POINTS':
