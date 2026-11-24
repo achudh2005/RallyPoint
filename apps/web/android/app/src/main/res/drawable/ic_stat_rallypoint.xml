@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Clean Shuttlecock silhouette for status bar notifications -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,18 C10.9,18 10,18.9 10,20 C10,21.1 10.9,22 12,22 C13.1,22 14,21.1 14,20 C14,18.9 13.1,18 12,18 Z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,4 L7,15 L17,15 Z"/>
+</vector>
