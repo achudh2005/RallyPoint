@@ -1,0 +1,156 @@
+name: RallyPoint Android Cloud APK Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build Native Android APKs (Cloud)
+    runs-on: ubuntu-latest
+
+    env:
+      VITE_API_URL: ${{ vars.VITE_API_URL || 'https://rallypoint.54.79.20.200.sslip.io' }}
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Fast Test & Typecheck Verification
+        run: |
+          npm run typecheck
+          npm run test
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Web Application (PWA Bundle)
+        run: npm run build:web
+
+      - name: Sync Capacitor Android
+        run: npm run cap:sync
+
+      - name: Configure Keystore from Secrets
+        id: keystore
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "Decoding production keystore from repository secrets..."
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > apps/web/android/app/release.keystore
+            echo "KEYSTORE_FILE=release.keystore" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret configured; falling back to debug signing for this build."
+          fi
+
+      - name: Build Debug & Release APKs with Gradle
+        working-directory: apps/web/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Organize & Compute Checksums
+        run: |
+          mkdir -p dist-apks
+          cp apps/web/android/app/build/outputs/apk/debug/app-debug.apk dist-apks/RallyPoint-debug.apk
+
+          if [ -f apps/web/android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp apps/web/android/app/build/outputs/apk/release/app-release.apk dist-apks/RallyPoint-release.apk
+          elif [ -f apps/web/android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp apps/web/android/app/build/outputs/apk/release/app-release-unsigned.apk dist-apks/RallyPoint-release.apk
+          fi
+
+          cd dist-apks
+          sha256sum RallyPoint-debug.apk > RallyPoint-debug.apk.sha256
+          if [ -f RallyPoint-release.apk ]; then
+            sha256sum RallyPoint-release.apk > RallyPoint-release.apk.sha256
+          fi
+          echo "=== Built Artifacts ==="
+          ls -lh
+          echo "=== SHA-256 Checksums ==="
+          cat *.sha256
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RallyPoint-APKs
+          path: dist-apks/*
+          retention-days: 30
+
+  release:
+    name: Publish GitHub Release (Tagged Releases)
+    needs: build-apk
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download APK Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: RallyPoint-APKs
+          path: release-assets
+
+      - name: Read Checksums for Release Notes
+        id: checksums
+        run: |
+          cd release-assets
+          CHECKSUM_RELEASE=$(cat RallyPoint-release.apk.sha256 2>/dev/null || echo "N/A")
+          CHECKSUM_DEBUG=$(cat RallyPoint-debug.apk.sha256 2>/dev/null || echo "N/A")
+          echo "checksum_release=$CHECKSUM_RELEASE" >> $GITHUB_OUTPUT
+          echo "checksum_debug=$CHECKSUM_DEBUG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: RallyPoint ${{ github.ref_name }}
+          files: |
+            release-assets/RallyPoint-release.apk
+            release-assets/RallyPoint-debug.apk
+            release-assets/*.sha256
+          generate_release_notes: true
+          body: |
+            ## 🏸 RallyPoint Mobile Release (${{ github.ref_name }})
+            Native Android APK built headlessly via GitHub Actions for **iQOO Neo 10** and Android 15.
+
+            ### 📦 Download Files
+            - **Signed Production APK**: [RallyPoint-release.apk](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/RallyPoint-release.apk)
+            - **Debug APK**: [RallyPoint-debug.apk](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/RallyPoint-debug.apk)
+
+            ### 🔒 SHA-256 Checksums
+            ```
+            ${{ steps.checksums.outputs.checksum_release }}
+            ${{ steps.checksums.outputs.checksum_debug }}
+            ```
