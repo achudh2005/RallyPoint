@@ -2,6 +2,32 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [UI Phase 1] - Design System (@rallypoint/ui) & Apple HIG Tokens
+### Added
+- **`@rallypoint/ui` Package**:
+  - Apple Human Interface Guidelines (HIG) design system with SF Pro typography scale (Large Title 34, Title 28, Headline 17 semibold, Body 17, Subhead 15, Caption 12).
+  - Dynamic Type scaling support (`standard`, `large` +15%, `accessibility` +30%).
+  - Configurable Apple accent color system (`Wimbledon Green`, `Court Blue`, `Shuttle Teal`, `Smash Indigo`, `Champion Gold`).
+  - System grouped backgrounds, elevated cards, and translucent glass materials with hairline separators.
+  - Haptic feedback engine (`navigator.vibrate`) for selections, point scores, undos, and match finishes.
+- **Components**:
+  - `LargeTitle`: Collapsible navigation header with subtitle and trailing actions.
+  - `GroupedList` & `GroupedRow`: Inset iOS cards with icons, subtitles, values, and chevrons.
+  - `SegmentedControl`: Native sliding pill segmented control with Framer Motion spring physics.
+  - `BottomSheet`: Gesture-dismissable bottom sheet with grabber handle and blurred backdrop.
+  - `Toast`: Floating pill notification banner with 5-second countdown and Undo button.
+  - `Toggle`: Native iOS switch with spring sliding knob.
+  - `Stepper`: Minus / Plus stepper control with tap haptics.
+  - `Avatar`: Continuous squircle avatar with deterministic gradient and serving/winner badges.
+  - `Badge`: Semantic pill badges (`accent`, `success`, `warning`, `destructive`, `neutral`).
+  - `EmptyState`: Friendly icon, title, description, and primary pill button.
+  - `Skeleton`: Smooth pulsing placeholder loading block.
+  - `Button`: Primary (accent filled), secondary (tinted gray), glass, and destructive buttons.
+  - `ScoreNumberRoll`: Vertical digit sliding animation on score updates.
+  - `ComponentGallery`: Interactive Storybook/Gallery showcase component documenting every component and token.
+- **Documentation**:
+  - Comprehensive specification in `docs/ui/phase-1-design-system.md`.
+
 ## [Database Phase 4 & db-v1.0.0] - Production Hardening, Operations, Repository Layer & CI
 ### Added
 - **Typed Repository & Service Layer (`@rallypoint/db`)**:

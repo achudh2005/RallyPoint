@@ -17,6 +17,7 @@
     "@rallypoint/engine": "*",
     "@rallypoint/ranking": "*",
     "@rallypoint/scoring-rules": "*",
+    "@rallypoint/ui": "*",
     "clsx": "^2.1.1",
     "dexie": "^4.0.10",
     "html-to-image": "^1.11.13",

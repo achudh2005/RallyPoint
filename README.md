@@ -60,6 +60,7 @@ flowchart TD
 - `packages/engine`: Pure TypeScript BWF rules and event-sourced scoring engine (zero runtime dependencies).
 - `packages/scoring-rules`: Pure TypeScript scoring format engine supporting BWF Rally Point (21, 15, 11) and Traditional Service Point (15, 11, One Down doubles serve rule, setting choices at 13/14-all or 9/10-all).
 - `packages/ranking`: Pure TypeScript ranking & team league engine with Ranking Points (RP), format filtering, and zero dependencies (96%+ test coverage).
+- `packages/ui`: Apple HIG design system with SF Pro typography, dynamic accent colors, iOS materials, haptics, and accessible components.
 - `apps/web`: React 18 + Vite + Tailwind CSS + Zustand + Recharts + Dexie PWA.
 - `apps/api`: Node.js + Express + TypeScript + Prisma + PostgreSQL 16 + Socket.IO.
 - `packages/db`: Shared Prisma client and database repository schemas.
