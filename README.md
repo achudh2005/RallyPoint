@@ -28,6 +28,8 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
   - Event-sourced mid-match crash recovery from IndexedDB
   - Android native share sheet integration for match results and event logs
 - **Cloud Build**: Built headlessly via GitHub Actions without requiring local Android Studio.
+- **Easy Phone Install**: Direct web portal at `docs/install/index.html` featuring one-tap APK download, camera QR code scanning, and step-by-step Funtouch OS guidance.
+- **In-App Updates**: Built-in GitHub Releases checker with Apple-style update sheet that notifies users of new releases and updates seamlessly while preserving local match events.
 
 ### Cloud APK Signing & Keystore Setup
 To configure production release signing for future updates:

@@ -2,6 +2,28 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Android Phase 4] - Easy Install Portal & In-App Updates
+### Added
+- **Public Mobile Install Portal (`docs/install/index.html`)**:
+  - Responsive, dark-mode ready web portal for direct phone installation.
+  - Prominent "Download Release APK" button pointing directly to GitHub Releases latest.
+  - Dynamic QR code for point-and-scan instant downloading from an iQOO Neo 10 camera.
+  - Technical specs sheet for Android 15, Funtouch OS 15, Snapdragon 8 Gen 3, 144Hz AMOLED, SHA-256 integrity hash, and package ID `com.rallypoint.app`.
+  - Non-technical 4-step guide: downloading, enabling "Install unknown apps", bypassing Google Play Protect safely, and configuring unrestricted battery settings.
+  - Troubleshooting section addressing "App not installed", "Parse error", and signature verification.
+- **In-App GitHub Releases Update Checker (`apps/web/src/mobile/updateChecker.ts`)**:
+  - Automatically queries the GitHub Releases API (`https://api.github.com/repos/achudh2005/RallyPoint/releases/latest`).
+  - Semantic version comparison (`compareSemver`) detecting newer APK releases.
+  - Rate-limit aware: stores check timestamps in `@capacitor/preferences` to check at most once per 24 hours in the background.
+  - Seamless external browser opening for APK direct download.
+- **Apple HIG Update Sheet Modal (`apps/web/src/mobile/UpdateModal.tsx`)**:
+  - Calm Apple-inspired bottom sheet presenting the new version tag, changelog notes, and a direct download CTA.
+  - Hardware back button handling for gesture-based dismissal.
+- **Settings > About Integration in `AppleProfileScreen.tsx`**:
+  - Added "Check for Updates" action with animated refresh spinner and live status messaging.
+  - Displays installed version `v1.0.0` and hardware optimization targets.
+  - Event-sourced local match history and offline queue preserved without disruption across APK updates.
+
 ## [Android Phase 3] - Cloud APK Build via GitHub Actions & Signing Pipeline
 ### Added
 - **Headless Cloud APK Pipeline (`android-apk.yml`)**:

@@ -31,6 +31,9 @@ import { nativeShare } from '../../mobile/nativeShare.js';
 import { registerBackHandler } from '../../mobile/backButton.js';
 import { nativePermissions } from '../../mobile/permissions.js';
 import { FuntouchBatteryModal } from '../mobile/FuntouchBatteryModal.js';
+import { checkForAppUpdates, UpdateCheckResult } from '../../mobile/updateChecker.js';
+import { UpdateModal } from '../../mobile/UpdateModal.js';
+import { Sparkles } from 'lucide-react';
 
 export const AppleProfileScreen: React.FC = () => {
   const { accent, setAccent } = useTheme();
@@ -44,6 +47,36 @@ export const AppleProfileScreen: React.FC = () => {
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [rebuilding, setRebuilding] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateStatusMessage, setUpdateStatusMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    checkForAppUpdates(false).then((res) => {
+      if (res && res.hasUpdate) {
+        setUpdateResult(res);
+        setShowUpdateModal(true);
+      }
+    });
+  }, []);
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdate(true);
+    setUpdateStatusMessage(null);
+    Haptics.selection();
+    const res = await checkForAppUpdates(true);
+    setCheckingUpdate(false);
+    setUpdateResult(res);
+    if (res.hasUpdate) {
+      setShowUpdateModal(true);
+    } else if (res.error) {
+      setUpdateStatusMessage(`Check failed: ${res.error}`);
+    } else {
+      setUpdateStatusMessage('You are on the latest version');
+      setTimeout(() => setUpdateStatusMessage(null), 4000);
+    }
+  };
 
   // Hardware Back Button handling for subscreen and sheets
   React.useEffect(() => {
@@ -61,6 +94,14 @@ export const AppleProfileScreen: React.FC = () => {
       return true;
     });
   }, [showExportNotice]);
+
+  React.useEffect(() => {
+    if (!showUpdateModal) return;
+    return registerBackHandler(() => {
+      setShowUpdateModal(false);
+      return true;
+    });
+  }, [showUpdateModal]);
 
   const handleRequestNotification = async () => {
     Haptics.selection();
@@ -287,7 +328,41 @@ export const AppleProfileScreen: React.FC = () => {
           </GroupedSection>
         </GroupedList>
 
-        {/* Design System Gallery */}
+        {/* About & System Updates */}
+        <GroupedList>
+          <GroupedSection header="About & Updates">
+            <GroupedRow
+              title="Check for Updates"
+              subtitle={updateStatusMessage || 'Latest release via GitHub'}
+              leading={<Sparkles className="w-5 h-5 text-emerald-500" />}
+              trailing={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleCheckForUpdates}
+                  disabled={checkingUpdate}
+                  className="flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${checkingUpdate ? 'animate-spin' : ''}`} />
+                  <span>{checkingUpdate ? 'Checking...' : 'Check'}</span>
+                </Button>
+              }
+            />
+
+            <GroupedRow
+              title="Installed Version"
+              subtitle="Optimized for Android 15 & iQOO Neo 10"
+              leading={<Info className="w-5 h-5 text-neutral-400" />}
+              trailing={
+                <Badge variant="neutral" size="sm">
+                  v1.0.0
+                </Badge>
+              }
+            />
+          </GroupedSection>
+        </GroupedList>
+
+        {/* Developer Tools */}
         <GroupedList>
           <GroupedSection header="Developer Tools">
             <GroupedRow
@@ -366,6 +441,13 @@ export const AppleProfileScreen: React.FC = () => {
       <FuntouchBatteryModal
         forceOpen={showBatteryGuide}
         onClose={() => setShowBatteryGuide(false)}
+      />
+
+      {/* In-App GitHub Releases Update Modal */}
+      <UpdateModal
+        updateInfo={updateResult}
+        isOpen={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
       />
     </div>
   );
