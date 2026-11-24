@@ -307,7 +307,15 @@ export async function seedCommunityRankings(): Promise<CommunitySeedResult> {
   let totalSnapshots = 0;
 
   // Persist snapshots for overall and category leaderboards
-  for (const [category, entries] of Object.entries(rebuild.playerLeaderboards)) {
+  for (const [category, entries] of Object.entries(rebuild.playerLeaderboards) as [string, Array<{
+    id: string;
+    rank: number;
+    rankMovement: string;
+    movementDelta: number;
+    matchesPlayed: number;
+    headlineValue: number;
+    stats: any;
+  }>][]) {
     for (const entry of entries) {
       const prevRank =
         entry.rankMovement === 'UP'
