@@ -2,6 +2,41 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [UI Phase 3] - Apple-Style Rankings, Players, Profiles, Match Summary & Settings
+### Added
+- **Rankings Screen (`AppleRankingsScreen.tsx`)**:
+  - Segmented control toggling between `Players` and `Teams & Pairs`.
+  - 5 horizontally scrolling category chips (`Top Players`, `Most Wins`, `Most Points`, `Most Losses`, `Most Drops`).
+  - Top 3 Podium header with center elevated 🥇 gold champion display.
+  - Inset standings list with medal emoji/numbering, avatar, player name, matches played, and headline stat.
+  - Filter bottom sheet for scoring format (`All Scoring Formats`, `Rally Point`, `Service Point`) and active season scope.
+- **Players Screen (`ApplePlayersScreen.tsx`)**:
+  - Searchable inset list of community roster players with avatars, matches played, and win counts.
+  - "Add Player" modal sheet with name input and haptic confirmation.
+- **Player Profile Sheet (`ApplePlayerProfileSheet.tsx`)**:
+  - Large avatar, rank badge, rating, and 3 headline tiles: Wins, Win Rate %, Matches Played.
+  - 5-dot recent form strip (W/L dots).
+  - Rank history sparkline chart powered by Recharts.
+  - Head-to-Head records list with opponent match records.
+  - Progressive disclosure: Expandable detailed stats (Total points scored, conceded, drop winners, win streak).
+- **Match Summary Sheet (`AppleMatchSummarySheet.tsx`)**:
+  - Hero winner card with celebratory trophy.
+  - Game score breakdown with score comparison.
+  - 3 headline match tiles: Total Points, Longest Rally, and Events.
+  - Share Result button using Web Share API or clipboard copy.
+  - Point-by-point inspection modal listing every scored rally.
+- **Settings Screen (`AppleProfileScreen.tsx`)**:
+  - Inset iOS Settings grouped layout.
+  - Dark Appearance toggle and courtside high-contrast toggle.
+  - 5 accent color selectors (`green`, `blue`, `teal`, `indigo`, `amber`).
+  - Vibration & haptic feedback toggle.
+  - Active season picker and event sourcing Rebuild Rankings replayer.
+  - JSON match event log export.
+  - UI Component Showcase launcher with full design tokens preview.
+- **Documentation**:
+  - Full details in `docs/ui/phase-3-remaining-screens.md`.
+
+
 ## [UI Phase 2] - Navigation, Play Tab, 3-Step Setup & Apple Calm Live Scoring
 ### Added
 - **4-Tab Native Apple Navigation (`TabBar.tsx`)**:

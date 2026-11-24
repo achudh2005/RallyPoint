@@ -4,12 +4,11 @@ import { useMatchStore } from './store/matchStore.js';
 import { TabBar, MainTab } from './components/navigation/TabBar.js';
 import { PlayScreen } from './components/play/PlayScreen.js';
 import { AppleScoringScreen } from './components/scoring/AppleScoringScreen.js';
-import { MatchSummary } from './components/MatchSummary.js';
-import { RankingsDashboard } from './components/ranking/RankingsDashboard.js';
-import { CommunityMatchSetup } from './components/ranking/CommunityMatchSetup.js';
-import { TournamentManager } from './components/tournaments/TournamentManager.js';
+import { AppleRankingsScreen } from './components/rankings/AppleRankingsScreen.js';
+import { ApplePlayersScreen } from './components/players/ApplePlayersScreen.js';
+import { AppleProfileScreen } from './components/profile/AppleProfileScreen.js';
+import { AppleMatchSummarySheet } from './components/summary/AppleMatchSummarySheet.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
-import { ComponentGallery } from '@rallypoint/ui';
 import { Moon, Sun, Type } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
@@ -24,7 +23,6 @@ export const AppContent: React.FC = () => {
   } = useMatchStore();
 
   const [activeTab, setActiveTab] = useState<MainTab>('play');
-  const [showGallery, setShowGallery] = useState(false);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -46,12 +44,12 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  // If a match is COMPLETED, show the match summary
+  // If a match is COMPLETED, show the Apple match summary
   if (match && match.status === 'COMPLETED') {
     return (
       <ErrorBoundary>
         <div className="min-h-screen bg-neutral-100 dark:bg-black text-neutral-900 dark:text-white p-4 pb-20">
-          <header className="max-w-md mx-auto mb-4 flex items-center justify-between">
+          <header className="max-w-md mx-auto mb-2 flex items-center justify-between">
             <span className="font-bold text-lg">🏸 RallyPoint</span>
             <button
               onClick={() => resetMatch()}
@@ -60,7 +58,7 @@ export const AppContent: React.FC = () => {
               Done
             </button>
           </header>
-          <MatchSummary state={match} />
+          <AppleMatchSummarySheet state={match} onDone={() => setActiveTab('play')} />
         </div>
       </ErrorBoundary>
     );
@@ -116,68 +114,15 @@ export const AppContent: React.FC = () => {
           )}
 
           {activeTab === 'rankings' && (
-            <div className="p-4 pb-28">
-              <RankingsDashboard />
-            </div>
+            <AppleRankingsScreen />
           )}
 
           {activeTab === 'players' && (
-            <div className="p-4 pb-28">
-              <CommunityMatchSetup
-                onStart={() => setActiveTab('play')}
-              />
-            </div>
+            <ApplePlayersScreen />
           )}
 
           {activeTab === 'profile' && (
-            <div className="p-4 pb-28 space-y-4">
-              <div className="flex items-center justify-between pb-2">
-                <h1 className="text-2xl font-bold tracking-tight">Settings & Profile</h1>
-                <button
-                  onClick={() => setShowGallery(!showGallery)}
-                  className="text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold"
-                >
-                  {showGallery ? 'Hide Gallery' : 'UI Components'}
-                </button>
-              </div>
-
-              {showGallery ? (
-                <ComponentGallery />
-              ) : (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-xs space-y-3">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
-                      Appearance & Display
-                    </h3>
-                    <div className="flex items-center justify-between py-1">
-                      <span className="text-sm font-medium">Dark Mode</span>
-                      <button
-                        onClick={toggleTheme}
-                        className="px-3 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/10 font-semibold"
-                      >
-                        {theme === 'dark' ? 'Enabled' : 'Disabled'}
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span className="text-sm font-medium">Large Text (A+)</span>
-                      <button
-                        onClick={toggleLargeText}
-                        className="px-3 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/10 font-semibold"
-                      >
-                        {largeTextMode ? 'Active' : 'Standard'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-xs space-y-3">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
-                      Tournament Manager
-                    </h3>
-                    <TournamentManager onClose={() => setActiveTab('play')} />
-                  </div>
-                </div>
-              )}
-            </div>
+            <AppleProfileScreen />
           )}
         </main>
 

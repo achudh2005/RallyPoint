@@ -1,7 +1,8 @@
 import React from 'react';
 
 export interface LargeTitleProps {
-  title: string;
+  title?: string;
+  children?: React.ReactNode;
   subtitle?: string;
   trailingAction?: React.ReactNode;
   className?: string;
@@ -9,10 +10,12 @@ export interface LargeTitleProps {
 
 export const LargeTitle: React.FC<LargeTitleProps> = ({
   title,
+  children,
   subtitle,
   trailingAction,
   className = '',
 }) => {
+  const displayTitle = title ?? children;
   return (
     <div className={`px-4 pt-3 pb-2 flex items-end justify-between ${className}`}>
       <div>
@@ -22,7 +25,7 @@ export const LargeTitle: React.FC<LargeTitleProps> = ({
           </p>
         )}
         <h1 className="text-[34px] leading-[41px] font-bold tracking-tight text-neutral-900 dark:text-white">
-          {title}
+          {displayTitle}
         </h1>
       </div>
       {trailingAction && <div className="pb-1">{trailingAction}</div>}
