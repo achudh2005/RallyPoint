@@ -40,3 +40,16 @@ Thumbs.db
 .turbo
 .eslintcache
 .cache
+
+# Android
+.gradle
+apps/web/android/.gradle/
+apps/web/android/build/
+apps/web/android/app/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.key
+google-services.json
+
