@@ -263,6 +263,12 @@ A dedicated pure TypeScript ranking engine and live marking interface for local 
     - Setting Choice Modal on setting thresholds (13-all / 14-all, 9-all / 10-all) prompting the eligible side to set or play on.
     - 3-second auto-dismiss Quick-Mark detail bar for fast shot attribution and full undo across side-outs and points.
 
+  - **Native Apple UI Redesign (Apple Human Interface Guidelines)**:
+    - **Design System (`@rallypoint/ui`)**: Tokens, typography (SF Pro scale), light & dark themes, customizable accent colors, Dynamic Type sizing, haptics engine, and interactive Component Gallery.
+    - **4-Tab Navigation & Play Screen**: Liquid glass tab bar (`Play`, `Rankings`, `Players`, `Profile`), single-hero "Start Match" button, and active match resumption banner.
+    - **3-Step Match Setup Sheet**: Progressive disclosure for player selection, "Fair Teams" balanced doubles auto-pairing, scoring system selection, and coin-flip toss.
+    - **Calm Apple Live Scoring**: Distraction-free high-contrast split-screen scoring, rolling digit counters (`ScoreNumberRoll`), quiet Undo, Service Point rules, and screen wake lock.
+
   - **Database Architecture & Operations (Phases 1 - 4 - Production Grade)**:
     - **Master Data Layer (3NF)**: Users, Players (with pg_trgm fuzzy search & FTS), Clubs, Teams, Members, Venues, Courts, Tournaments, Seasons.
     - **Append-Only Event Layer**: Declarative monthly partitioned `match_events` table on `occurred_at`, strictly blocking UPDATE/DELETE via database triggers, with client-UUID idempotent ingestion.

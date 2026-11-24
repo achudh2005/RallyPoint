@@ -173,10 +173,19 @@ export const ThemeProvider: React.FC<{
   );
 };
 
+const defaultThemeState: ThemeContextType = {
+  colorScheme: 'dark',
+  setColorScheme: () => {},
+  isDark: true,
+  accent: 'green',
+  setAccent: () => {},
+  accentStyles: accentColors.green,
+  textSize: 'standard',
+  setTextSize: () => {},
+  reducedMotion: false,
+};
+
 export const useTheme = () => {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
+  return context || defaultThemeState;
 };

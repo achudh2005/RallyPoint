@@ -1,17 +1,30 @@
 import React, { useEffect, useState } from 'react';
+import { ThemeProvider } from '@rallypoint/ui';
 import { useMatchStore } from './store/matchStore.js';
-import { MatchSetup } from './components/MatchSetup.js';
-import { ScoringScreen } from './components/ScoringScreen.js';
+import { TabBar, MainTab } from './components/navigation/TabBar.js';
+import { PlayScreen } from './components/play/PlayScreen.js';
+import { AppleScoringScreen } from './components/scoring/AppleScoringScreen.js';
 import { MatchSummary } from './components/MatchSummary.js';
-import { TournamentManager } from './components/tournaments/TournamentManager.js';
-import { CommunityMatchSetup } from './components/ranking/CommunityMatchSetup.js';
 import { RankingsDashboard } from './components/ranking/RankingsDashboard.js';
+import { CommunityMatchSetup } from './components/ranking/CommunityMatchSetup.js';
+import { TournamentManager } from './components/tournaments/TournamentManager.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { ComponentGallery } from '@rallypoint/ui';
+import { Moon, Sun, Type } from 'lucide-react';
 
-export const App: React.FC = () => {
-  const { match, theme, largeTextMode, toggleTheme, toggleLargeText, resetMatch } =
-    useMatchStore();
-  const [activeTab, setActiveTab] = useState<'match' | 'rankings' | 'tournament' | 'community'>('match');
+export const AppContent: React.FC = () => {
+  const {
+    match,
+    theme,
+    largeTextMode,
+    announcement,
+    toggleTheme,
+    toggleLargeText,
+    resetMatch,
+  } = useMatchStore();
+
+  const [activeTab, setActiveTab] = useState<MainTab>('play');
+  const [showGallery, setShowGallery] = useState(false);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -21,108 +34,170 @@ export const App: React.FC = () => {
     }
   }, [theme]);
 
+  // If a match is LIVE, show the full-screen Apple live scoring screen
+  if (match && match.status === 'IN_PROGRESS') {
+    return (
+      <ErrorBoundary>
+        <AppleScoringScreen />
+        <div aria-live="polite" className="sr-only">
+          {announcement}
+        </div>
+      </ErrorBoundary>
+    );
+  }
+
+  // If a match is COMPLETED, show the match summary
+  if (match && match.status === 'COMPLETED') {
+    return (
+      <ErrorBoundary>
+        <div className="min-h-screen bg-neutral-100 dark:bg-black text-neutral-900 dark:text-white p-4 pb-20">
+          <header className="max-w-md mx-auto mb-4 flex items-center justify-between">
+            <span className="font-bold text-lg">🏸 RallyPoint</span>
+            <button
+              onClick={() => resetMatch()}
+              className="text-xs px-3 py-1.5 rounded-full bg-neutral-200 dark:bg-neutral-800 font-semibold"
+            >
+              Done
+            </button>
+          </header>
+          <MatchSummary state={match} />
+        </div>
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <div
-        className={`min-h-screen flex flex-col transition-colors ${
-          theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-100 text-gray-900'
+        className={`min-h-screen flex flex-col transition-colors selection:bg-emerald-500/20 ${
+          theme === 'dark' ? 'bg-[#000000] text-white' : 'bg-[#F2F2F7] text-neutral-900'
         }`}
       >
-        {/* Global Top Navbar */}
-        <header className="border-b border-gray-800/80 px-4 py-2.5 flex items-center justify-between">
+        {/* Subtle Apple Top Navigation Header */}
+        <header className="border-b border-black/5 dark:border-white/10 px-4 py-2.5 flex items-center justify-between sticky top-0 z-30 bg-white/80 dark:bg-black/80 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <span className="text-xl">🏸</span>
-            <span className="font-black text-sm tracking-tight">RallyPoint</span>
-            <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded font-mono">
+            <span className="font-bold text-sm tracking-tight">RallyPoint</span>
+            <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-mono font-bold">
               BWF PWA
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab(activeTab === 'rankings' ? 'match' : 'rankings')}
-              title="Community Rankings Dashboard"
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                activeTab === 'rankings'
-                  ? 'bg-emerald-600 text-white border-emerald-500'
-                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              📊 Rankings
-            </button>
-            <button
-              onClick={() => setActiveTab(activeTab === 'community' ? 'match' : 'community')}
-              title="Community Roster & League Setup"
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                activeTab === 'community'
-                  ? 'bg-emerald-600 text-white border-emerald-500'
-                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              👥 Match Setup
-            </button>
-            <button
-              onClick={() => setActiveTab(activeTab === 'tournament' ? 'match' : 'tournament')}
-              title="Tournament Manager"
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                activeTab === 'tournament'
-                  ? 'bg-emerald-600 text-white border-emerald-500'
-                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              🏆 Tournaments
-            </button>
+          <div className="flex items-center gap-1.5">
             <button
               onClick={toggleLargeText}
               title="Toggle Large Text Mode"
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+              className={`p-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                 largeTextMode
                   ? 'bg-amber-400 text-gray-950 border-amber-300'
-                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+                  : 'bg-black/5 dark:bg-white/10 border-transparent text-neutral-700 dark:text-neutral-300 hover:bg-black/10 dark:hover:bg-white/20'
               }`}
             >
-              A+
+              <Type className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={toggleTheme}
               title="Toggle Theme"
-              className="p-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-colors"
+              className="p-1.5 rounded-lg text-xs bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-neutral-700 dark:text-neutral-300 border border-transparent transition-colors"
             >
-              {theme === 'dark' ? '☀️' : '🌙'}
+              {theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5" />
+              ) : (
+                <Moon className="w-3.5 h-3.5" />
+              )}
             </button>
-            {match && (
-              <button
-                onClick={() => {
-                  resetMatch();
-                  setActiveTab('match');
-                }}
-                title="Reset or Cancel Match"
-                className="text-xs bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1 rounded-lg font-medium transition-colors"
-              >
-                Exit
-              </button>
-            )}
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col items-center justify-center p-3">
-          {activeTab === 'rankings' ? (
-            <RankingsDashboard />
-          ) : activeTab === 'community' ? (
-            <CommunityMatchSetup onStart={() => setActiveTab('match')} />
-          ) : activeTab === 'tournament' ? (
-            <TournamentManager onClose={() => setActiveTab('match')} />
-          ) : !match ? (
-            <MatchSetup />
-          ) : match.status === 'COMPLETED' ? (
-            <MatchSummary state={match} />
-          ) : (
-            <ScoringScreen />
+        {/* Tab Content */}
+        <main className="flex-1 w-full max-w-lg mx-auto overflow-y-auto">
+          {activeTab === 'play' && (
+            <PlayScreen onStartMatch={() => {}} />
+          )}
+
+          {activeTab === 'rankings' && (
+            <div className="p-4 pb-28">
+              <RankingsDashboard />
+            </div>
+          )}
+
+          {activeTab === 'players' && (
+            <div className="p-4 pb-28">
+              <CommunityMatchSetup
+                onStart={() => setActiveTab('play')}
+              />
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="p-4 pb-28 space-y-4">
+              <div className="flex items-center justify-between pb-2">
+                <h1 className="text-2xl font-bold tracking-tight">Settings & Profile</h1>
+                <button
+                  onClick={() => setShowGallery(!showGallery)}
+                  className="text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold"
+                >
+                  {showGallery ? 'Hide Gallery' : 'UI Components'}
+                </button>
+              </div>
+
+              {showGallery ? (
+                <ComponentGallery />
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-xs space-y-3">
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                      Appearance & Display
+                    </h3>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-sm font-medium">Dark Mode</span>
+                      <button
+                        onClick={toggleTheme}
+                        className="px-3 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/10 font-semibold"
+                      >
+                        {theme === 'dark' ? 'Enabled' : 'Disabled'}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-sm font-medium">Large Text (A+)</span>
+                      <button
+                        onClick={toggleLargeText}
+                        className="px-3 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/10 font-semibold"
+                      >
+                        {largeTextMode ? 'Active' : 'Standard'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-xs space-y-3">
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                      Tournament Manager
+                    </h3>
+                    <TournamentManager onClose={() => setActiveTab('play')} />
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </main>
+
+        {/* 4-Tab Bottom Bar */}
+        <TabBar activeTab={activeTab} onChange={(t) => setActiveTab(t)} />
+
+        {/* ARIA Announcement Region */}
+        <div aria-live="polite" className="sr-only">
+          {announcement}
+        </div>
       </div>
     </ErrorBoundary>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <ThemeProvider defaultScheme="dark" defaultAccent="green">
+      <AppContent />
+    </ThemeProvider>
   );
 };
 export default App;

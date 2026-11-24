@@ -2,6 +2,31 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [UI Phase 2] - Navigation, Play Tab, 3-Step Setup & Apple Calm Live Scoring
+### Added
+- **4-Tab Native Apple Navigation (`TabBar.tsx`)**:
+  - `Play`, `Rankings`, `Players`, and `Profile` persistent bottom navigation bar.
+  - Liquid glass backdrop blur with safe-area insets and active spring pill indicator.
+  - Haptic feedback on tab changes (`Haptics.selection()`).
+- **Play Screen (`PlayScreen.tsx`)**:
+  - Single primary action hero banner: "Start Match" with subtle gradient background.
+  - Active match in-progress alert card for 1-tap live resumption.
+  - Inset grouped list of recent matches showing participants, format tags, and score chips.
+- **3-Step Match Setup Sheet (`MatchSetupSheet.tsx`)**:
+  - Step 1: "Who's playing?" with search and "Fair Teams" balanced doubles auto-suggestion.
+  - Step 2: "How do you want to score?" with large Rally vs Service Point cards and target score segmented pills (21, 15, 11).
+  - Step 3: "Who serves first?" with server selection and animated coin-flip toss.
+- **Calm Apple Live Scoring Screen (`AppleScoringScreen.tsx`)**:
+  - Split screen: Two massive tappable halves (portrait top/bottom, landscape left/right) with high-contrast rolling digit counters (`ScoreNumberRoll`).
+  - Haptic feedback on every scored point (`Haptics.pointScored()`).
+  - Quiet middle status bar: Game number, format badge, and active server shuttle `🏸` indicator.
+  - Quiet bottom controls: Single Undo button (`Haptics.undo()`) and options menu (`...`).
+  - Service Point support: "Serve changes side" notice banner and setting option bottom sheets (14-all setting to 17).
+  - Optional 3-second auto-dismiss shot tagging bar (`Smash`, `Drop`, `Net`, `Error`).
+  - Screen Wake Lock keeping screen active during live matches.
+- **Documentation**:
+  - Full design and implementation notes in `docs/ui/phase-2-navigation-and-scoring.md`.
+
 ## [UI Phase 1] - Design System (@rallypoint/ui) & Apple HIG Tokens
 ### Added
 - **`@rallypoint/ui` Package**:

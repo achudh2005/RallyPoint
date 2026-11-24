@@ -14,7 +14,7 @@ import { Skeleton } from './Skeleton.js';
 import { Button } from './Button.js';
 import { ScoreNumberRoll } from './ScoreNumberRoll.js';
 import { AccentColor } from '../tokens.js';
-import { Palette, Bell, Shield, Sparkles, Moon, Sun, Smartphone } from 'lucide-react';
+import { Bell, Shield, Sparkles, Moon, Sun, Smartphone } from 'lucide-react';
 
 export const ComponentGallery: React.FC = () => {
   const { colorScheme, setColorScheme, accent, setAccent, textSize, setTextSize } = useTheme();

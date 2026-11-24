@@ -7,6 +7,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@rallypoint/engine': path.resolve(__dirname, '../../packages/engine/src/index.ts'),
+      '@rallypoint/ranking': path.resolve(__dirname, '../../packages/ranking/src/index.ts'),
+      '@rallypoint/scoring-rules': path.resolve(__dirname, '../../packages/scoring-rules/src/index.ts'),
+      '@rallypoint/ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
     },
   },
   test: {

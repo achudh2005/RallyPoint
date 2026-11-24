@@ -15,7 +15,14 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@rallypoint/engine": ["../../packages/engine/src/index.ts"],
+      "@rallypoint/ranking": ["../../packages/ranking/src/index.ts"],
+      "@rallypoint/scoring-rules": ["../../packages/scoring-rules/src/index.ts"],
+      "@rallypoint/ui": ["../../packages/ui/src/index.ts"]
+    }
   },
   "include": ["src"]
 }
