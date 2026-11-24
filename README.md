@@ -67,7 +67,30 @@ flowchart TD
 
 ---
 
-## Entity Relationship Overview
+## Native Apple Design System & UI Redesign (`@rallypoint/ui` & `apps/web`)
+
+RallyPoint features an Apple Human Interface Guidelines (HIG) front-end interface built with React 18, Vite, TypeScript, Tailwind CSS, Zustand, Recharts, and Framer Motion:
+
+### Key Design Pillars
+1. **One Screen, One Job**: Every screen has a single prominent primary action and zero visual clutter.
+2. **Progressive Disclosure**: Advanced options (shot tagging, point details, custom scoring limits) are cleanly deferred to bottom sheets and settings.
+3. **Calm Courtside Scoring (`AppleScoringScreen.tsx`)**:
+   - Split-screen interface: two massive tappable halves (portrait top/bottom, landscape left/right).
+   - High-contrast rolling score digits (`ScoreNumberRoll`) with smooth physics.
+   - Haptic feedback on every point scored (`Haptics.pointScored()`) and undo (`Haptics.undo()`).
+   - Screen Wake Lock to prevent timeout during court action.
+   - Global keyboard shortcuts (`ArrowUp`/`ArrowDown`/`1`/`2` to score, `u`/`Backspace` for undo, `s`/`d`/`n` to tag shots).
+4. **4-Tab Native Bottom Navigation (`TabBar.tsx`)**:
+   - `Play`: Hero "Start Match", active match card for 1-tap live resumption, and recent matches list.
+   - `Rankings`: Large title, segmented player vs team toggle, category chips, 🥇 elevated podium, and standings list.
+   - `Players`: Searchable roster, avatar initials, match counts, and "Add Player" modal.
+   - `Profile`: Inset iOS Settings with Dark Appearance, 5 Apple accent colors (`green`, `blue`, `teal`, `indigo`, `amber`), haptics toggle, ranking rebuilder, event export, and component showcase.
+5. **Onboarding & Celebration**:
+   - 3-card swipeable welcome sheet introducing quick scoring, service rules, and live rankings.
+   - Fullscreen canvas particle confetti explosion on match completion.
+6. **Stadium TV Scoreboard (`TVScoreboardScreen.tsx`)**:
+   - High-visibility arena display designed for public gym TVs and projectors with 120-220pt digit counters and fullscreen toggle.
+
 
 ```mermaid
 erDiagram

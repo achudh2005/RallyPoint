@@ -8,6 +8,8 @@ import { AppleRankingsScreen } from './components/rankings/AppleRankingsScreen.j
 import { ApplePlayersScreen } from './components/players/ApplePlayersScreen.js';
 import { AppleProfileScreen } from './components/profile/AppleProfileScreen.js';
 import { AppleMatchSummarySheet } from './components/summary/AppleMatchSummarySheet.js';
+import { OnboardingSheet } from './components/onboarding/OnboardingSheet.js';
+import { ConfettiCelebration } from './components/effects/ConfettiCelebration.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Moon, Sun, Type } from 'lucide-react';
 
@@ -23,6 +25,25 @@ export const AppContent: React.FC = () => {
   } = useMatchStore();
 
   const [activeTab, setActiveTab] = useState<MainTab>('play');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    try {
+      const completed = localStorage.getItem('rallypoint_onboarding_completed');
+      if (!completed) {
+        setShowOnboarding(true);
+      }
+    } catch {
+      // In tests without localstorage
+    }
+  }, []);
+
+  const handleCompleteOnboarding = () => {
+    try {
+      localStorage.setItem('rallypoint_onboarding_completed', 'true');
+    } catch {}
+    setShowOnboarding(false);
+  };
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -37,17 +58,18 @@ export const AppContent: React.FC = () => {
     return (
       <ErrorBoundary>
         <AppleScoringScreen />
-        <div aria-live="polite" className="sr-only">
+        <div aria-live="assertive" className="sr-only">
           {announcement}
         </div>
       </ErrorBoundary>
     );
   }
 
-  // If a match is COMPLETED, show the Apple match summary
+  // If a match is COMPLETED, show the Apple match summary with celebratory confetti
   if (match && match.status === 'COMPLETED') {
     return (
       <ErrorBoundary>
+        <ConfettiCelebration />
         <div className="min-h-screen bg-neutral-100 dark:bg-black text-neutral-900 dark:text-white p-4 pb-20">
           <header className="max-w-md mx-auto mb-2 flex items-center justify-between">
             <span className="font-bold text-lg">🏸 RallyPoint</span>
@@ -107,8 +129,8 @@ export const AppContent: React.FC = () => {
           </div>
         </header>
 
-        {/* Tab Content */}
-        <main className="flex-1 w-full max-w-lg mx-auto overflow-y-auto">
+        {/* Tab Content - Responsive sizing for mobile and tablet/desktop */}
+        <main className="flex-1 w-full max-w-lg lg:max-w-2xl mx-auto overflow-y-auto">
           {activeTab === 'play' && (
             <PlayScreen onStartMatch={() => {}} />
           )}
@@ -126,8 +148,14 @@ export const AppContent: React.FC = () => {
           )}
         </main>
 
-        {/* 4-Tab Bottom Bar */}
+        {/* 4-Tab Bottom Bar (Floats as an Apple dock on desktop) */}
         <TabBar activeTab={activeTab} onChange={(t) => setActiveTab(t)} />
+
+        {/* First-Run 3-Step Onboarding */}
+        <OnboardingSheet
+          isOpen={showOnboarding}
+          onComplete={handleCompleteOnboarding}
+        />
 
         {/* ARIA Announcement Region */}
         <div aria-live="polite" className="sr-only">

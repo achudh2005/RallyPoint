@@ -8,6 +8,7 @@ import {
   AlertCircle,
   HelpCircle,
   FileText,
+  Tv,
 } from 'lucide-react';
 import {
   ScoreNumberRoll,
@@ -18,6 +19,7 @@ import {
 } from '@rallypoint/ui';
 import { useMatchStore } from '../../store/matchStore.js';
 import { Side, RallyEndType } from '@rallypoint/engine';
+import { TVScoreboardScreen } from '../scoreboard/TVScoreboardScreen.js';
 
 export const AppleScoringScreen: React.FC = () => {
   const {
@@ -38,10 +40,43 @@ export const AppleScoringScreen: React.FC = () => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showDetailsSheet, setShowDetailsSheet] = useState(false);
   const [showRulesSheet, setShowRulesSheet] = useState(false);
+  const [showScoreboard, setShowScoreboard] = useState(false);
   const [lastTaggedPointSide, setLastTaggedPointSide] = useState<Side | null>(null);
   const [serveNotice, setServeNotice] = useState<string | null>(null);
   const tagTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const prevServeSideRef = useRef<string | null>(null);
+
+  // Keyboard navigation and shortcuts for refereeing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
+      ) {
+        return;
+      }
+
+      if (e.key === 'ArrowUp' || e.key === '1') {
+        e.preventDefault();
+        handleScoreTap('A');
+      } else if (e.key === 'ArrowDown' || e.key === '2') {
+        e.preventDefault();
+        handleScoreTap('B');
+      } else if (e.key === 'u' || e.key === 'U' || e.key === 'Backspace') {
+        e.preventDefault();
+        handleUndo();
+      } else if (e.key === 's' || e.key === 'S') {
+        handleTagShot('SMASH');
+      } else if (e.key === 'd' || e.key === 'D') {
+        handleTagShot('DROP');
+      } else if (e.key === 'n' || e.key === 'N') {
+        handleTagShot('NET');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
   // Wake lock management
   useEffect(() => {
@@ -84,6 +119,15 @@ export const AppleScoringScreen: React.FC = () => {
 
   if (!match) {
     return null;
+  }
+
+  if (showScoreboard) {
+    return (
+      <TVScoreboardScreen
+        state={match}
+        onExit={() => setShowScoreboard(false)}
+      />
+    );
   }
 
   const { config, currentScoreA, currentScoreB, currentGameNumber, status, serveState } = match;
@@ -166,16 +210,29 @@ export const AppleScoringScreen: React.FC = () => {
         </div>
 
         {/* More Actions Button */}
-        <button
-          onClick={() => {
-            Haptics.selection();
-            setShowMoreMenu(true);
-          }}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-slate-600 dark:text-zinc-300 transition-colors"
-          aria-label="Match Menu"
-        >
-          <MoreHorizontal className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              Haptics.selection();
+              setShowScoreboard(true);
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-slate-600 dark:text-zinc-300 transition-colors"
+            aria-label="TV Scoreboard"
+            title="TV Scoreboard"
+          >
+            <Tv className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              Haptics.selection();
+              setShowMoreMenu(true);
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-slate-600 dark:text-zinc-300 transition-colors"
+            aria-label="Match Menu"
+          >
+            <MoreHorizontal className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Serve Notice Banner (Service Point mode) */}

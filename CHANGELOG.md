@@ -2,6 +2,34 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [UI Phase 4] / [UI v1.0.0] - Onboarding, Arena TV Scoreboard, Confetti, Keyboard Shortcuts & Polish
+### Added
+- **First-Run Onboarding (`OnboardingSheet.tsx`)**:
+  - 3-card swipeable step-through modal: "Score in 10 Seconds", "Rally or Service Point", and "Live Community Rankings".
+  - Step indicator dots, skip button, and primary "Get Started" action.
+  - Automatically triggered on first visit and stored in `localStorage`.
+- **Celebratory Confetti Particles (`ConfettiCelebration.tsx`)**:
+  - Zero-dependency canvas particle explosion with physics simulation (gravity, friction, rotation).
+  - Triggers automatically upon match victory banner display.
+- **Stadium TV Scoreboard Screen (`TVScoreboardScreen.tsx`)**:
+  - High-contrast stadium display for court-side TVs, monitors, and projectors.
+  - Giant 120-220pt digit counters for Side A and Side B.
+  - Real-time active server badge with shuttlecock indicator (`🏸 Serving`).
+  - Fullscreen toggle via HTML5 Fullscreen API.
+  - Game scores breakdown footer.
+- **Referee Keyboard Shortcuts & Accessibility**:
+  - `ArrowUp` / `1` for Side A point; `ArrowDown` / `2` for Side B point.
+  - `u` / `Backspace` for Undo.
+  - `s` / `d` / `n` for Smash, Drop, and Net shot tagging.
+  - Accessible `aria-live="assertive"` screen reader announcements on every point.
+  - One-click TV scoreboard launcher in the top navigation bar.
+- **Responsive Tablet & Desktop Layouts**:
+  - Adaptive layout with centered floating Apple bottom dock on desktop viewports.
+  - Expanded content container (`lg:max-w-2xl`).
+- **Documentation**:
+  - Detailed release documentation in `docs/ui/phase-4-interactions-and-polish.md`.
+
+
 ## [UI Phase 3] - Apple-Style Rankings, Players, Profiles, Match Summary & Settings
 ### Added
 - **Rankings Screen (`AppleRankingsScreen.tsx`)**:
