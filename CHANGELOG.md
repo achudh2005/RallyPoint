@@ -2,6 +2,28 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Android Phase 1] - Capacitor Setup & Native Android Project Foundation
+### Added
+- **Capacitor Mobile Architecture**:
+  - Integrated Capacitor (`@capacitor/core`, `@capacitor/cli`, `@capacitor/android`) into `apps/web`.
+  - Added native plugins: `@capacitor/app`, `@capacitor/haptics`, `@capacitor/status-bar`, `@capacitor/splash-screen`, `@capacitor/share`, `@capacitor/filesystem`, `@capacitor/network`, `@capacitor/preferences`, `@capacitor/local-notifications`, and `@capacitor-community/keep-awake`.
+  - Created `capacitor.config.ts` targeting `com.rallypoint.app` with `https` scheme and dark splash screen styling.
+- **Native Android Project Scaffolding**:
+  - Committed full `apps/web/android` project to git for headless cloud builds on GitHub Actions without requiring local Android Studio.
+  - Configured Android Gradle Plugin 8.7.2, Gradle 8.9 wrapper, and JDK 17 support.
+  - Configured `compileSdk 35`, `targetSdk 35` (Android 15), and `minSdk 26` (Android 8.0+).
+  - Configured ABI filters for `arm64-v8a` and `armeabi-v7a`.
+  - Configured dynamic `versionCode` (from `GITHUB_RUN_NUMBER`) and `versionName` (from `GITHUB_REF_NAME`).
+  - Enabled release R8 minification (`minifyEnabled true`, `shrinkResources true`) with custom ProGuard rules protecting Capacitor plugin reflections and WebKit Javascript interfaces.
+- **App Identity & Visual Assets**:
+  - Configured adaptive launcher icon with foreground layer and background layer.
+  - Added Android 13+ monochrome themed launcher icon (`ic_launcher_monochrome.xml`).
+  - Added Android 12+ SplashScreen API configuration in `styles.xml`.
+  - Added notification status icon (`ic_stat_rallypoint.xml`) for local notifications.
+- **Build Scripts**:
+  - Added npm scripts: `build:web`, `cap:sync`, `android:debug`, `android:release`.
+
+
 ## [UI Phase 4] / [UI v1.0.0] - Onboarding, Arena TV Scoreboard, Confetti, Keyboard Shortcuts & Polish
 ### Added
 - **First-Run Onboarding (`OnboardingSheet.tsx`)**:

@@ -9,6 +9,21 @@
 ## Overview
 RallyPoint is a tournament-grade badminton point tracking, analytics, and tournament management platform adhering strictly to Badminton World Federation (BWF) regulations. Built on an event-sourced architecture, match scores are never stored as mutable numbers; state is derived by pure reducers replaying append-only domain events.
 
+RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android application (APK) via Capacitor, optimized for modern high-refresh devices such as the iQOO Neo 10 (Android 15, Snapdragon 8 Gen 3 class, 144Hz AMOLED).
+
+---
+
+## Android Mobile App (Capacitor)
+- **Application ID**: `com.rallypoint.app`
+- **Target OS**: Android 15 (`compileSdk 35`, `targetSdk 35`, `minSdk 26`)
+- **ABIs Supported**: `arm64-v8a`, `armeabi-v7a`
+- **Cloud Build**: Built headlessly via GitHub Actions without requiring local Android Studio.
+- **Key Mobile Scripts**:
+  - `npm run build:web` - Compiles TypeScript and builds the Vite production SPA
+  - `npm run cap:sync` - Syncs web bundle and native plugins to the `android/` project
+  - `npm run android:debug` - Assembles debug APK locally or in CI
+  - `npm run android:release` - Assembles release APK with R8 shrinking and ProGuard optimization
+
 ---
 
 ## Architecture
