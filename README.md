@@ -28,6 +28,23 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
   - Event-sourced mid-match crash recovery from IndexedDB
   - Android native share sheet integration for match results and event logs
 - **Cloud Build**: Built headlessly via GitHub Actions without requiring local Android Studio.
+
+### Cloud APK Signing & Keystore Setup
+To configure production release signing for future updates:
+1. Run the generation script once in any terminal with Java (e.g. GitHub Codespace, Mac, Linux):
+   ```bash
+   bash scripts/generate-keystore.sh
+   ```
+2. Base64 encode the generated `rallypoint-release.keystore`:
+   - **Linux/macOS**: `base64 -w 0 rallypoint-release.keystore > keystore_base64.txt`
+   - **Windows PowerShell**: `[Convert]::ToBase64String([IO.File]::ReadAllBytes('rallypoint-release.keystore')) | Out-File keystore_base64.txt`
+3. Add the following repository secrets under **GitHub Repository Settings > Secrets and variables > Actions**:
+   - `ANDROID_KEYSTORE_BASE64`: Contents of `keystore_base64.txt`
+   - `ANDROID_KEYSTORE_PASSWORD`: Keystore password you entered
+   - `ANDROID_KEY_ALIAS`: `rallypoint`
+   - `ANDROID_KEY_PASSWORD`: Key password you entered
+4. *Note: If repository secrets are not set, the GitHub Actions cloud build falls back to debug signing automatically so testing is never blocked.*
+⚠️ **CRITICAL**: Back up `rallypoint-release.keystore` and passwords securely. If lost, future updates cannot be installed over existing installs without reinstalling.
 - **Key Mobile Scripts**:
   - `npm run build:web` - Compiles TypeScript and builds the Vite production SPA
   - `npm run cap:sync` - Syncs web bundle and native plugins to the `android/` project

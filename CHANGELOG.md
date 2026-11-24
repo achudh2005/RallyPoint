@@ -2,6 +2,21 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Android Phase 3] - Cloud APK Build via GitHub Actions & Signing Pipeline
+### Added
+- **Headless Cloud APK Pipeline (`android-apk.yml`)**:
+  - Automated cloud compilation on GitHub Actions runners without requiring local Android Studio.
+  - Fail-fast pipeline: runs strict TypeScript typechecks and all 70 unit tests before building APKs.
+  - Matrix setup: Temurin JDK 17, Android SDK platform 35, build-tools 35.0.0, and Gradle actions caching.
+  - Dynamically builds the Vite web bundle with `VITE_API_URL` and syncs with Capacitor.
+  - Automatically builds both `RallyPoint-debug.apk` and `RallyPoint-release.apk` with R8 minification and resource shrinking.
+  - Computes cryptographic SHA-256 checksums and uploads artifacts with 30-day retention.
+  - Second stage automated release publisher attaching APKs to GitHub Releases on `v*` git tags.
+- **Production Keystore Generator (`scripts/generate-keystore.sh`)**:
+  - Standardized script generating a 2048-bit RSA release keystore (`rallypoint-release.keystore`) valid for 10,000 days.
+  - Secure pipeline: secrets decoded directly in the CI runner memory, never committed to git.
+  - Graceful fallback: builds debug-signed APK when secrets are not yet configured.
+
 ## [Android Phase 2] - Native Adaptation for iQOO Neo 10 & Android 15
 ### Added
 - **Edge-to-Edge & Punch-hole Camera Display**:
