@@ -2,6 +2,29 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Mobile Actions Phase 2] - Mobile Live Scoring Screen (Core UX)
+### Added
+- **Mobile Live Scoring Screen Redesign (`AppleScoringScreen.tsx`)**:
+  - Re-architected for one-handed thumb ergonomics on tall 6.8" 144Hz AMOLED displays (iQOO Neo 10).
+  - Portrait layout: top quiet info bar (Game #, scoring format badge, edit & scoreboard shortcuts), upper-middle giant readable scoreboard with glowing server indicators, and middle team score tap area with `Unassigned: N` badges.
+  - Lower 55% thumb zone: `PlayerCard` component for singles (2 cards) and doubles (4 cards in 2x2 grid) with live lines (`8 pts · 2 drops · +6`), court badges (L/R), and SERVING tags.
+  - Landscape layout: dedicated Left Side A column, Right Side B column, and center vertical scoreboard with undo button.
+- **High-Contrast Player Action Buttons (`PlayerCard.tsx`)**:
+  - High-visibility POINT (emerald gradient) and DROP (rose/amber gradient) action buttons &ge;64dp tall with &ge;12dp spacing.
+  - Active visual scaling feedback (`active:scale-95`) with `touch-action: manipulation` eliminating mobile tap delays.
+- **Native Haptics & Accidental Tap Prevention**:
+  - Medium firm impact on POINT, distinctive double-tap pattern on DROP, warning feedback on UNDO, and celebration sequence on match completion via `@capacitor/haptics`.
+  - 300ms debounce guard preventing accidental double taps.
+  - Long-press bottom sheet (`PlayerDetailSheet.tsx`) for instant player stats inspection, court swapping, and attribution fixes.
+- **Quick Edit Sheet (`QuickEditSheet.tsx`)**:
+  - Accessible via top bar edit shortcut or options menu. Shows last 10 actions with inline re-attribution to other players and POINT <-> DROP toggling.
+- **Undo Floating Pill Toast**:
+  - Bottom center undo button triggering floating toast with descriptive details (e.g. `Viktor Axelsen POINT undone (Game 1, 14-12)`).
+- **Scoring Settings Integration (`AppleProfileScreen.tsx`)**:
+  - Added Settings > Scoring Controls: toggle action buttons on/off, label customization (POINT/DROP vs WINNER/ERROR vs +1/-1), and layout mode (Comfortable 64dp vs Compact 52dp).
+- **Test Coverage**:
+  - 100% tests for `PlayerCard`, integration flows for Rally/Service scoring, undo toast, debounce window, and touch target validation for 393x873 (iQOO Neo 10) and 360x800 viewports.
+
 ## [Mobile Actions Phase 1] - Pure Action Engine, Mobile SQLite Storage & Batch Sync
 ### Added
 - **`PLAYER_ACTION` Event Architecture (`@rallypoint/scoring-rules`, `@rallypoint/engine`)**:

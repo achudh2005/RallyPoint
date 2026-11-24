@@ -14,6 +14,16 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
 ---
 
 ## Player Action Buttons & Mobile Storage Architecture
+- **Mobile Live Scoring Screen (Core UX)**:
+  - Ergonomically tuned for one-handed thumb use on tall 6.8" 144Hz AMOLED displays (e.g. iQOO Neo 10).
+  - Portrait mode: top quiet bar (Game #, scoring format), upper scoreboard with glowing server indicators, and lower 55% thumb zone housing `PlayerCard` components.
+  - Landscape mode: left/right side player columns with center vertical scoreboard, optimal for bench/tripod operation.
+  - Buttons: high-contrast POINT (emerald) and DROP (rose/amber) buttons &ge;64dp tall with &ge;12dp spacing, visual active scaling (`active:scale-95`), and `touch-action: manipulation`.
+  - Haptics: native linear vibration feedback for points, drops, undos, and match completion.
+  - Accidental tap prevention: 300ms debounce guard and long-press `PlayerDetailSheet` for instant stats and court swapping.
+  - Quick Edit Sheet: accessible via top bar or swipe-up to re-attribute actions or switch action types across the last 10 points.
+  - Undo floating pill toast: instant confirmation with player name, action, game #, and score.
+  - Scoring Settings: customizable button labels (`POINT/DROP`, `WINNER/ERROR`, `+1/-1`) and layout modes (`Comfortable` vs `Compact`).
 - **Per-Player Action Tracking (`PLAYER_ACTION`)**:
   - Direct POINT and DROP buttons for every player on court (2 in singles, 4 in doubles).
   - Automatically adheres to match scoring system (Rally Point vs Service Point).
