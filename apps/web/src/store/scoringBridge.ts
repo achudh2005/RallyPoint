@@ -2,6 +2,10 @@ import type { MatchConfig as EngineMatchConfig, MatchState as EngineMatchState, 
 import {
   createMatch as createScoringMatch,
   recordRally,
+  recordPlayerAction,
+  recordUnattributedPoint,
+  undoLastAction,
+  editAction,
   chooseSetting as scoringChooseSetting,
   undo as scoringUndo,
   MatchConfig as ScoringRulesMatchConfig,
@@ -11,6 +15,7 @@ import {
   FORMAT_PRESETS,
   ShotType,
   RallyEndResult,
+  PlayerActionEvent,
 } from '@rallypoint/scoring-rules';
 
 export function convertEngineConfigToScoringConfig(
@@ -148,6 +153,10 @@ export function syncScoringStateToEngineState(
 export {
   createScoringMatch,
   recordRally,
+  recordPlayerAction,
+  recordUnattributedPoint,
+  undoLastAction,
+  editAction,
   scoringChooseSetting,
   scoringUndo,
   FORMAT_PRESETS,
@@ -159,4 +168,5 @@ export type {
   ShotType,
   RallyEndResult,
   ScoringRulesMatchState,
+  PlayerActionEvent,
 };

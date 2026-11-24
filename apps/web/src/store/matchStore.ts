@@ -10,16 +10,22 @@ import {
   Side,
 } from '@rallypoint/engine';
 import { db } from '../db/index.js';
+import { getMobileStorage } from '../db/storage.js';
 import {
   convertEngineConfigToScoringConfig,
   createScoringMatch,
   recordRally,
+  recordPlayerAction as recordScoringPlayerAction,
+  recordUnattributedPoint as recordScoringUnattributedPoint,
+  undoLastAction as scoringUndoLastAction,
+  editAction as scoringEditAction,
   scoringChooseSetting,
   scoringUndo,
   syncScoringStateToEngineState,
   ScoringFormat,
   FormatConfig,
   ScoringRulesMatchState,
+  PlayerActionEvent,
 } from './scoringBridge.js';
 
 export interface ExtendedMatchConfig extends MatchConfig {
@@ -46,9 +52,21 @@ interface MatchStore {
   largeTextMode: boolean;
   announcement: string;
 
+  // Player Action Settings
+  showPlayerActionButtons: boolean;
+  playerActionButtonLabels: 'POINT_DROP' | 'WINNER_ERROR' | 'PLUS_MINUS';
+  playerActionButtonLayout: 'comfortable' | 'compact';
+
   // Actions
   startMatch: (config: ExtendedMatchConfig, enableRallyTagging?: boolean) => Promise<void>;
   recordPoint: (side: Side, rallyEndType?: RallyEndType) => Promise<void>;
+  recordPlayerAction: (playerId: string, action: 'POINT' | 'DROP') => Promise<void>;
+  recordUnattributedPoint: (side: Side) => Promise<void>;
+  undoAction: () => Promise<string | null>;
+  editAction: (
+    eventId: string,
+    updates: { playerId?: string; action?: 'POINT' | 'DROP' }
+  ) => Promise<boolean>;
   chooseSettingChoice: (setGame: boolean) => Promise<void>;
   undo: () => Promise<void>;
   recordServeFault: (faultySide: Side) => Promise<void>;
@@ -58,6 +76,9 @@ interface MatchStore {
   setPendingPointSide: (side: Side | null) => void;
   toggleTheme: () => void;
   toggleLargeText: () => void;
+  setShowPlayerActionButtons: (val: boolean) => void;
+  setPlayerActionButtonLabels: (labels: 'POINT_DROP' | 'WINNER_ERROR' | 'PLUS_MINUS') => void;
+  setPlayerActionButtonLayout: (layout: 'comfortable' | 'compact') => void;
   resumeLastMatch: () => Promise<boolean>;
   resetMatch: () => void;
 }
@@ -101,6 +122,12 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   theme: 'dark',
   largeTextMode: false,
   announcement: '',
+  showPlayerActionButtons: true,
+  playerActionButtonLabels: 'POINT_DROP',
+  playerActionButtonLayout: 'comfortable',
+  setShowPlayerActionButtons: (val: boolean) => set({ showPlayerActionButtons: val }),
+  setPlayerActionButtonLabels: (labels) => set({ playerActionButtonLabels: labels }),
+  setPlayerActionButtonLayout: (layout) => set({ playerActionButtonLayout: layout }),
 
   startMatch: async (config, enableRallyTagging = false) => {
     const scoringFormat = config.scoringFormat || 'RALLY_21';
@@ -257,6 +284,159 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       updatedAt: Date.now(),
       completed: nextState.status === 'COMPLETED',
     });
+  },
+
+  recordPlayerAction: async (playerId: string, action: 'POINT' | 'DROP') => {
+    const { match, events, scoringRulesState } = get();
+    if (!match || match.status === 'COMPLETED') return;
+
+    let scoringState = scoringRulesState;
+    if (!scoringState) {
+      const scoringConfig = convertEngineConfigToScoringConfig(match.config);
+      scoringState = createScoringMatch(scoringConfig);
+    }
+
+    const res = recordScoringPlayerAction(scoringState, { playerId, action });
+    const nextEngineState = syncScoringStateToEngineState(res.state, match.config);
+    const announcement = generateAriaAnnouncement(nextEngineState);
+
+    const nextEvents = [...events, res.actionEvent as any];
+
+    set({
+      scoringRulesState: res.state,
+      pendingSettingChoice: res.state.pendingSettingChoice,
+      match: nextEngineState,
+      events: nextEvents,
+      announcement,
+    });
+
+    try {
+      const storage = getMobileStorage();
+      await storage.recordActionLocally(match.config.id, res.actionEvent, res.state);
+    } catch {
+      await db.matches.put({
+        id: match.config.id,
+        config: match.config,
+        state: nextEngineState,
+        events: nextEvents,
+        updatedAt: Date.now(),
+        completed: nextEngineState.status === 'COMPLETED',
+      });
+    }
+  },
+
+  recordUnattributedPoint: async (side: Side) => {
+    const { match, events, scoringRulesState } = get();
+    if (!match || match.status === 'COMPLETED') return;
+
+    let scoringState = scoringRulesState;
+    if (!scoringState) {
+      const scoringConfig = convertEngineConfigToScoringConfig(match.config);
+      scoringState = createScoringMatch(scoringConfig);
+    }
+
+    const res = recordScoringUnattributedPoint(scoringState, side);
+    const nextEngineState = syncScoringStateToEngineState(res.state, match.config);
+    const announcement = generateAriaAnnouncement(nextEngineState);
+
+    const nextEvents = [...events, ...(res.events as any)];
+
+    set({
+      scoringRulesState: res.state,
+      pendingSettingChoice: res.state.pendingSettingChoice,
+      match: nextEngineState,
+      events: nextEvents,
+      announcement,
+    });
+
+    await db.matches.put({
+      id: match.config.id,
+      config: match.config,
+      state: nextEngineState,
+      events: nextEvents,
+      updatedAt: Date.now(),
+      completed: nextEngineState.status === 'COMPLETED',
+    });
+  },
+
+  undoAction: async (): Promise<string | null> => {
+    const { match, events, scoringRulesState } = get();
+    if (!match || events.length === 0) return null;
+
+    if (scoringRulesState) {
+      const undoRes = scoringUndoLastAction(scoringRulesState);
+      const nextEngineState = syncScoringStateToEngineState(undoRes.state, match.config);
+      const nextEvents = [...(undoRes.state.events as any)];
+      const announcement = `Undone. Score: ${generateAriaAnnouncement(nextEngineState)}`;
+
+      set({
+        scoringRulesState: undoRes.state,
+        pendingSettingChoice: undoRes.state.pendingSettingChoice,
+        match: nextEngineState,
+        events: nextEvents,
+        announcement,
+      });
+
+      await db.matches.put({
+        id: match.config.id,
+        config: match.config,
+        state: nextEngineState,
+        events: nextEvents,
+        updatedAt: Date.now(),
+        completed: nextEngineState.status === 'COMPLETED',
+      });
+
+      if (undoRes.undoneEvent && undoRes.undoneEvent.type === 'PLAYER_ACTION') {
+        const act = undoRes.undoneEvent as PlayerActionEvent;
+        const player =
+          match.config.sideA.playerIds[0] === act.playerId
+            ? match.config.sideA.name.split('&')[0]?.trim()
+            : match.config.sideB.playerIds[0] === act.playerId
+            ? match.config.sideB.name.split('&')[0]?.trim()
+            : act.playerId;
+        const game = undoRes.state.currentGameNumber;
+        const scA = nextEngineState.currentScoreA;
+        const scB = nextEngineState.currentScoreB;
+        return `${player} ${act.action} undone (Game ${game}, ${scA}-${scB})`;
+      }
+      return 'Point undone';
+    } else {
+      await get().undo();
+      return 'Action undone';
+    }
+  },
+
+  editAction: async (
+    eventId: string,
+    updates: { playerId?: string; action?: 'POINT' | 'DROP' }
+  ): Promise<boolean> => {
+    const { match, scoringRulesState } = get();
+    if (!match || !scoringRulesState) return false;
+
+    const editRes = scoringEditAction(scoringRulesState, eventId, updates);
+    if (!editRes.success) return false;
+
+    const nextEngineState = syncScoringStateToEngineState(editRes.state, match.config);
+    const nextEvents = [...(editRes.state.events as any)];
+
+    set({
+      scoringRulesState: editRes.state,
+      pendingSettingChoice: editRes.state.pendingSettingChoice,
+      match: nextEngineState,
+      events: nextEvents,
+      announcement: generateAriaAnnouncement(nextEngineState),
+    });
+
+    await db.matches.put({
+      id: match.config.id,
+      config: match.config,
+      state: nextEngineState,
+      events: nextEvents,
+      updatedAt: Date.now(),
+      completed: nextEngineState.status === 'COMPLETED',
+    });
+
+    return true;
   },
 
   undo: async () => {

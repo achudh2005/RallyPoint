@@ -16,7 +16,25 @@ export const nativeHaptics = {
       if (isNativePlatform) {
         await Haptics.impact({ style: ImpactStyle.Medium });
       } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(20);
+        navigator.vibrate(25);
+      }
+    } catch {}
+  },
+
+  /**
+   * Distinct double-tap/soft pattern for drop error
+   */
+  dropScored: async () => {
+    try {
+      if (isNativePlatform) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+        setTimeout(async () => {
+          try {
+            await Haptics.impact({ style: ImpactStyle.Light });
+          } catch {}
+        }, 80);
+      } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([15, 60, 15]);
       }
     } catch {}
   },
