@@ -37,10 +37,12 @@ const syncEventsSchema = z.object({
   events: z.array(
     z.object({
       id: z.string(),
+      clientUuid: z.string().optional(),
       matchId: z.string(),
       timestamp: z.number(),
       type: z.enum([
         'POINT',
+        'PLAYER_ACTION',
         'UNDO',
         'GAME_END',
         'MATCH_END',
@@ -50,6 +52,16 @@ const syncEventsSchema = z.object({
         'INTERVAL',
       ]),
       side: z.enum(['A', 'B']).optional(),
+      playerId: z.string().optional(),
+      action: z.enum(['POINT', 'DROP']).optional(),
+      resultingWinnerSide: z.enum(['A', 'B']).optional(),
+      serverAtRally: z.string().optional(),
+      servingSideAtRally: z.enum(['A', 'B']).optional(),
+      isPoint: z.boolean().optional(),
+      isSideOut: z.boolean().optional(),
+      scoringFormat: z.string().optional(),
+      occurredAt: z.string().optional(),
+      deviceId: z.string().optional(),
       rallyEndType: z
         .enum([
           'SMASH',
@@ -126,6 +138,23 @@ router.get('/:id/live', (req: Request, res: Response) => {
     spectators: 1, // TV connection
   });
 });
+
+// Batch events endpoint (Scorer, Umpire, Admin)
+router.post(
+  '/:id/events',
+  authenticate,
+  authorize(['ADMIN', 'SCORER', 'UMPIRE']),
+  validate(syncEventsSchema),
+  (req: AuthRequest, res: Response) => {
+    const matchId = req.params.id ?? '';
+    try {
+      const result = syncMatchEvents(matchId, req.body.events as MatchEvent[]);
+      res.json(result);
+    } catch (err: any) {
+      res.status(404).json({ error: err.message });
+    }
+  }
+);
 
 // Sync offline events (Scorer, Umpire can override, Admin)
 router.post(
