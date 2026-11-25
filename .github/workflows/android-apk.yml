@@ -89,6 +89,9 @@ jobs:
       - name: Build Web Application (PWA Bundle)
         run: npm run build:web
 
+      - name: Verify Zero Demo Data in Production Bundle
+        run: npm run check:no-demo
+
       - name: Sync Capacitor Android
         run: npm run cap:sync
 

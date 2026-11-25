@@ -280,7 +280,17 @@ export const AppleRankingsScreen: React.FC = () => {
           {/* Standings List (Inset Grouped) */}
           <div className="px-4">
             <div className="rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10 overflow-hidden shadow-xs">
-              {activeLeaderboard.map((entry, idx) => {
+              {activeLeaderboard.length === 0 ? (
+                <div className="p-8 text-center space-y-2">
+                  <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                    Rankings appear after your first match
+                  </p>
+                  <p className="text-xs text-neutral-400">
+                    Play a singles or doubles match in the Play tab to see live community standings.
+                  </p>
+                </div>
+              ) : (
+              activeLeaderboard.map((entry, idx) => {
                 const rankNum = entry.rank || idx + 1;
                 const medal =
                   rankNum === 1
@@ -323,7 +333,8 @@ export const AppleRankingsScreen: React.FC = () => {
                     </div>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           </div>
         </>

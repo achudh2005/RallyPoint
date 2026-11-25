@@ -33,7 +33,7 @@ import { nativePermissions } from '../../mobile/permissions.js';
 import { FuntouchBatteryModal } from '../mobile/FuntouchBatteryModal.js';
 import { checkForAppUpdates, UpdateCheckResult } from '../../mobile/updateChecker.js';
 import { UpdateModal } from '../../mobile/UpdateModal.js';
-import { Sparkles, Bug } from 'lucide-react';
+import { Sparkles, Bug, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { LiveAlertsSettings } from './LiveAlertsSettings.js';
 
 export const AppleProfileScreen: React.FC = () => {
@@ -51,13 +51,24 @@ export const AppleProfileScreen: React.FC = () => {
     setPlayerActionButtonLayout,
     events: lastMatchEvents,
     match: currentMatch,
+    resetMatch,
   } = useMatchStore();
-  const { activeSeason, setActiveSeason, recalculateLiveRankings, matches } =
-    useRankingStore();
+  const {
+    activeSeason,
+    setActiveSeason,
+    recalculateLiveRankings,
+    matches,
+    communityPlayers,
+    restoreCommunityPlayer,
+    resetAllData,
+  } = useRankingStore();
 
   const [showGallery, setShowGallery] = useState(false);
   const [showExportNotice, setShowExportNotice] = useState(false);
   const [showBatteryGuide, setShowBatteryGuide] = useState(false);
+  const [showArchivedSheet, setShowArchivedSheet] = useState(false);
+  const [showResetSheet, setShowResetSheet] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [rebuilding, setRebuilding] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
@@ -529,6 +540,30 @@ export const AppleProfileScreen: React.FC = () => {
               }
             />
           </GroupedSection>
+          {/* Data & Players */}
+          <GroupedSection header="Data">
+            <GroupedRow
+              title="Archived Players"
+              subtitle={`${communityPlayers.filter((p) => p.status === 'ARCHIVED' || p.status === 'HIDDEN').length} archived or hidden`}
+              leading={<Archive className="w-5 h-5 text-neutral-500" />}
+              showChevron
+              onClick={() => {
+                Haptics.selection();
+                setShowArchivedSheet(true);
+              }}
+            />
+            <GroupedRow
+              title="Start fresh (delete all data)"
+              subtitle="Wipe players, matches, and rankings"
+              leading={<Trash2 className="w-5 h-5 text-rose-500" />}
+              showChevron
+              onClick={() => {
+                Haptics.selection();
+                setResetConfirmText('');
+                setShowResetSheet(true);
+              }}
+            />
+          </GroupedSection>
         </GroupedList>
 
         {/* App Info Footer */}
@@ -589,6 +624,127 @@ export const AppleProfileScreen: React.FC = () => {
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
       />
+
+      {/* Archived Players Sheet */}
+      <BottomSheet
+        isOpen={showArchivedSheet}
+        onClose={() => setShowArchivedSheet(false)}
+        title="Archived Players"
+      >
+        <div className="space-y-3 pb-6">
+          {communityPlayers.filter((p) => p.status === 'ARCHIVED' || p.status === 'HIDDEN')
+            .length === 0 ? (
+            <p className="text-sm text-neutral-500 text-center py-6">
+              No archived or hidden players.
+            </p>
+          ) : (
+            communityPlayers
+              .filter((p) => p.status === 'ARCHIVED' || p.status === 'HIDDEN')
+              .map((player) => (
+                <div
+                  key={player.id}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-black/5 dark:bg-white/10"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{player.displayName}</p>
+                    <p className="text-[11px] text-neutral-400">
+                      {player.status === 'HIDDEN' ? 'Hidden from rankings' : 'Archived'}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      Haptics.selection();
+                      restoreCommunityPlayer(player.id);
+                    }}
+                    leadingIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                  >
+                    Restore player
+                  </Button>
+                </div>
+              ))
+          )}
+        </div>
+      </BottomSheet>
+
+      {/* Start Fresh (Delete All Data) Sheet */}
+      <BottomSheet
+        isOpen={showResetSheet}
+        onClose={() => setShowResetSheet(false)}
+        title="Start Fresh"
+      >
+        <div className="space-y-4 pb-6">
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            This will permanently delete all local players, matches, and rankings and return
+            RallyPoint to its first-run state.
+          </p>
+
+          <Button
+            variant="secondary"
+            fullWidth
+            type="button"
+            leadingIcon={<Download className="w-4 h-4" />}
+            onClick={() => {
+              const payload = {
+                exportedAt: new Date().toISOString(),
+                activeSeason,
+                communityPlayers,
+                matches,
+              };
+              const blob = new Blob([JSON.stringify(payload, null, 2)], {
+                type: 'application/json',
+              });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `rallypoint-backup-${Date.now()}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Download Backup First
+          </Button>
+
+          <div>
+            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider block mb-1">
+              Type RESET to confirm
+            </label>
+            <input
+              type="text"
+              placeholder="RESET"
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/10 text-base focus:outline-hidden focus:ring-2 focus:ring-rose-500/50"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              fullWidth
+              type="button"
+              onClick={() => setShowResetSheet(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              fullWidth
+              type="button"
+              disabled={resetConfirmText.trim() !== 'RESET'}
+              onClick={() => {
+                Haptics.selection();
+                resetMatch();
+                resetAllData();
+                setShowResetSheet(false);
+              }}
+            >
+              Delete All Data
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 };

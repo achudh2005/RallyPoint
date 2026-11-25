@@ -134,11 +134,11 @@ export const ComponentGallery: React.FC = () => {
           <GroupedSection header="Avatars & Semantic Badges">
             <div className="p-4 space-y-4">
               <div className="flex items-center gap-3">
-                <Avatar name="Viktor Axelsen" size="xl" status="serving" />
-                <Avatar name="Kento Momota" size="lg" status="winner" />
-                <Avatar name="Lee Zii Jia" size="md" />
-                <Avatar name="Akane Yamaguchi" size="sm" />
-                <Avatar name="Tai Tzu Ying" size="xs" />
+                <Avatar name="Player A" size="xl" status="serving" />
+                <Avatar name="Player B" size="lg" status="winner" />
+                <Avatar name="Player C" size="md" />
+                <Avatar name="Player D" size="sm" />
+                <Avatar name="Player E" size="xs" />
               </div>
 
               <div className="flex flex-wrap gap-2 pt-2">
@@ -198,7 +198,7 @@ export const ComponentGallery: React.FC = () => {
               <div>
                 <p className="text-[11px] text-neutral-400 uppercase font-mono">Headline (17px Semibold)</p>
                 <p className="text-[17px] leading-[22px] font-semibold text-neutral-900 dark:text-white">
-                  Axelsen vs. Momota (Final)
+                  Player A vs. Player B (Final)
                 </p>
               </div>
               <div>

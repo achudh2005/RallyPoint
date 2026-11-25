@@ -24,17 +24,15 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
   onClose,
   onMatchStarted,
 }) => {
-  const { communityPlayers, autoSuggestDoublesPairs } = useRankingStore();
+  const { communityPlayers, addCommunityPlayer, autoSuggestDoublesPairs } = useRankingStore();
   const { startMatch } = useMatchStore();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Step 1: Who's playing?
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([
-    'cp-viktor',
-    'cp-lee',
-  ]);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [quickAddName, setQuickAddName] = useState('');
 
   // Step 2: How do you want to score?
   const [systemType, setSystemType] = useState<'RALLY' | 'SERVICE'>('RALLY');
@@ -49,8 +47,11 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
   const [firstServerSide, setFirstServerSide] = useState<'A' | 'B'>('A');
   const [isFlippingCoin, setIsFlippingCoin] = useState(false);
 
-  // Filtered players
-  const filteredPlayers = communityPlayers.filter((p) =>
+  // Filtered active players (exclude archived & hidden)
+  const activePlayers = communityPlayers.filter(
+    (p) => p.status !== 'ARCHIVED' && p.status !== 'HIDDEN'
+  );
+  const filteredPlayers = activePlayers.filter((p) =>
     p.displayName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -253,7 +254,55 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
               />
             </div>
 
+            {/* Quick Add Player Inline */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Quick add player (e.g., Anu)"
+                value={quickAddName}
+                onChange={(e) => setQuickAddName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && quickAddName.trim().length >= 2) {
+                    e.preventDefault();
+                    const added = addCommunityPlayer(quickAddName);
+                    setQuickAddName('');
+                    if (selectedPlayerIds.length < 4) {
+                      setSelectedPlayerIds([...selectedPlayerIds, added.id]);
+                    }
+                  }
+                }}
+                className="flex-1 px-3 py-2 bg-white dark:bg-[#1C1C1E] rounded-xl border border-neutral-200/60 dark:border-neutral-800/80 text-[14px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                type="button"
+                disabled={quickAddName.trim().length < 2 || quickAddName.trim().length > 30}
+                onClick={() => {
+                  const added = addCommunityPlayer(quickAddName);
+                  setQuickAddName('');
+                  if (selectedPlayerIds.length < 4) {
+                    setSelectedPlayerIds([...selectedPlayerIds, added.id]);
+                  }
+                }}
+              >
+                Add
+              </Button>
+            </div>
+
             {/* Player Selection Grid */}
+            {filteredPlayers.length === 0 ? (
+              <div className="py-8 text-center rounded-2xl bg-white/60 dark:bg-[#1C1C1E]/60 border border-dashed border-neutral-200 dark:border-neutral-800">
+                <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">
+                  {activePlayers.length === 0 ? 'No players added yet' : 'No matching players'}
+                </p>
+                <p className="text-xs text-neutral-400 mt-1">
+                  {activePlayers.length === 0
+                    ? 'Add at least 2 players above or in the Players tab.'
+                    : 'Try another search term or add a new player above.'}
+                </p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
               {filteredPlayers.map((player) => {
                 const isSelected = selectedPlayerIds.includes(player.id);
@@ -285,6 +334,7 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
                 );
               })}
             </div>
+            )}
 
             <Button
               variant="primary"

@@ -13,6 +13,10 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
 
 ---
 
+- **Fresh Start & Player Management**:
+  - Starts completely empty on first launch (`Season 1`, zero demo players or matches), enforced by `npm run check:no-demo` in CI (`npm run seed:demo` for local dev seeding only).
+  - Full player lifecycle: single & bulk add, compressed photos, rename (propagates to all historical matches & rankings), duplicate detection & merge, smart archive/hide/restore, live-match removal protection, and `RESET` wipe with JSON backup.
+
 ## Streak Alerts & Match MVP Engine
 - **Streak Calculation Engine (`@rallypoint/scoring-rules`)**:
   - Live, deterministic detection of player POINT streaks (thresholds 3, 5, 7, 10), player DROP streaks (thresholds 3, 5 with empathetic wording), and team runs (thresholds 5, 8, 10).

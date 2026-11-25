@@ -7,10 +7,10 @@ export const MatchSetup: React.FC = () => {
 
   const [mode, setMode] = useState<MatchMode>('singles');
   const [bestOf, setBestOf] = useState<number>(3);
-  const [sideAName, setSideAName] = useState('Viktor Axelsen');
-  const [sideBName, setSideBName] = useState('Lee Zii Jia');
-  const [playerA2, setPlayerA2] = useState('Partner A');
-  const [playerB2, setPlayerB2] = useState('Partner B');
+  const [sideAName, setSideAName] = useState('');
+  const [sideBName, setSideBName] = useState('');
+  const [playerA2, setPlayerA2] = useState('');
+  const [playerB2, setPlayerB2] = useState('');
   const [initialServerSide, setInitialServerSide] = useState<Side>('A');
   const [enableTagging, setEnableTagging] = useState(false);
   const [hasResumed, setHasResumed] = useState<boolean | null>(null);

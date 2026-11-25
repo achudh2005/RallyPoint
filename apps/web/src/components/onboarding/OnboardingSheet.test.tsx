@@ -7,13 +7,13 @@ describe('OnboardingSheet Component (Phase 4)', () => {
     const handleComplete = vi.fn();
     render(<OnboardingSheet isOpen={true} onComplete={handleComplete} />);
 
-    expect(screen.getByText('Score in 10 Seconds')).toBeInTheDocument();
+    expect(screen.getAllByText('Welcome to RallyPoint').length).toBeGreaterThan(0);
     expect(screen.getByText('Step 1 of 3')).toBeInTheDocument();
 
     const nextBtn = screen.getByRole('button', { name: /next/i });
     fireEvent.click(nextBtn);
 
-    expect(screen.getByText('Rally or Service Point')).toBeInTheDocument();
+    expect(screen.getByText('Add Your Players')).toBeInTheDocument();
     expect(screen.getByText('Step 2 of 3')).toBeInTheDocument();
   });
 

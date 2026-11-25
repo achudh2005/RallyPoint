@@ -22,58 +22,10 @@ export interface CommunityAwardRecord {
   awardedAt: string;
 }
 
-// In-memory persistent state for API
-let cachedMatches: RankingMatch[] = [
-  {
-    id: 'comm-match-1',
-    seasonId: 'Spring 2026 Community League',
-    matchType: 'SINGLES',
-    status: 'COMPLETED',
-    winnerSide: 'A',
-    participants: [
-      { playerId: 'cp-viktor', displayName: 'Viktor Axelsen', side: 'A', position: 1 },
-      { playerId: 'cp-lee', displayName: 'Lee Zii Jia', side: 'B', position: 1 },
-    ],
-    games: [
-      { gameNumber: 1, scoreA: 21, scoreB: 15, winnerSide: 'A' },
-      { gameNumber: 2, scoreA: 21, scoreB: 17, winnerSide: 'A' },
-    ],
-    events: [
-      { id: 'e1', sequenceNumber: 1, eventType: 'POINT', side: 'A', shotType: 'SMASH', rallyEndResult: 'WINNER', pointWinnerPlayerId: 'cp-viktor' },
-      { id: 'e2', sequenceNumber: 2, eventType: 'POINT', side: 'B', shotType: 'DROP', rallyEndResult: 'WINNER', pointWinnerPlayerId: 'cp-lee' },
-      { id: 'e3', sequenceNumber: 3, eventType: 'POINT', side: 'A', shotType: 'DROP', rallyEndResult: 'UNFORCED_ERROR', errorPlayerId: 'cp-lee', pointWinnerPlayerId: 'cp-viktor' },
-    ],
-  },
-  {
-    id: 'comm-match-2',
-    seasonId: 'Spring 2026 Community League',
-    matchType: 'SINGLES',
-    status: 'COMPLETED',
-    winnerSide: 'A',
-    participants: [
-      { playerId: 'cp-momota', displayName: 'Kento Momota', side: 'A', position: 1 },
-      { playerId: 'cp-shi', displayName: 'Shi Yuqi', side: 'B', position: 1 },
-    ],
-    games: [
-      { gameNumber: 1, scoreA: 21, scoreB: 18, winnerSide: 'A' },
-      { gameNumber: 2, scoreA: 21, scoreB: 19, winnerSide: 'A' },
-    ],
-    events: [
-      { id: 'e4', sequenceNumber: 1, eventType: 'POINT', side: 'A', shotType: 'NET', rallyEndResult: 'WINNER', pointWinnerPlayerId: 'cp-momota' },
-      { id: 'e5', sequenceNumber: 2, eventType: 'POINT', side: 'B', shotType: 'CLEAR', rallyEndResult: 'UNFORCED_ERROR', errorPlayerId: 'cp-momota', pointWinnerPlayerId: 'cp-shi' },
-    ],
-  },
-];
+// In-memory persistent state for API (starts empty on fresh install)
+let cachedMatches: RankingMatch[] = [];
 
-let auditLogs: AuditLogEntry[] = [
-  {
-    id: 'audit-1',
-    action: 'REBUILD_RANKINGS',
-    details: { reason: 'Initial seed rebuild', totalMatches: 2 },
-    performedBy: 'SYSTEM',
-    timestamp: new Date().toISOString(),
-  },
-];
+let auditLogs: AuditLogEntry[] = [];
 
 let communityAwards: CommunityAwardRecord[] = [];
 

@@ -14,13 +14,16 @@ describe('MatchSetup Component', () => {
     render(<MatchSetup />);
 
     expect(screen.getByText(/RallyPoint/i)).toBeInTheDocument();
-    expect(screen.getAllByPlaceholderText('Player 1 Name').length).toBe(2);
+    const inputs = screen.getAllByPlaceholderText('Player 1 Name');
+    expect(inputs.length).toBe(2);
+    fireEvent.change(inputs[0]!, { target: { value: 'Anu' } });
+    fireEvent.change(inputs[1]!, { target: { value: 'Rahul' } });
 
     const submitBtn = screen.getByRole('button', { name: /start match/i });
     fireEvent.click(submitBtn);
 
     expect(useMatchStore.getState().match).not.toBeNull();
-    expect(useMatchStore.getState().match?.config.sideA.name).toBe('Viktor Axelsen');
+    expect(useMatchStore.getState().match?.config.sideA.name).toBe('Anu');
   });
 
   it('switches between singles and doubles mode', () => {

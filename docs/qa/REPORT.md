@@ -1,9 +1,21 @@
 # RallyPoint Final QA & Release Verification Report
 
-**Living Report** — Finalized at QA Phase 5  
-**Target Release:** `v1.2.1-rc1` (Pre-Release Candidate)  
+**Living Report** — Updated at Fresh-Start Phase 1  
+**Target Release:** `v1.3.0` (in progress)  
 **Target Device:** iQOO Neo 10 (Android 15, 6.8" 144Hz AMOLED, punch-hole cutout, gesture nav)  
 **Manual Checklist:** [MANUAL_TEST_CHECKLIST.md](./MANUAL_TEST_CHECKLIST.md)
+
+---
+
+## Fresh-Start Phase 1: Fresh Start & Player Management
+
+| Item | Status | Evidence / Notes |
+|------|--------|------------------|
+| Zero demo/seed data in web & APK production bundles | **PASS** | Removed `INITIAL_COMMUNITY_PLAYERS`, `INITIAL_MATCHES`, API `samplePlayers`, `rankingService` hardcoded matches, `seedCommunityRankings` export from `@rallypoint/db`, and `ComponentGallery` demo names. `npm run check:no-demo` scanned 7 bundle files with 0 matches. |
+| Empty states & Season 1 auto-init on fresh launch | **PASS** | `rankingStore` starts empty with `Season 1`; empty states on Play, Players, Rankings, and MatchSetupSheet; 3-card skippable `OnboardingSheet`. |
+| Add (single & bulk), edit/rename, archive/hide/restore, live-match block, merge duplicates, 5s undo toast | **PASS** | `freshStartAndPlayers.test.ts` (6 tests), `ApplePlayersScreen.test.tsx` (4 tests), `server.test.ts`. |
+| Reset ("Start fresh") & one-time upgrade prompt | **PASS** | `AppleProfileScreen.tsx` (backup download + `RESET` confirmation), `App.tsx` (`Start fresh or keep my data?`), `rankingStore.test`. |
+| Full monorepo typecheck, lint, test, build | **PASS** | `@rallypoint/db` (22), `@rallypoint/engine` (30), `@rallypoint/ranking` (37), `@rallypoint/scoring-rules` (40), `@rallypoint/ui` (10), `@rallypoint/api` (31), `@rallypoint/web` (119) — all passing. |
 
 ---
 

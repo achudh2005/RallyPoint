@@ -111,10 +111,15 @@ describe('RallyPoint API Integration Tests', () => {
     expect(res.body.allContributions).toBeDefined();
   });
 
-  it('searches players via player API', async () => {
-    const res = await request(app).get('/api/players?q=viktor');
+  it('creates and searches players via player API', async () => {
+    const createRes = await request(app)
+      .post('/api/players')
+      .send({ displayName: 'Anu Sharma', nickname: 'Ace' });
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app).get('/api/players?q=anu');
     expect(res.status).toBe(200);
     expect(res.body.players.length).toBeGreaterThanOrEqual(1);
-    expect(res.body.players[0].displayName).toContain('Viktor');
+    expect(res.body.players[0].displayName).toContain('Anu');
   });
 });

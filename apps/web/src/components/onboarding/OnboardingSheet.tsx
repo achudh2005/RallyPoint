@@ -11,23 +11,23 @@ const SLIDES = [
   {
     icon: <Zap className="w-12 h-12 text-emerald-500" />,
     badge: 'Step 1 of 3',
-    title: 'Score in 10 Seconds',
+    title: 'Welcome to RallyPoint',
     description:
-      'Tap either half of the calm screen to score a point. Undo any mistake with a single tap. Designed to never get in the way of your play.',
+      'A calm, instant badminton scoreboard and community ranking app. No account required to start scoring.',
   },
   {
     icon: <ShieldCheck className="w-12 h-12 text-blue-500" />,
     badge: 'Step 2 of 3',
-    title: 'Rally or Service Point',
+    title: 'Add Your Players',
     description:
-      'Choose modern Rally Point 21 or classic Service Point 15 with automatic side-outs, setting rules (14-all), and server rotations.',
+      'Add players one by one or paste a whole list at once in the Players tab. Rename, archive, or restore anytime.',
   },
   {
     icon: <Trophy className="w-12 h-12 text-amber-500" />,
     badge: 'Step 3 of 3',
-    title: 'Live Community Rankings',
+    title: 'Start a Match',
     description:
-      'Event-sourced ratings that update point by point. View top players, doubles pairs, win streaks, and balanced team suggestions.',
+      'Tap Start Match, pick singles or doubles, and tap POINT or DROP for each player. Rankings update live.',
   },
 ];
 

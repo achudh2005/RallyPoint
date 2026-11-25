@@ -2,6 +2,13 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Fresh-Start Phase 1] - Fresh Start & Full Player Management
+### Added
+- **Zero Pre-Loaded Data & CI Bundle Guard**: Removed all hardcoded demo players, sample matches, and seed exports from production web/APK bundles (`rankingStore.ts`, `playerRoutes.ts`, `rankingService.ts`, `packages/db/src/index.ts`, `ComponentGallery.tsx`). Added `npm run seed:demo` (dev-only) and `npm run check:no-demo` in CI (`ci.yml`, `android-apk.yml`).
+- **First-Run Experience & Empty States**: Auto-initializes `"Season 1"` with empty Players, Matches, and Rankings screens, 3-card skippable onboarding (`OnboardingSheet.tsx`), and inline quick-add in `MatchSetupSheet.tsx`.
+- **Full Player CRUD (`ApplePlayersScreen.tsx`, `rankingStore.ts`, `playerRoutes.ts`)**: Single & bulk player creation, name validation (2-30 chars, unique), similar-name duplicate warnings, player editing/renaming (propagating to past matches & rankings), compressed photo upload, duplicate merging, smart removal (permanent delete if 0 matches; Archive or Hide from Rankings if >=1 match; live-match removal guard; 5s Undo toast).
+- **Data Management & Upgrade Path (`AppleProfileScreen.tsx`, `App.tsx`)**: Added **Archived Players** restore sheet, **Start fresh (delete all data)** with JSON backup download and `RESET` confirmation, and one-time `"Start fresh or keep my data?"` upgrade prompt.
+
 ## [1.2.1-rc1] / [QA Phase 5] - Release Candidate & Manual Verification Pack
 ### Added
 - **In-App Diagnostic Export (`apps/web/src/components/profile/AppleProfileScreen.tsx`)**:

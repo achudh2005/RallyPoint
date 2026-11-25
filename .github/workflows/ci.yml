@@ -103,3 +103,6 @@ jobs:
 
       - name: Build Monorepo Workspaces
         run: npm run build
+
+      - name: Verify Zero Demo Data in Production Bundle
+        run: npm run check:no-demo

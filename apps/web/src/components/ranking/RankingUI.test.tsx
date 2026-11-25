@@ -13,8 +13,49 @@ describe('Ranking UI Components (Phase 2)', () => {
     await db.matches.clear();
     useMatchStore.getState().resetMatch();
 
-    // Reset ranking store state with populated data
+    // Reset ranking store state with populated test data
     const store = useRankingStore.getState();
+    store.resetAllData();
+    useRankingStore.setState({
+      communityPlayers: [
+        { id: 'cp-viktor', displayName: 'Viktor Axelsen', recent: true },
+        { id: 'cp-lee', displayName: 'Lee Zii Jia', recent: true },
+        { id: 'cp-momota', displayName: 'Kento Momota', recent: true },
+        { id: 'cp-shi', displayName: 'Shi Yuqi', recent: true },
+      ],
+    });
+    store.attachMatch({
+      id: 'test-ui-1',
+      seasonId: 'Season 1',
+      matchType: 'SINGLES',
+      status: 'COMPLETED',
+      winnerSide: 'A',
+      participants: [
+        { playerId: 'cp-viktor', displayName: 'Viktor Axelsen', side: 'A', position: 1 },
+        { playerId: 'cp-lee', displayName: 'Lee Zii Jia', side: 'B', position: 1 },
+      ],
+      games: [
+        { gameNumber: 1, scoreA: 21, scoreB: 15, winnerSide: 'A' },
+        { gameNumber: 2, scoreA: 21, scoreB: 17, winnerSide: 'A' },
+      ],
+      events: [{ id: 'e1', sequenceNumber: 1, eventType: 'POINT', side: 'A', shotType: 'SMASH', rallyEndResult: 'WINNER', pointWinnerPlayerId: 'cp-viktor' }],
+    });
+    store.attachMatch({
+      id: 'test-ui-2',
+      seasonId: 'Season 1',
+      matchType: 'SINGLES',
+      status: 'COMPLETED',
+      winnerSide: 'A',
+      participants: [
+        { playerId: 'cp-momota', displayName: 'Kento Momota', side: 'A', position: 1 },
+        { playerId: 'cp-shi', displayName: 'Shi Yuqi', side: 'B', position: 1 },
+      ],
+      games: [
+        { gameNumber: 1, scoreA: 21, scoreB: 18, winnerSide: 'A' },
+        { gameNumber: 2, scoreA: 21, scoreB: 19, winnerSide: 'A' },
+      ],
+      events: [{ id: 'e2', sequenceNumber: 1, eventType: 'POINT', side: 'A', shotType: 'NET', rallyEndResult: 'WINNER', pointWinnerPlayerId: 'cp-momota' }],
+    });
     store.recalculateLiveRankings();
   });
 

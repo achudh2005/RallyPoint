@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ThemeProvider } from '@rallypoint/ui';
+import { ThemeProvider, BottomSheet, Button } from '@rallypoint/ui';
 import { useMatchStore } from './store/matchStore.js';
+import { useRankingStore } from './store/rankingStore.js';
 import { TabBar, MainTab } from './components/navigation/TabBar.js';
 import { PlayScreen } from './components/play/PlayScreen.js';
 import { AppleScoringScreen } from './components/scoring/AppleScoringScreen.js';
@@ -31,6 +32,7 @@ export const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<MainTab>('play');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExitToast, setShowExitToast] = useState(false);
+  const { pendingUpgradePrompt, resolveUpgradePrompt } = useRankingStore();
 
   // Resume active match on launch (Crash & Kill Recovery)
   useEffect(() => {
@@ -176,6 +178,39 @@ export const AppContent: React.FC = () => {
           isOpen={showOnboarding}
           onComplete={handleCompleteOnboarding}
         />
+
+        {/* One-time Upgrade Prompt when upgrading over older data */}
+        <BottomSheet
+          isOpen={pendingUpgradePrompt}
+          onClose={() => resolveUpgradePrompt('keep')}
+          title="Start fresh or keep my data?"
+        >
+          <div className="space-y-4 pb-4">
+            <p className="text-sm text-neutral-600 dark:text-neutral-300">
+              We noticed existing data from an earlier version of RallyPoint. Would you like to
+              keep your existing data or start fresh with an empty club?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => resolveUpgradePrompt('keep')}
+              >
+                Keep my data
+              </Button>
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => {
+                  resolveUpgradePrompt('fresh');
+                  setShowOnboarding(true);
+                }}
+              >
+                Start fresh
+              </Button>
+            </div>
+          </div>
+        </BottomSheet>
 
         {/* Funtouch OS / OriginOS Background Activity Guide */}
         <FuntouchBatteryModal />

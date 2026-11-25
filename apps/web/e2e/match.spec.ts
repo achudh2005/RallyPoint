@@ -15,14 +15,18 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
     await page.goto('/');
     await dismissOnboardingIfPresent(page);
 
-    // Play screen primary action
+    // Play screen primary action & empty state
     await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible();
+    await expect(page.getByText('No Matches Yet')).toBeVisible();
     await page.getByRole('button', { name: /Start Match/i }).first().click();
 
-    // Step 1: Select 4 players (2 already selected, add 2 more for doubles)
+    // Step 1: Quick add 4 players for doubles
     await expect(page.getByText(/Who's playing/i)).toBeVisible();
-    await page.getByText('Kento Momota').click();
-    await page.getByText('Shi Yuqi').click();
+    const quickAdd = page.getByPlaceholder(/Quick add player/i);
+    for (const name of ['Anu', 'Vikram', 'Rahul', 'Deepa']) {
+      await quickAdd.fill(name);
+      await page.getByRole('button', { name: /^Add$/i }).click();
+    }
     await page.getByRole('button', { name: /Continue to Scoring/i }).click();
 
     // Step 2: Rally Point 21
@@ -37,7 +41,7 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
     await expect(page.getByText('Game 1 of 3')).toBeVisible();
     await expect(page.getByText('Rally 21')).toBeVisible();
 
-    const p1Point = page.getByTestId('point-btn-cp-viktor');
+    const p1Point = page.locator('[data-testid^="point-btn-"]').first();
     await expect(p1Point).toBeVisible();
 
     // Verify touch target >= 48px
@@ -77,6 +81,11 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
     await dismissOnboardingIfPresent(page);
 
     await page.getByRole('button', { name: /Start Match/i }).first().click();
+    const quickAdd = page.getByPlaceholder(/Quick add player/i);
+    await quickAdd.fill('Anu');
+    await page.getByRole('button', { name: /^Add$/i }).click();
+    await quickAdd.fill('Rahul');
+    await page.getByRole('button', { name: /^Add$/i }).click();
     await page.getByRole('button', { name: /Continue to Scoring/i }).click();
 
     // Select Service Point 15
@@ -86,8 +95,8 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
 
     await expect(page.getByText('Service 15')).toBeVisible();
 
-    // Receiver (cp-lee) scores POINT -> side-out (score remains 0-0)
-    await page.getByTestId('point-btn-cp-lee').click();
+    // Receiver scores POINT -> side-out (score remains 0-0)
+    await page.locator('[data-testid^="point-btn-"]').nth(1).click();
     await page.waitForTimeout(350);
     await expect(page.getByText(/Serve changes side/i)).toBeVisible();
 
