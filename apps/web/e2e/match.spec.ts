@@ -17,7 +17,7 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
 
     // Play screen primary action
     await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible();
-    await page.getByRole('button', { name: /Start Match/i }).click();
+    await page.getByRole('button', { name: /Start Match/i }).first().click();
 
     // Step 1: Select 4 players (2 already selected, add 2 more for doubles)
     await expect(page.getByText(/Who's playing/i)).toBeVisible();
@@ -31,7 +31,7 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
 
     // Step 3: Coin flip & Start
     await expect(page.getByText(/Who serves first/i)).toBeVisible();
-    await page.getByRole('button', { name: /Start Match/i }).click();
+    await page.getByRole('button', { name: /Start Match/i }).last().click();
 
     // Live scoring screen: verify 4 player cards (8 action buttons)
     await expect(page.getByText('Game 1 of 3')).toBeVisible();
@@ -76,13 +76,13 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
     await page.goto('/');
     await dismissOnboardingIfPresent(page);
 
-    await page.getByRole('button', { name: /Start Match/i }).click();
+    await page.getByRole('button', { name: /Start Match/i }).first().click();
     await page.getByRole('button', { name: /Continue to Scoring/i }).click();
 
     // Select Service Point 15
     await page.getByText(/Service Point/i).first().click();
     await page.getByRole('button', { name: /Continue to Server Selection/i }).click();
-    await page.getByRole('button', { name: /Start Match/i }).click();
+    await page.getByRole('button', { name: /Start Match/i }).last().click();
 
     await expect(page.getByText('Service 15')).toBeVisible();
 
@@ -107,7 +107,7 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
     await dismissOnboardingIfPresent(page);
 
     // Navigate to Rankings tab
-    await page.getByRole('button', { name: /Rankings/i }).click();
+    await page.getByRole('tab', { name: /Rankings/i }).click();
     await expect(page.getByRole('heading', { name: 'Rankings' })).toBeVisible();
     await expect(page.getByText('Most MVPs')).toBeVisible();
     await expect(page.getByText('Longest Streak')).toBeVisible();
@@ -122,11 +122,11 @@ test.describe('RallyPoint Mobile & Desktop E2E Suite (QA Phase 3)', () => {
     }
 
     // Navigate to Players tab
-    await page.getByRole('button', { name: /Players/i }).click();
+    await page.getByRole('tab', { name: /Players/i }).click();
     await expect(page.getByRole('heading', { name: /Players/i })).toBeVisible();
 
     // Navigate to Profile / Settings tab & toggle Dark Mode
-    await page.getByRole('button', { name: /Profile|Settings/i }).click();
+    await page.getByRole('tab', { name: /Profile/i }).click();
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await expect(page.getByText('Live Streak Alerts')).toBeVisible();
 
