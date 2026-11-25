@@ -10,6 +10,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_match_events_append_only ON match_events;
+CREATE TRIGGER trg_match_events_append_only
+BEFORE UPDATE OR DELETE ON match_events
+FOR EACH ROW EXECUTE FUNCTION enforce_match_events_append_only();
+
 -- 2. Declarative Monthly Partition Table Creation Helper
 CREATE OR REPLACE FUNCTION create_monthly_match_events_partition(target_date DATE)
 RETURNS TEXT AS $$
