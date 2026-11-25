@@ -6,12 +6,15 @@ import type {
   MvpWeights,
 } from './types.js';
 import { DEFAULT_MVP_WEIGHTS } from './types.js';
+import { replayValidEvents } from './stats.js';
 
 export interface MatchAwardMeta {
   matchType?: 'SINGLES' | 'DOUBLES' | 'MIXED';
   scoringFormat?: string;
   targetPoints?: number;
   winnerSide?: 'A' | 'B';
+  status?: 'SCHEDULED' | 'LIVE' | 'COMPLETED' | 'RETIRED' | 'WALKOVER';
+  isShutout?: boolean;
   participants?: Array<{
     playerId: string;
     displayName: string;
@@ -34,6 +37,26 @@ export function computeMatchAwards(
     ...(config?.mvpWeights || {}),
   };
 
+  // Sort deterministically & strip undone/compensated events
+  const validEvents = replayValidEvents(events);
+
+  // Walkover matches never award an MVP
+  if (
+    meta?.status === 'WALKOVER' ||
+    validEvents.some((ev) => ev.eventType === 'WALKOVER')
+  ) {
+    return {
+      mvp: null,
+      fighter: null,
+      coMvps: [],
+      allContributions: [],
+      isQualified: false,
+      disqualificationReason: 'MVP not available for walkover matches',
+      formulaVersion: weights.formulaVersion,
+      unassignedCount: 0,
+    };
+  }
+
   const isServicePoint =
     meta?.scoringFormat?.startsWith('SERVICE') ?? false;
   const isSingles =
@@ -42,6 +65,23 @@ export function computeMatchAwards(
   const targetPoints = meta?.targetPoints || (isServicePoint ? 15 : 21);
   const clutchThreshold = Math.max(1, targetPoints - 5);
   const winnerSide = meta?.winnerSide;
+
+  // Detect shutout games (either from meta or GAME_END reason/score)
+  const shutoutGameNumbers = new Set<number>();
+  let currentScanGame = 1;
+  for (const ev of validEvents) {
+    if (ev.eventType === 'GAME_END') {
+      const gNum = (ev as unknown as { gameNumber?: number }).gameNumber ?? currentScanGame;
+      const reason =
+        (ev as unknown as { reason?: string }).reason ??
+        (ev.payload?.reason as string | undefined);
+      if (reason === 'SHUTOUT') {
+        shutoutGameNumbers.add(gNum);
+      }
+      currentScanGame = gNum + 1;
+    }
+  }
+  const isShutoutMatch = Boolean(meta?.isShutout || shutoutGameNumbers.size > 0);
 
   // Initialize player contribution records
   const playerMap: Record<
@@ -81,24 +121,24 @@ export function computeMatchAwards(
     return playerMap[pId]!;
   };
 
-  // Pre-populate known participants if available
   if (meta?.participants) {
     for (const p of meta.participants) {
       getOrCreatePlayer(p.playerId, p.side);
     }
   }
 
-  // State tracking during replay
   let scoreA = 0;
   let scoreB = 0;
   let currentGame = 1;
   let servingSide: 'A' | 'B' = 'A';
   let isSettingActive = false;
+  let unassignedCount = 0;
   const totalGames = meta?.bestOf || 3;
 
-  for (const ev of events) {
+  for (const ev of validEvents) {
     if (ev.eventType === 'GAME_END') {
-      currentGame = (ev as any).gameNumber ? (ev as any).gameNumber + 1 : currentGame + 1;
+      const gNum = (ev as unknown as { gameNumber?: number }).gameNumber;
+      currentGame = gNum ? gNum + 1 : currentGame + 1;
       scoreA = 0;
       scoreB = 0;
       isSettingActive = false;
@@ -111,38 +151,58 @@ export function computeMatchAwards(
     }
 
     if (ev.eventType === 'SIDE_OUT') {
-      servingSide = (ev as any).newServingSide || (servingSide === 'A' ? 'B' : 'A');
+      servingSide =
+        (ev as unknown as { newServingSide?: 'A' | 'B' }).newServingSide ||
+        (servingSide === 'A' ? 'B' : 'A');
+      continue;
+    }
+
+    if (ev.eventType === 'POINT' || ev.eventType === 'RALLY_WON') {
+      const pId = ev.pointWinnerPlayerId || ev.playerId;
+      const errId = ev.errorPlayerId;
+      if (!pId && !errId) {
+        unassignedCount += 1;
+      }
+      if (ev.isPoint !== false) {
+        if (ev.side === 'A') scoreA++;
+        else if (ev.side === 'B') scoreB++;
+      }
       continue;
     }
 
     if (ev.eventType === 'PLAYER_ACTION') {
       const pId = ev.playerId;
-      if (!pId) continue;
+      if (!pId) {
+        unassignedCount += 1;
+        continue;
+      }
 
       const act = ev.action;
       const playerSide = (ev.side as 'A' | 'B') || 'A';
       const player = getOrCreatePlayer(pId, playerSide);
 
-      // Determine serving side at start of rally
       const serverSideAtRally: 'A' | 'B' =
-        (ev as any).servingSideAtRally ||
-        (ev as any).serverSide ||
-        (ev.payload && ((ev.payload as any).servingSideAtRally || (ev.payload as any).serverSide)) ||
+        (ev as unknown as { servingSideAtRally?: 'A' | 'B'; serverSide?: 'A' | 'B' })
+          .servingSideAtRally ||
+        (ev as unknown as { serverSide?: 'A' | 'B' }).serverSide ||
+        (ev.payload &&
+          ((ev.payload.servingSideAtRally as 'A' | 'B' | undefined) ||
+            (ev.payload.serverSide as 'A' | 'B' | undefined))) ||
         servingSide;
 
       const isReceiving = serverSideAtRally !== playerSide;
       const isDecidingGame = currentGame === totalGames;
+      const inShutoutGame = Boolean(meta?.isShutout || shutoutGameNumbers.has(currentGame));
 
-      // Clutch condition: score >= target - 5, setting active, or deciding game end
+      // Clutch is not applicable in shutout games
       const isClutch =
-        scoreA >= clutchThreshold ||
-        scoreB >= clutchThreshold ||
-        isSettingActive ||
-        (isDecidingGame && (scoreA >= clutchThreshold || scoreB >= clutchThreshold));
+        !inShutoutGame &&
+        (scoreA >= clutchThreshold ||
+          scoreB >= clutchThreshold ||
+          isSettingActive ||
+          (isDecidingGame && (scoreA >= clutchThreshold || scoreB >= clutchThreshold)));
 
-      // Comeback condition: trailing by 4 or more points before this rally
-      const deficit =
-        playerSide === 'A' ? scoreB - scoreA : scoreA - scoreB;
+      const deficit = playerSide === 'A' ? scoreB - scoreA : scoreA - scoreB;
       const isComeback = deficit >= 4;
 
       if (act === 'POINT') {
@@ -152,7 +212,6 @@ export function computeMatchAwards(
           player.bestPointStreak = player.currentStreak;
         }
 
-        // Serve regained: POINT action as receiver
         if (isReceiving) {
           player.serveRegained += 1;
         }
@@ -165,9 +224,10 @@ export function computeMatchAwards(
           player.comebackPoints += 1;
         }
 
-        // Update score & serving side if point awarded
         if (ev.isPoint !== false) {
-          const winningSide = (ev as any).resultingWinnerSide || playerSide;
+          const winningSide =
+            (ev as unknown as { resultingWinnerSide?: 'A' | 'B' }).resultingWinnerSide ||
+            playerSide;
           if (winningSide === 'A') scoreA++;
           else scoreB++;
           servingSide = winningSide;
@@ -176,13 +236,12 @@ export function computeMatchAwards(
         }
       } else if (act === 'DROP') {
         player.drops += 1;
-        player.currentStreak = 0; // Drop breaks point streak
+        player.currentStreak = 0;
 
         if (isClutch) {
           player.clutchDrops += 1;
         }
 
-        // Drop confers point or side-out to opponent
         if (ev.isPoint !== false) {
           const winningSide = playerSide === 'A' ? 'B' : 'A';
           if (winningSide === 'A') scoreA++;
@@ -195,16 +254,24 @@ export function computeMatchAwards(
     }
   }
 
-  // Calculate final MVP metrics for each player
+  // Relative qualification for shortened/shutout games: min(5, 40% of avg actions, never fewer than 2)
+  const rawPlayers = Object.values(playerMap);
+  const totalActionsAll = rawPlayers.reduce((sum, p) => sum + p.pointsWon + p.drops, 0);
+  const avgActions = rawPlayers.length > 0 ? totalActionsAll / rawPlayers.length : 0;
+  const isShortenedGame = isShutoutMatch || targetPoints <= 15;
+  const qualificationThreshold = isShortenedGame
+    ? Math.max(2, Math.min(weights.qualificationMinActions, Math.floor(avgActions * 0.4)))
+    : weights.qualificationMinActions;
+
   const serveMultiplier = isServicePoint
     ? weights.servicePointServeRegainMultiplier
     : weights.rallyPointServeRegainMultiplier;
 
-  const allContributions: PlayerMvpContribution[] = Object.values(playerMap).map((p) => {
+  const allContributions: PlayerMvpContribution[] = rawPlayers.map((p) => {
     const isWinner = winnerSide ? p.teamSide === winnerSide : false;
     const streakBonusPoints = Math.max(0, p.bestPointStreak - 2);
     const totalAttributedActions = p.pointsWon + p.drops;
-    const isQualified = totalAttributedActions >= weights.qualificationMinActions;
+    const isQualified = totalAttributedActions >= qualificationThreshold;
 
     const rawScore =
       weights.pointsWonWeight * p.pointsWon +
@@ -218,7 +285,6 @@ export function computeMatchAwards(
 
     const mvpScore = Math.round(rawScore * 10) / 10;
 
-    // Reason chips
     const reasonChips: string[] = [];
     if (p.pointsWon > 0) reasonChips.push(`${p.pointsWon} points`);
     if (p.serveRegained > 0) reasonChips.push(`${p.serveRegained} serve regains`);
@@ -226,7 +292,6 @@ export function computeMatchAwards(
     if (p.comebackPoints > 0) reasonChips.push(`${p.comebackPoints} comeback pts`);
     if (p.bestPointStreak >= 3) reasonChips.push(`Best streak: ${p.bestPointStreak}`);
 
-    // One-line summary
     let summaryLine = `${p.name} scored ${p.pointsWon} points with ${p.drops} drops.`;
     if (p.pointsWon > 0 || p.serveRegained > 0) {
       const highlights: string[] = [];
@@ -262,7 +327,6 @@ export function computeMatchAwards(
     };
   });
 
-  // Check overall qualification
   const qualifiedPlayers = allContributions.filter((p) => p.isQualified);
   if (qualifiedPlayers.length === 0) {
     return {
@@ -273,15 +337,12 @@ export function computeMatchAwards(
       isQualified: false,
       disqualificationReason: 'MVP not available (not enough player data)',
       formulaVersion: weights.formulaVersion,
+      unassignedCount,
+      qualificationThreshold,
+      isShutoutMatch,
     };
   }
 
-  // Tie-breaker sorter:
-  // 1. MVP score descending
-  // 2. Fewer drops (drops ascending)
-  // 3. More serve regained descending
-  // 4. More clutch points descending
-  // 5. Winning side
   const comparePlayers = (a: PlayerMvpContribution, b: PlayerMvpContribution): number => {
     if (b.mvpScore !== a.mvpScore) return b.mvpScore - a.mvpScore;
     if (a.drops !== b.drops) return a.drops - b.drops;
@@ -293,7 +354,6 @@ export function computeMatchAwards(
 
   const sortedCandidates = [...qualifiedPlayers].sort(comparePlayers);
 
-  // Singles special handling: default to winner if singlesMvpEnabled is false
   let topCandidate = sortedCandidates[0]!;
   if (isSingles && !weights.singlesMvpEnabled && winnerSide) {
     const winnerPlayer = qualifiedPlayers.find((p) => p.isWinner);
@@ -302,12 +362,10 @@ export function computeMatchAwards(
     }
   }
 
-  // Check co-MVPs: exact tie on all 5 tiebreaker criteria
   const coMvps = qualifiedPlayers.filter(
     (p) => comparePlayers(p, topCandidate) === 0
   );
 
-  // Fighter award: best performer on the losing side
   const losingCandidates = (
     qualifiedPlayers.filter((p) => !p.isWinner).length > 0
       ? qualifiedPlayers.filter((p) => !p.isWinner)
@@ -323,5 +381,8 @@ export function computeMatchAwards(
     allContributions,
     isQualified: true,
     formulaVersion: weights.formulaVersion,
+    unassignedCount,
+    qualificationThreshold,
+    isShutoutMatch,
   };
 }

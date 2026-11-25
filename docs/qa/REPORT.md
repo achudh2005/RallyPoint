@@ -1,9 +1,20 @@
 # RallyPoint Final QA & Release Verification Report
 
-**Living Report** — Updated at Fresh-Start Phase 2  
+**Living Report** — Updated at Fresh-Start Phase 3  
 **Target Release:** `v1.3.0` (in progress)  
 **Target Device:** iQOO Neo 10 (Android 15, 6.8" 144Hz AMOLED, punch-hole cutout, gesture nav)  
 **Manual Checklist:** [MANUAL_TEST_CHECKLIST.md](./MANUAL_TEST_CHECKLIST.md)
+
+---
+
+## Fresh-Start Phase 3: Match MVP Perfection
+
+| Item | Status | Evidence / Notes |
+|------|--------|------------------|
+| Root-cause diagnosis | **PASS** | Documented 8 root causes in [MVP_DIAGNOSIS.md](./MVP_DIAGNOSIS.md). |
+| Single source of truth `computeMatchAwards` | **PASS** | Fixed `AppleMatchSummarySheet.tsx` to pass `useMatchStore().events`, `scoringFormat`, `targetPoints`, `bestOf`, `status`, `isShutout`, and use `awards.mvp` for share text. |
+| Relative qualification, shutout clutch=0, walkover exclusion, out-of-order event sorting, unassigned count | **PASS** | `packages/ranking/src/mvp.ts`, 13 golden/property tests in `mvpGolden.test.ts` + 9 tests in `mvp.test.ts`, documented in [MVP_WORKED_EXAMPLES.md](./MVP_WORKED_EXAMPLES.md). |
+| UI: `"Why not me?"` breakdown, `Unassigned: N` hint, 7-tap MVP Debug sheet | **PASS** | `MvpRevealCard.tsx`, `AppleProfileScreen.tsx`. |
 
 ---
 

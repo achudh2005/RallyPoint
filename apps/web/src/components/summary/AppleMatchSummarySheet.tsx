@@ -13,6 +13,7 @@ import { Share2, ListChecks, Check } from 'lucide-react';
 import { nativeShare } from '../../mobile/nativeShare.js';
 import { registerBackHandler } from '../../mobile/backButton.js';
 import { computeMatchAwards, type RankingMatchEvent } from '@rallypoint/ranking';
+import { useMatchStore, type ExtendedMatchConfig } from '../../store/matchStore.js';
 import { MvpRevealCard } from './MvpRevealCard.js';
 
 export interface AppleMatchSummarySheetProps {
@@ -46,6 +47,9 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
   }, [isOpen]);
 
   const { config, games, winnerSide, history } = state;
+  const { events: storeEvents, scoringFormat, scoringRulesState } = useMatchStore();
+  const effectiveEvents =
+    storeEvents && storeEvents.length > 0 ? storeEvents : history || [];
   const stats = getStats(history, config);
 
   const teamAName = config.sideA?.name || 'Side A';
@@ -63,6 +67,7 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
 
   const totalPoints = history.filter((e) => e.type === 'POINT').length;
   const maxStreak = Math.max(stats.longestStreak.sideA, stats.longestStreak.sideB);
+  const pointEvents = history.filter((e): e is PointEvent => e.type === 'POINT');
 
   // Compute player performance metrics for MVP and Needs Warm-up
   const playerIdsA: string[] = config.sideA?.playerIds || [];
@@ -128,31 +133,11 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
       ? [...playerList].sort((a, b) => (b.drops !== a.drops ? b.drops - a.drops : a.net - b.net))[0]
       : null;
 
-  const handleShare = async () => {
-    Haptics.selection();
-    const scoresStr = gameBreakdowns
-      .map((g) => `${g.scoreA}-${g.scoreB}`)
-      .join(', ');
-    const mvpStr = mvp ? ` | MVP: ${mvp.name} (${mvp.net >= 0 ? `+${mvp.net}` : mvp.net} net)` : '';
-    const text = `🏸 Match Result: ${winner} defeated ${loser} (${scoresStr})${mvpStr} on RallyPoint!`;
-
-    const shared = await nativeShare.shareText('RallyPoint Match Result', text);
-    if (!shared) {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    }
-  };
-
-  const pointEvents = history.filter((e): e is PointEvent => e.type === 'POINT');
-
   const awards = React.useMemo(() => {
-    const rankingEvents: RankingMatchEvent[] = (history || []).map((ev: any, idx: number) => ({
+    const rankingEvents: RankingMatchEvent[] = (effectiveEvents || []).map((ev: any, idx: number) => ({
       id: ev.id || `ev-${idx}`,
       sequenceNumber: ev.sequenceNumber || idx + 1,
-      eventType: ev.type || 'PLAYER_ACTION',
+      eventType: ev.type || ev.eventType || 'PLAYER_ACTION',
       playerId: ev.playerId,
       side: ev.side,
       action: ev.action,
@@ -160,6 +145,7 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
       isSideOut: ev.isSideOut,
       payload: {
         servingSideAtRally: ev.servingSideAtRally,
+        reason: ev.reason,
       },
     }));
 
@@ -176,12 +162,47 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
       })),
     ];
 
+    const extCfg = config as ExtendedMatchConfig;
+    const isShutout = games.some(
+      (g) => (g as { winReason?: string }).winReason === 'SHUTOUT' || (extCfg.shutout?.enabled && ((g.scoreA >= (extCfg.shutout.target || 7) && g.scoreB === 0) || (g.scoreB >= (extCfg.shutout.target || 7) && g.scoreA === 0)))
+    );
+
     return computeMatchAwards(rankingEvents, undefined, {
       matchType: config.mode === 'doubles' ? 'DOUBLES' : 'SINGLES',
+      scoringFormat: scoringRulesState?.formatConfig.format || extCfg.scoringFormat || scoringFormat,
+      targetPoints: scoringRulesState?.formatConfig.targetPoints || config.pointsToWinGame,
+      bestOf: config.bestOf,
+      status:
+        state.winReason === 'WALKOVER'
+          ? 'WALKOVER'
+          : state.winReason === 'RETIRE'
+          ? 'RETIRED'
+          : 'COMPLETED',
+      isShutout,
       winnerSide,
       participants,
     });
-  }, [history, config, playerIdsA, playerIdsB, playerNamesA, playerNamesB, winnerSide, teamAName, teamBName]);
+  }, [effectiveEvents, config, games, scoringRulesState, scoringFormat, state.status, playerIdsA, playerIdsB, playerNamesA, playerNamesB, winnerSide, teamAName, teamBName]);
+
+  const handleShare = async () => {
+    Haptics.selection();
+    const scoresStr = gameBreakdowns
+      .map((g) => `${g.scoreA}-${g.scoreB}`)
+      .join(', ');
+    const mvpStr = awards.mvp
+      ? ` | MVP: ${awards.mvp.name} (${awards.mvp.mvpScore.toFixed(1)} pts)`
+      : '';
+    const text = `🏸 Match Result: ${winner} defeated ${loser} (${scoresStr})${mvpStr} on RallyPoint!`;
+
+    const shared = await nativeShare.shareText('RallyPoint Match Result', text);
+    if (!shared) {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
+  };
 
   return (
     <div className="space-y-5 pb-6 text-neutral-900 dark:text-white max-w-md mx-auto">

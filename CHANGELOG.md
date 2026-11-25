@@ -2,6 +2,13 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Fresh-Start Phase 3] - Match MVP Perfection
+### Fixed & Added
+- **Single-Source-of-Truth MVP (`packages/ranking/src/mvp.ts`, `AppleMatchSummarySheet.tsx`)**: Fixed `AppleMatchSummarySheet` to feed `useMatchStore().events` and full match metadata (`scoringFormat`, `targetPoints`, `bestOf`, `status`, `isShutout`) into `computeMatchAwards`, and unified share text to use `awards.mvp`.
+- **Shortened/Shutout & Edge-Case Rules (`mvp.ts`)**: Added relative qualification (`max(2, min(5, floor(0.4 * avgActions)))`) for shortened/shutout games, disabled clutch points in shutout games, excluded walkover matches, sorted events deterministically via `replayValidEvents`, and exposed `unassignedCount` and `qualificationThreshold`.
+- **UI & Debug (`MvpRevealCard.tsx`, `AppleProfileScreen.tsx`)**: Added `"Why not me?"` breakdown per player, `Unassigned: N` hint, and a hidden 7-tap **MVP Debug Inspector** in Settings > About.
+- **Verification**: Documented root causes in `docs/qa/MVP_DIAGNOSIS.md`, 12 hand-calculated golden cases in `docs/qa/MVP_WORKED_EXAMPLES.md`, and added 13 golden & property-based tests in `packages/ranking/src/mvpGolden.test.ts` (50/50 passing in `@rallypoint/ranking`).
+
 ## [Fresh-Start Phase 2] - Shutout Rule (7-0) & Celebration Animation
 ### Added
 - **Shutout Rule Engine (`@rallypoint/scoring-rules`, `@rallypoint/ranking`)**: Added `ShutoutConfig` (`enabled`, `target` 3–15 default 7, `effect` `'GAME' | 'MATCH'`, `applyInDecider`), `GAME_END` (`reason: 'SHUTOUT'`) and `MATCH_END` (`reason: 'SHUTOUT_MATCH'`), midpoint-switch skip on shutout, full UNDO/replay support, and `shutoutWins`/`shutoutsConceded` + `MOST_SHUTOUT_WINS` leaderboard.

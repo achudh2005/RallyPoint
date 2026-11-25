@@ -15,6 +15,7 @@ import { useTheme } from '@rallypoint/ui';
 import { useMatchStore } from '../../store/matchStore.js';
 import { useRankingStore } from '../../store/rankingStore.js';
 import { useAlertsSettingsStore, type CelebrationIntensity } from '../../store/alertsSettingsStore.js';
+import { computeMatchAwards, DEFAULT_MVP_WEIGHTS, type RankingMatchEvent } from '@rallypoint/ranking';
 import {
   Moon,
   Palette,
@@ -80,6 +81,8 @@ export const AppleProfileScreen: React.FC = () => {
   const [showArchivedSheet, setShowArchivedSheet] = useState(false);
   const [showResetSheet, setShowResetSheet] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
+  const [aboutTapCount, setAboutTapCount] = useState(0);
+  const [showMvpDebugSheet, setShowMvpDebugSheet] = useState(false);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [rebuilding, setRebuilding] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
@@ -628,11 +631,25 @@ export const AppleProfileScreen: React.FC = () => {
           </GroupedSection>
         </GroupedList>
 
-        {/* App Info Footer */}
+        {/* App Info Footer (tap version 7x for MVP Debug) */}
         <div className="text-center pt-2 pb-4 space-y-1">
-          <Badge variant="neutral" size="sm">
-            RallyPoint UI v1.2.1-rc1 (Apple HIG)
-          </Badge>
+          <button
+            type="button"
+            onClick={() => {
+              const next = aboutTapCount + 1;
+              if (next >= 7) {
+                setAboutTapCount(0);
+                setShowMvpDebugSheet(true);
+              } else {
+                setAboutTapCount(next);
+              }
+            }}
+            className="inline-block"
+          >
+            <Badge variant="neutral" size="sm">
+              RallyPoint UI v1.3.0 (Apple HIG)
+            </Badge>
+          </button>
           <p className="text-[11px] text-neutral-400">
             Event-sourced badminton scoring & community leagues
           </p>
@@ -806,6 +823,55 @@ export const AppleProfileScreen: React.FC = () => {
             </Button>
           </div>
         </div>
+      </BottomSheet>
+
+      {/* Hidden Developer MVP Debug Sheet (7 taps on version badge) */}
+      <BottomSheet
+        isOpen={showMvpDebugSheet}
+        onClose={() => setShowMvpDebugSheet(false)}
+        title="MVP Debug Inspector"
+      >
+        {(() => {
+          const lastMatch = matches[matches.length - 1];
+          const debugEvents: RankingMatchEvent[] = lastMatch
+            ? lastMatch.events
+            : (lastMatchEvents as unknown as RankingMatchEvent[]);
+          const debugResult = computeMatchAwards(
+            debugEvents,
+            undefined,
+            lastMatch
+              ? {
+                  matchType: lastMatch.matchType,
+                  scoringFormat: lastMatch.scoringFormat,
+                  targetPoints: lastMatch.targetPoints,
+                  winnerSide: lastMatch.winnerSide || undefined,
+                  participants: lastMatch.participants,
+                }
+              : currentMatch
+              ? {
+                  matchType: currentMatch.config.mode === 'doubles' ? 'DOUBLES' : 'SINGLES',
+                  winnerSide: currentMatch.winnerSide,
+                }
+              : undefined
+          );
+          return (
+            <div className="space-y-3 pb-6 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-black/5 dark:bg-white/10">
+                <p className="font-bold">Formula: {debugResult.formulaVersion}</p>
+                <p>Qualified: {String(debugResult.isQualified)} (min {debugResult.qualificationThreshold ?? 2})</p>
+                <p>Unassigned rallies: {debugResult.unassignedCount ?? 0}</p>
+                <p>
+                  Weights: pts={DEFAULT_MVP_WEIGHTS.pointsWonWeight}, srv={DEFAULT_MVP_WEIGHTS.serveRegainedWeight},
+                  clutch={DEFAULT_MVP_WEIGHTS.clutchPointsWeight}, cb={DEFAULT_MVP_WEIGHTS.comebackPointsWeight},
+                  drop=-{DEFAULT_MVP_WEIGHTS.dropsPenalty}, win=+{DEFAULT_MVP_WEIGHTS.resultBonus}
+                </p>
+              </div>
+              <pre className="p-3 rounded-xl bg-black/5 dark:bg-white/10 overflow-x-auto max-h-60 text-[10px]">
+                {JSON.stringify(debugResult.allContributions, null, 2)}
+              </pre>
+            </div>
+          );
+        })()}
       </BottomSheet>
     </div>
   );

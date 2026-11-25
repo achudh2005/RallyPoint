@@ -17,9 +17,10 @@ export const MvpRevealCard: React.FC<MvpRevealCardProps> = ({
 }) => {
   const [showAllPlayers, setShowAllPlayers] = useState(false);
   const [showFormulaSheet, setShowFormulaSheet] = useState(false);
+  const [whyNotMePlayerId, setWhyNotMePlayerId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { isQualified, mvp, fighter, allContributions, disqualificationReason } = awards;
+  const { isQualified, mvp, fighter, allContributions, disqualificationReason, unassignedCount } = awards;
 
   // Gentle confetti celebration once when MVP is qualified
   useEffect(() => {
@@ -69,8 +70,13 @@ export const MvpRevealCard: React.FC<MvpRevealCardProps> = ({
           <span className="text-xs font-bold uppercase tracking-wider">Match MVP</span>
         </div>
         <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-          {disqualificationReason || 'MVP not available (needs at least 5 attributed player actions)'}
+          {disqualificationReason || 'MVP not available (needs at least 2 attributed player actions)'}
         </p>
+        {typeof unassignedCount === 'number' && unassignedCount > 0 && (
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5">
+            Unassigned: {unassignedCount} (unattributed rallies do not count toward MVP)
+          </p>
+        )}
       </div>
     );
   }
@@ -241,13 +247,46 @@ export const MvpRevealCard: React.FC<MvpRevealCardProps> = ({
                     </div>
                   </div>
 
-                  <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">
-                    {p.mvpScore.toFixed(1)}
-                  </span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">
+                      {p.mvpScore.toFixed(1)}
+                    </span>
+                    {!isMvp && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setWhyNotMePlayerId(whyNotMePlayerId === p.playerId ? null : p.playerId)
+                        }
+                        className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                      >
+                        Why not me?
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
+          {whyNotMePlayerId && (() => {
+            const target = allContributions.find((c) => c.playerId === whyNotMePlayerId);
+            if (!target) return null;
+            const gap = (mvp.mvpScore - target.mvpScore).toFixed(1);
+            return (
+              <div className="mt-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1">
+                <p className="font-bold text-neutral-900 dark:text-white">
+                  {target.name} Breakdown ({target.mvpScore.toFixed(1)} vs MVP {mvp.mvpScore.toFixed(1)}, gap {gap})
+                </p>
+                <p className="text-neutral-600 dark:text-neutral-300">
+                  Points: {target.pointsWon} · Serve regains: {target.serveRegained} · Clutch: {target.clutchPoints} · Comeback: {target.comebackPoints} · Streak bonus: {target.streakBonusPoints} · Drops: -{target.drops} · Win bonus: {target.isWinner ? '+5.0' : '0'} · Qualified: {target.isQualified ? 'Yes' : 'No'}
+                </p>
+              </div>
+            );
+          })()}
+          {typeof unassignedCount === 'number' && unassignedCount > 0 && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 pt-1">
+              Unassigned: {unassignedCount} rallies had no player attributed and were excluded from MVP.
+            </p>
+          )}
         </div>
       )}
 

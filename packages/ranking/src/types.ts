@@ -368,5 +368,8 @@ export interface MatchAwardsResult {
   isQualified: boolean;
   disqualificationReason?: string;
   formulaVersion: string;
+  unassignedCount?: number;
+  qualificationThreshold?: number;
+  isShutoutMatch?: boolean;
 }
 
