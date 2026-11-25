@@ -48,6 +48,9 @@ export interface PlayerProfileData {
   bestMatchStreak?: number;
   clutchPointsTotal?: number;
   serveRegainedTotal?: number;
+  sharedFaults?: number;
+  rankMovement?: 'UP' | 'DOWN' | 'SAME';
+  movementDelta?: number;
 }
 
 export interface ApplePlayerProfileSheetProps {
@@ -258,9 +261,9 @@ export const ApplePlayerProfileSheet: React.FC<ApplePlayerProfileSheetProps> = (
                       }
                     }
                   }
-                  return pts - drp;
+                  return Number((pts - drp).toFixed(2));
                 })
-              : [8, -2, 5, 11, 3]
+              : []
             ).slice(-5).map((net, idx) => (
               <span
                 key={idx}
@@ -298,7 +301,10 @@ export const ApplePlayerProfileSheet: React.FC<ApplePlayerProfileSheetProps> = (
                   Net: {netContrib >= 0 ? `+${netContrib}` : netContrib}
                 </div>
                 <div className="flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
-                  <span>Drops: {dropsTotal}</span>
+                  <span>
+                    Drops: {dropsTotal}
+                    {player.sharedFaults ? ` (${player.sharedFaults} shared)` : ''}
+                  </span>
                   <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
                 </div>
               </div>

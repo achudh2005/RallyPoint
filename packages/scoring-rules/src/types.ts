@@ -199,6 +199,10 @@ export interface PlayerActionEvent extends BaseScoringEvent {
   deviceId?: string;
   shotType?: ShotType;
   rallyEndResult?: RallyEndResult;
+  attributedPointPlayerId?: string;
+  attributedDropPlayerIds?: string[];
+  isBothFault?: boolean;
+  note?: string;
 }
 
 export interface PlayerMatchActionStats {

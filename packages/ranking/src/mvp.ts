@@ -224,6 +224,20 @@ export function computeMatchAwards(
           player.comebackPoints += 1;
         }
 
+        // Opposing drop attribution (single or Both Fault 0.5 each)
+        if (ev.attributedDropPlayerIds && ev.attributedDropPlayerIds.length > 0) {
+          const share = Number((1 / ev.attributedDropPlayerIds.length).toFixed(2));
+          const oppSide: 'A' | 'B' = playerSide === 'A' ? 'B' : 'A';
+          for (const dId of ev.attributedDropPlayerIds) {
+            const dPlayer = getOrCreatePlayer(dId, oppSide);
+            dPlayer.drops = Number((dPlayer.drops + share).toFixed(2));
+            dPlayer.currentStreak = 0;
+            if (isClutch) {
+              dPlayer.clutchDrops = Number((dPlayer.clutchDrops + share).toFixed(2));
+            }
+          }
+        }
+
         if (ev.isPoint !== false) {
           const winningSide =
             (ev as unknown as { resultingWinnerSide?: 'A' | 'B' }).resultingWinnerSide ||
@@ -235,11 +249,33 @@ export function computeMatchAwards(
           servingSide = servingSide === 'A' ? 'B' : 'A';
         }
       } else if (act === 'DROP') {
-        player.drops += 1;
-        player.currentStreak = 0;
+        if (ev.isBothFault && ev.attributedDropPlayerIds && ev.attributedDropPlayerIds.length > 1) {
+          const share = Number((1 / ev.attributedDropPlayerIds.length).toFixed(2));
+          for (const dId of ev.attributedDropPlayerIds) {
+            const dPlayer = getOrCreatePlayer(dId, playerSide);
+            dPlayer.drops = Number((dPlayer.drops + share).toFixed(2));
+            dPlayer.currentStreak = 0;
+            if (isClutch) {
+              dPlayer.clutchDrops = Number((dPlayer.clutchDrops + share).toFixed(2));
+            }
+          }
+        } else {
+          player.drops = Number((player.drops + 1).toFixed(2));
+          player.currentStreak = 0;
+          if (isClutch) {
+            player.clutchDrops += 1;
+          }
+        }
 
-        if (isClutch) {
-          player.clutchDrops += 1;
+        if (ev.attributedPointPlayerId) {
+          const oppSide: 'A' | 'B' = playerSide === 'A' ? 'B' : 'A';
+          const wPlayer = getOrCreatePlayer(ev.attributedPointPlayerId, oppSide);
+          wPlayer.pointsWon += 1;
+          wPlayer.currentStreak += 1;
+          if (wPlayer.currentStreak > wPlayer.bestPointStreak) {
+            wPlayer.bestPointStreak = wPlayer.currentStreak;
+          }
+          if (isClutch) wPlayer.clutchPoints += 1;
         }
 
         if (ev.isPoint !== false) {

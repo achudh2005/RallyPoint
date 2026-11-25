@@ -11,6 +11,8 @@ import {
 } from '@rallypoint/engine';
 import { db } from '../db/index.js';
 import { getMobileStorage } from '../db/storage.js';
+import { useRankingStore } from './rankingStore.js';
+import type { RankingMatch, RankingMatchEvent, ScoringFormat as RankingScoringFormat } from '@rallypoint/ranking';
 import {
   convertEngineConfigToScoringConfig,
   createScoringMatch,
@@ -25,9 +27,20 @@ import {
   ScoringFormat,
   FormatConfig,
   ShutoutConfig,
+  ShotType,
+  RallyEndResult,
   ScoringRulesMatchState,
   PlayerActionEvent,
 } from './scoringBridge.js';
+
+export interface PlayerActionOptions {
+  attributedPointPlayerId?: string;
+  attributedDropPlayerIds?: string[];
+  isBothFault?: boolean;
+  note?: string;
+  shotType?: ShotType;
+  rallyEndResult?: RallyEndResult;
+}
 
 export interface ExtendedMatchConfig extends MatchConfig {
   scoringFormat?: ScoringFormat;
@@ -75,9 +88,14 @@ interface MatchStore {
   // Actions
   dismissShutoutCelebration: () => void;
   updateShutoutConfig: (shutout: ShutoutConfig) => void;
+  finalizeMatchToRankings: () => void;
   startMatch: (config: ExtendedMatchConfig, enableRallyTagging?: boolean) => Promise<void>;
   recordPoint: (side: Side, rallyEndType?: RallyEndType) => Promise<void>;
-  recordPlayerAction: (playerId: string, action: 'POINT' | 'DROP') => Promise<void>;
+  recordPlayerAction: (
+    playerId: string,
+    action: 'POINT' | 'DROP',
+    options?: PlayerActionOptions
+  ) => Promise<void>;
   recordUnattributedPoint: (side: Side) => Promise<void>;
   undoAction: () => Promise<string | null>;
   editAction: (
@@ -128,6 +146,89 @@ function generateAriaAnnouncement(state: MatchState): string {
   return `${nameA} ${scoreA}, ${nameB} ${scoreB}. ${server} serving from ${court} court.`;
 }
 
+function syncCompletedMatchToRankingStore(
+  matchState: MatchState,
+  events: MatchEvent[],
+  scoringFormat: ScoringFormat,
+  scoringRulesState: ScoringRulesMatchState | null
+): void {
+  if (matchState.status !== 'COMPLETED') return;
+  const rankingStore = useRankingStore.getState();
+  const playerMap = new Map(rankingStore.communityPlayers.map((p) => [p.id, p.displayName]));
+
+  const resolveName = (id: string, fallbackList: string[] | undefined, idx: number, sideName: string) =>
+    playerMap.get(id) ||
+    fallbackList?.[idx] ||
+    sideName.split('&')[idx]?.trim() ||
+    sideName;
+
+  const participants = [
+    ...matchState.config.sideA.playerIds.map((id, idx) => ({
+      playerId: id,
+      displayName: resolveName(id, matchState.config.sideA.playerNames, idx, matchState.config.sideA.name),
+      side: 'A' as const,
+      position: (idx === 0 ? 1 : 2) as 1 | 2,
+    })),
+    ...matchState.config.sideB.playerIds.map((id, idx) => ({
+      playerId: id,
+      displayName: resolveName(id, matchState.config.sideB.playerNames, idx, matchState.config.sideB.name),
+      side: 'B' as const,
+      position: (idx === 0 ? 1 : 2) as 1 | 2,
+    })),
+  ];
+
+  const rankingEvents: RankingMatchEvent[] = (events || []).map((ev: any, idx: number) => ({
+    id: ev.id || `ev-${idx}`,
+    sequenceNumber: ev.sequenceNumber || idx + 1,
+    eventType: ev.type || ev.eventType || 'PLAYER_ACTION',
+    playerId: ev.playerId,
+    side: ev.side,
+    action: ev.action,
+    shotType: ev.shotType,
+    rallyEndResult: ev.rallyEndResult,
+    pointWinnerPlayerId: ev.pointWinnerPlayerId,
+    errorPlayerId: ev.errorPlayerId,
+    serverPlayerId: ev.serverAtRally || ev.serverPlayerId,
+    isPoint: ev.isPoint,
+    isSideOut: ev.isSideOut,
+    attributedPointPlayerId: ev.attributedPointPlayerId,
+    attributedDropPlayerIds: ev.attributedDropPlayerIds,
+    isBothFault: ev.isBothFault,
+    note: ev.note,
+    payload: {
+      servingSideAtRally: ev.servingSideAtRally,
+      reason: ev.reason,
+    },
+  }));
+
+  const games = matchState.games.map((g, idx) => {
+    const srGame = scoringRulesState?.games[idx];
+    return {
+      gameNumber: g.gameNumber,
+      scoreA: g.scoreA,
+      scoreB: g.scoreB,
+      winnerSide: g.winnerSide as 'A' | 'B' | undefined,
+      winReason: srGame?.winReason,
+    };
+  });
+
+  const rankingMatch: RankingMatch = {
+    id: matchState.config.id,
+    seasonId: rankingStore.activeSeason || 'Season 1',
+    matchType: matchState.config.mode === 'doubles' ? 'DOUBLES' : 'SINGLES',
+    scoringFormat: (scoringRulesState?.formatConfig.format || scoringFormat || 'RALLY_21') as RankingScoringFormat,
+    status: matchState.winReason === 'WALKOVER' ? 'WALKOVER' : matchState.winReason === 'RETIRE' ? 'RETIRED' : 'COMPLETED',
+    winnerSide: matchState.winnerSide,
+    participants,
+    games,
+    events: rankingEvents,
+    targetPoints: scoringRulesState?.formatConfig.targetPoints || matchState.config.pointsToWinGame,
+    endedAt: new Date().toISOString(),
+  };
+
+  rankingStore.attachMatch(rankingMatch);
+}
+
 export const useMatchStore = create<MatchStore>((set, get) => ({
   match: null,
   events: [],
@@ -145,6 +246,11 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   pendingShutoutCelebration: null,
   playedCelebrationIds: [],
   dismissShutoutCelebration: () => set({ pendingShutoutCelebration: null }),
+  finalizeMatchToRankings: () => {
+    const { match, events, scoringFormat, scoringRulesState } = get();
+    if (!match || match.status !== 'COMPLETED') return;
+    syncCompletedMatchToRankingStore(match, events, scoringFormat, scoringRulesState);
+  },
   updateShutoutConfig: (shutout) => {
     const { match, events, scoringRulesState } = get();
     if (!match || events.length > 0 || !scoringRulesState) return;
@@ -347,7 +453,11 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     });
   },
 
-  recordPlayerAction: async (playerId: string, action: 'POINT' | 'DROP') => {
+  recordPlayerAction: async (
+    playerId: string,
+    action: 'POINT' | 'DROP',
+    options?: PlayerActionOptions
+  ) => {
     const { match, events, scoringRulesState } = get();
     if (!match || match.status === 'COMPLETED') return;
 
@@ -357,7 +467,16 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       scoringState = createScoringMatch(scoringConfig);
     }
 
-    const res = recordScoringPlayerAction(scoringState, { playerId, action });
+    const res = recordScoringPlayerAction(scoringState, {
+      playerId,
+      action,
+      attributedPointPlayerId: options?.attributedPointPlayerId,
+      attributedDropPlayerIds: options?.attributedDropPlayerIds,
+      isBothFault: options?.isBothFault,
+      note: options?.note,
+      shotType: options?.shotType,
+      rallyEndResult: options?.rallyEndResult,
+    });
     const nextEngineState = syncScoringStateToEngineState(res.state, match.config);
     const announcement = generateAriaAnnouncement(nextEngineState);
 
@@ -397,6 +516,10 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       pendingShutoutCelebration: nextCelebration,
       playedCelebrationIds: nextPlayedIds,
     });
+
+    if (nextEngineState.status === 'COMPLETED') {
+      syncCompletedMatchToRankingStore(nextEngineState, nextEvents, get().scoringFormat, res.state);
+    }
 
     try {
       const storage = getMobileStorage();

@@ -84,6 +84,9 @@ export const AppleRankingsScreen: React.FC = () => {
       bestMatchStreak: entry.stats?.bestMatchStreak ?? 0,
       clutchPointsTotal: entry.stats?.clutchPointsTotal ?? 0,
       serveRegainedTotal: entry.stats?.serveRegainedTotal ?? 0,
+      sharedFaults: entry.stats?.sharedFaults ?? 0,
+      rankMovement: entry.rankMovement,
+      movementDelta: entry.movementDelta,
     };
     setSelectedPlayer(stats);
   };
@@ -327,6 +330,16 @@ export const AppleRankingsScreen: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {entry.rankMovement === 'UP' && (
+                        <span className="text-[10px] font-bold text-emerald-500">
+                          ↑{Math.abs(entry.movementDelta)}
+                        </span>
+                      )}
+                      {entry.rankMovement === 'DOWN' && (
+                        <span className="text-[10px] font-bold text-rose-500">
+                          ↓{Math.abs(entry.movementDelta)}
+                        </span>
+                      )}
                       <span className="text-sm font-bold font-mono">
                         {entry.headlineValue}
                       </span>
@@ -337,6 +350,9 @@ export const AppleRankingsScreen: React.FC = () => {
               })
               )}
             </div>
+            <p className="text-[11px] text-neutral-400 px-2 pt-2">
+              Live formula: 40% Win Rate + 25% Point Diff + 15% Wins + 10% Recent Form + 10% Consistency + 5% Net Contribution. Updates automatically after every completed match.
+            </p>
           </div>
         </>
       ) : (
@@ -433,6 +449,9 @@ export const AppleRankingsScreen: React.FC = () => {
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-neutral-400 px-2 pt-2">
+              Live formula: 40% Win Rate + 25% Point Diff + 15% Wins + 10% Recent Form + 10% Consistency + 5% Net Contribution. Updates automatically after every completed match.
+            </p>
           </div>
 
           <Button

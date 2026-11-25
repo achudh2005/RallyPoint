@@ -9,11 +9,12 @@ import {
 } from '@rallypoint/ui';
 import type { MatchState, PointEvent } from '@rallypoint/engine';
 import { getStats } from '@rallypoint/engine';
-import { Share2, ListChecks, Check } from 'lucide-react';
+import { Share2, ListChecks, Check, TrendingUp, TrendingDown } from 'lucide-react';
 import { nativeShare } from '../../mobile/nativeShare.js';
 import { registerBackHandler } from '../../mobile/backButton.js';
 import { computeMatchAwards, type RankingMatchEvent } from '@rallypoint/ranking';
 import { useMatchStore, type ExtendedMatchConfig } from '../../store/matchStore.js';
+import { useRankingStore } from '../../store/rankingStore.js';
 import { MvpRevealCard } from './MvpRevealCard.js';
 
 export interface AppleMatchSummarySheetProps {
@@ -31,8 +32,12 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
 }) => {
   const [showPointDetails, setShowPointDetails] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isSubmittingDone, setIsSubmittingDone] = useState(false);
+  const { communityPlayers, playerLeaderboards } = useRankingStore();
 
   const handleFinish = () => {
+    if (isSubmittingDone) return;
+    setIsSubmittingDone(true);
     Haptics.selection();
     if (onClose) onClose();
     if (onDone) onDone();
@@ -65,15 +70,28 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
     winner: g.winnerSide || (g.scoreA > g.scoreB ? 'A' : 'B'),
   }));
 
-  const totalPoints = history.filter((e) => e.type === 'POINT').length;
+  const totalPoints = effectiveEvents.filter(
+    (e: any) => e.type === 'POINT' || e.type === 'PLAYER_ACTION' || e.eventType === 'PLAYER_ACTION'
+  ).length;
   const maxStreak = Math.max(stats.longestStreak.sideA, stats.longestStreak.sideB);
-  const pointEvents = history.filter((e): e is PointEvent => e.type === 'POINT');
+  const pointEvents = effectiveEvents.filter(
+    (e: any) => e.type === 'POINT' || e.type === 'PLAYER_ACTION' || e.eventType === 'PLAYER_ACTION'
+  ) as PointEvent[];
 
   // Compute player performance metrics for MVP and Needs Warm-up
   const playerIdsA: string[] = config.sideA?.playerIds || [];
   const playerIdsB: string[] = config.sideB?.playerIds || [];
   const playerNamesA = config.sideA?.playerNames || [];
   const playerNamesB = config.sideB?.playerNames || [];
+  const communityMap = React.useMemo(
+    () => new Map(communityPlayers.map((p) => [p.id, p.displayName])),
+    [communityPlayers]
+  );
+  const resolvePlayerName = (id: string, fallbackList: string[], idx: number, sideName: string) =>
+    communityMap.get(id) ||
+    fallbackList[idx] ||
+    sideName.split('&')[idx]?.trim() ||
+    (id.startsWith('cp-') ? `Player ${idx + 1}` : id);
 
   const playerStatsMap: Record<
     string,
@@ -83,7 +101,7 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
   playerIdsA.forEach((id: string, idx: number) => {
     playerStatsMap[id] = {
       id,
-      name: playerNamesA[idx] || (playerIdsA.length === 1 ? teamAName : id),
+      name: resolvePlayerName(id, playerNamesA, idx, teamAName),
       pointsWon: 0,
       drops: 0,
       net: 0,
@@ -94,7 +112,7 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
   playerIdsB.forEach((id: string, idx: number) => {
     playerStatsMap[id] = {
       id,
-      name: playerNamesB[idx] || (playerIdsB.length === 1 ? teamBName : id),
+      name: resolvePlayerName(id, playerNamesB, idx, teamBName),
       pointsWon: 0,
       drops: 0,
       net: 0,
@@ -102,7 +120,7 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
     };
   });
 
-  for (const ev of history || []) {
+  for (const ev of effectiveEvents || []) {
     if (ev.type === 'PLAYER_ACTION' || (ev as any).action) {
       const pId = (ev as any).playerId;
       const act = (ev as any).action;
@@ -122,11 +140,6 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
     playerList.length > 0
       ? [...playerList].sort((a, b) => (b.net !== a.net ? b.net - a.net : b.pointsWon - a.pointsWon))[0]
       : null;
-
-  const teamTotalPointsA = games.reduce((acc, g) => acc + g.scoreA, 0);
-  const teamTotalPointsB = games.reduce((acc, g) => acc + g.scoreB, 0);
-  const mvpTeamPoints = mvp ? (mvp.teamSide === 'A' ? teamTotalPointsA : teamTotalPointsB) : 0;
-  const mvpShare = mvp && mvpTeamPoints > 0 ? Math.round((mvp.pointsWon / mvpTeamPoints) * 100) : 0;
 
   const needsWarmup =
     playerList.length > 1
@@ -152,12 +165,12 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
     const participants = [
       ...playerIdsA.map((id, idx) => ({
         playerId: id,
-        displayName: playerNamesA[idx] || (playerIdsA.length === 1 ? teamAName : id),
+        displayName: resolvePlayerName(id, playerNamesA, idx, teamAName),
         side: 'A' as const,
       })),
       ...playerIdsB.map((id, idx) => ({
         playerId: id,
-        displayName: playerNamesB[idx] || (playerIdsB.length === 1 ? teamBName : id),
+        displayName: resolvePlayerName(id, playerNamesB, idx, teamBName),
         side: 'B' as const,
       })),
     ];
@@ -281,45 +294,63 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
             Events
           </span>
           <span className="text-lg font-black text-blue-500">
-            {history.length}
+            {effectiveEvents.length}
           </span>
         </div>
       </div>
 
-      {/* Official Match MVP Reveal */}
+      {/* Official Match MVP Reveal (Single Source of Truth) */}
       <MvpRevealCard awards={awards} matchTitle={`${teamAName} vs ${teamBName}`} />
 
-      {/* Match Highlights: MVP & Needs Warm-Up */}
-      <div className="space-y-3">
-        {mvp && (
-          <div
-            data-testid="mvp-highlight-card"
-            className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">🌟</span>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded">
-                    MVP of the Match
-                  </span>
+      {/* Live Ranking Changes Preview */}
+      {(() => {
+        const allParticipantIds = [...playerIdsA, ...playerIdsB];
+        const overall = playerLeaderboards?.OVERALL || [];
+        const matchedRanks = overall.filter((e) => allParticipantIds.includes(e.id));
+        if (matchedRanks.length === 0) return null;
+        return (
+          <div className="space-y-2" data-testid="match-summary-rank-changes">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 px-1">
+              Live Ranking Updates
+            </span>
+            <div className="rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/10 overflow-hidden shadow-xs">
+              {matchedRanks.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between p-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono font-bold text-neutral-500 w-6">
+                      #{entry.rank}
+                    </span>
+                    <div>
+                      <p className="font-semibold text-neutral-900 dark:text-white">{entry.name}</p>
+                      <p className="text-[11px] text-neutral-400">
+                        {entry.stats.wins}W-{entry.stats.losses}L • {entry.stats.pointsWon} pts / {entry.stats.drops} drops
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {entry.rankMovement === 'UP' && (
+                      <span className="inline-flex items-center gap-0.5 text-emerald-500 font-bold">
+                        <TrendingUp className="w-3.5 h-3.5" />+{Math.abs(entry.movementDelta)}
+                      </span>
+                    )}
+                    {entry.rankMovement === 'DOWN' && (
+                      <span className="inline-flex items-center gap-0.5 text-rose-500 font-bold">
+                        <TrendingDown className="w-3.5 h-3.5" />-{Math.abs(entry.movementDelta)}
+                      </span>
+                    )}
+                    <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">
+                      {entry.headlineValue.toFixed(1)}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="text-base font-extrabold mt-0.5 text-neutral-900 dark:text-white">
-                  {mvp.name}
-                </h3>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  {mvp.pointsWon} pts won • {mvp.drops} drops • {mvpShare}% team share
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-lg font-mono font-black text-amber-600 dark:text-amber-400">
-                {mvp.net >= 0 ? `+${mvp.net}` : mvp.net}
-              </span>
-              <span className="block text-[10px] text-neutral-400">Net Contrib</span>
+              ))}
             </div>
           </div>
-        )}
+        );
+      })()}
+
+      {/* Needs Warm-Up */}
+      <div className="space-y-3">
 
         {needsWarmup && (
           <div
@@ -433,9 +464,10 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
         <Button
           variant="primary"
           fullWidth
+          disabled={isSubmittingDone}
           onClick={handleFinish}
         >
-          Done
+          {isSubmittingDone ? 'Saving...' : 'Done'}
         </Button>
       </div>
 

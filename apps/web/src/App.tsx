@@ -28,6 +28,7 @@ export const AppContent: React.FC = () => {
     toggleTheme,
     toggleLargeText,
     resetMatch,
+    finalizeMatchToRankings,
     resumeLastMatch,
     pendingShutoutCelebration,
     dismissShutoutCelebration,
@@ -136,6 +137,12 @@ export const AppContent: React.FC = () => {
 
   // If a match is COMPLETED, show the Apple match summary with celebratory confetti
   if (match && match.status === 'COMPLETED') {
+    const handleCompleteAndExit = () => {
+      finalizeMatchToRankings();
+      resetMatch();
+      setActiveTab('play');
+    };
+
     return (
       <ErrorBoundary>
         <ConfettiCelebration />
@@ -150,17 +157,21 @@ export const AppContent: React.FC = () => {
             undoAction();
           }}
         />
-        <div className="min-h-screen bg-neutral-100 dark:bg-black text-neutral-900 dark:text-white p-4 pb-20">
-          <header className="max-w-md mx-auto mb-2 flex items-center justify-between">
+        <div
+          className="min-h-screen bg-neutral-100 dark:bg-black text-neutral-900 dark:text-white px-4 pb-20"
+          style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+        >
+          <header className="max-w-md mx-auto mb-3 flex items-center justify-between">
             <span className="font-bold text-lg">🏸 RallyPoint</span>
             <button
-              onClick={() => resetMatch()}
+              type="button"
+              onClick={handleCompleteAndExit}
               className="text-xs px-3 py-1.5 rounded-full bg-neutral-200 dark:bg-neutral-800 font-semibold"
             >
               Done
             </button>
           </header>
-          <AppleMatchSummarySheet state={match} onDone={() => setActiveTab('play')} />
+          <AppleMatchSummarySheet state={match} onDone={handleCompleteAndExit} />
         </div>
       </ErrorBoundary>
     );

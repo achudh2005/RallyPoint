@@ -66,6 +66,12 @@ export const AppleScoringScreen: React.FC = () => {
   } | null>(null);
   const [showScoreboard, setShowScoreboard] = useState(false);
   const [showLiveMvpPeek, setShowLiveMvpPeek] = useState(false);
+  const [showDetailedRallySheet, setShowDetailedRallySheet] = useState(false);
+  const [rallyWinnerSide, setRallyWinnerSide] = useState<'A' | 'B'>('A');
+  const [rallyScorerId, setRallyScorerId] = useState<string>('');
+  const [rallyDropperMode, setRallyDropperMode] = useState<'single' | 'both' | 'none'>('single');
+  const [rallyDropperId, setRallyDropperId] = useState<string>('');
+  const [rallyNote, setRallyNote] = useState<string>('');
   const [currentStreakAlert, setCurrentStreakAlert] = useState<StreakMilestoneAlert | null>(null);
   const [undoToast, setUndoToast] = useState<string | null>(null);
   const [lastTaggedPointSide, setLastTaggedPointSide] = useState<Side | null>(null);
@@ -159,29 +165,41 @@ export const AppleScoringScreen: React.FC = () => {
       ? 'Service 11'
       : 'Custom';
 
-  // Player lists
+  // Player lists (prefer explicit playerNames, then split team name)
   const playerA1 = {
     id: config.sideA.playerIds[0] || 'p1',
-    name: config.sideA.name.split('&')[0]?.trim() || config.sideA.name,
+    name:
+      config.sideA.playerNames?.[0] ||
+      config.sideA.name.split('&')[0]?.trim() ||
+      config.sideA.name,
     side: 'A' as const,
   };
   const playerA2 = isDoubles
     ? {
         id: config.sideA.playerIds[1] || 'p2',
-        name: config.sideA.name.split('&')[1]?.trim() || 'Partner A',
+        name:
+          config.sideA.playerNames?.[1] ||
+          config.sideA.name.split('&')[1]?.trim() ||
+          'Partner A',
         side: 'A' as const,
       }
     : null;
 
   const playerB1 = {
     id: config.sideB.playerIds[0] || 'p3',
-    name: config.sideB.name.split('&')[0]?.trim() || config.sideB.name,
+    name:
+      config.sideB.playerNames?.[0] ||
+      config.sideB.name.split('&')[0]?.trim() ||
+      config.sideB.name,
     side: 'B' as const,
   };
   const playerB2 = isDoubles
     ? {
         id: config.sideB.playerIds[1] || 'p4',
-        name: config.sideB.name.split('&')[1]?.trim() || 'Partner B',
+        name:
+          config.sideB.playerNames?.[1] ||
+          config.sideB.name.split('&')[1]?.trim() ||
+          'Partner B',
         side: 'B' as const,
       }
     : null;
@@ -688,86 +706,159 @@ export const AppleScoringScreen: React.FC = () => {
             </button>
           </div>
 
-          {/* Portrait Player Action Cards (Lower 55% Thumb Zone) */}
+          {/* Portrait Team-Grouped Player Action Cards (Lower 55% Thumb Zone) */}
           {showPlayerActionButtons && (
             <div className="flex-1 landscape:hidden p-3 flex flex-col justify-end gap-2.5 overflow-y-auto">
+              {/* Team A Container Card */}
               <div
-                className={`grid gap-2.5 ${
-                  isDoubles ? 'grid-cols-2' : 'grid-cols-1'
-                }`}
+                data-testid="team-card-A"
+                className="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.04] dark:bg-emerald-950/20 p-2.5 space-y-2"
               >
-                {/* Side A Player Cards */}
-                <PlayerCard
-                  playerId={playerA1.id}
-                  name={playerA1.name}
-                  side="A"
-                  isServer={serveState?.serverPlayerId === playerA1.id}
-                  courtPosition={getCourtPosition('A', playerA1.id)}
-                  pointsWon={getPlayerStats(playerA1.id).pointsWon}
-                  drops={getPlayerStats(playerA1.id).drops}
-                  netContribution={getPlayerStats(playerA1.id).netContribution}
-                  buttonLabels={playerActionButtonLabels}
-                  layout={playerActionButtonLayout}
-                  disabled={isCompleted || isInterval}
-                  onPoint={() => handlePlayerAction(playerA1.id, 'POINT')}
-                  onDrop={() => handlePlayerAction(playerA1.id, 'DROP')}
-                  onLongPress={() => setSelectedPlayerForDetail(playerA1)}
-                />
-                {playerA2 && (
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 truncate">
+                    Team A: {playerA1.name}{playerA2 ? ` + ${playerA2.name}` : ''}
+                  </span>
+                  {isDoubles && playerA2 && (
+                    <button
+                      type="button"
+                      data-testid="both-fault-btn-A"
+                      disabled={isCompleted || isInterval}
+                      onClick={() => {
+                        nativeHaptics.selection();
+                        recordPlayerAction(playerA1.id, 'DROP', {
+                          isBothFault: true,
+                          attributedDropPlayerIds: [playerA1.id, playerA2.id],
+                          note: 'Both fault (0.5 each)',
+                        });
+                      }}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 disabled:opacity-40"
+                    >
+                      Both Fault (0.5)
+                    </button>
+                  )}
+                </div>
+                <div className={`grid gap-2 ${isDoubles ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <PlayerCard
-                    playerId={playerA2.id}
-                    name={playerA2.name}
+                    playerId={playerA1.id}
+                    name={playerA1.name}
                     side="A"
-                    isServer={serveState?.serverPlayerId === playerA2.id}
-                    courtPosition={getCourtPosition('A', playerA2.id)}
-                    pointsWon={getPlayerStats(playerA2.id).pointsWon}
-                    drops={getPlayerStats(playerA2.id).drops}
-                    netContribution={getPlayerStats(playerA2.id).netContribution}
+                    isServer={serveState?.serverPlayerId === playerA1.id}
+                    courtPosition={getCourtPosition('A', playerA1.id)}
+                    pointsWon={getPlayerStats(playerA1.id).pointsWon}
+                    drops={getPlayerStats(playerA1.id).drops}
+                    netContribution={getPlayerStats(playerA1.id).netContribution}
                     buttonLabels={playerActionButtonLabels}
                     layout={playerActionButtonLayout}
                     disabled={isCompleted || isInterval}
-                    onPoint={() => handlePlayerAction(playerA2.id, 'POINT')}
-                    onDrop={() => handlePlayerAction(playerA2.id, 'DROP')}
-                    onLongPress={() => setSelectedPlayerForDetail(playerA2)}
+                    onPoint={() => handlePlayerAction(playerA1.id, 'POINT')}
+                    onDrop={() => handlePlayerAction(playerA1.id, 'DROP')}
+                    onLongPress={() => setSelectedPlayerForDetail(playerA1)}
                   />
-                )}
-
-                {/* Side B Player Cards */}
-                <PlayerCard
-                  playerId={playerB1.id}
-                  name={playerB1.name}
-                  side="B"
-                  isServer={serveState?.serverPlayerId === playerB1.id}
-                  courtPosition={getCourtPosition('B', playerB1.id)}
-                  pointsWon={getPlayerStats(playerB1.id).pointsWon}
-                  drops={getPlayerStats(playerB1.id).drops}
-                  netContribution={getPlayerStats(playerB1.id).netContribution}
-                  buttonLabels={playerActionButtonLabels}
-                  layout={playerActionButtonLayout}
-                  disabled={isCompleted || isInterval}
-                  onPoint={() => handlePlayerAction(playerB1.id, 'POINT')}
-                  onDrop={() => handlePlayerAction(playerB1.id, 'DROP')}
-                  onLongPress={() => setSelectedPlayerForDetail(playerB1)}
-                />
-                {playerB2 && (
-                  <PlayerCard
-                    playerId={playerB2.id}
-                    name={playerB2.name}
-                    side="B"
-                    isServer={serveState?.serverPlayerId === playerB2.id}
-                    courtPosition={getCourtPosition('B', playerB2.id)}
-                    pointsWon={getPlayerStats(playerB2.id).pointsWon}
-                    drops={getPlayerStats(playerB2.id).drops}
-                    netContribution={getPlayerStats(playerB2.id).netContribution}
-                    buttonLabels={playerActionButtonLabels}
-                    layout={playerActionButtonLayout}
-                    disabled={isCompleted || isInterval}
-                    onPoint={() => handlePlayerAction(playerB2.id, 'POINT')}
-                    onDrop={() => handlePlayerAction(playerB2.id, 'DROP')}
-                    onLongPress={() => setSelectedPlayerForDetail(playerB2)}
-                  />
-                )}
+                  {playerA2 && (
+                    <PlayerCard
+                      playerId={playerA2.id}
+                      name={playerA2.name}
+                      side="A"
+                      isServer={serveState?.serverPlayerId === playerA2.id}
+                      courtPosition={getCourtPosition('A', playerA2.id)}
+                      pointsWon={getPlayerStats(playerA2.id).pointsWon}
+                      drops={getPlayerStats(playerA2.id).drops}
+                      netContribution={getPlayerStats(playerA2.id).netContribution}
+                      buttonLabels={playerActionButtonLabels}
+                      layout={playerActionButtonLayout}
+                      disabled={isCompleted || isInterval}
+                      onPoint={() => handlePlayerAction(playerA2.id, 'POINT')}
+                      onDrop={() => handlePlayerAction(playerA2.id, 'DROP')}
+                      onLongPress={() => setSelectedPlayerForDetail(playerA2)}
+                    />
+                  )}
+                </div>
               </div>
+
+              {/* Team B Container Card */}
+              <div
+                data-testid="team-card-B"
+                className="rounded-2xl border border-blue-500/35 bg-blue-500/[0.04] dark:bg-blue-950/20 p-2.5 space-y-2"
+              >
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 truncate">
+                    Team B: {playerB1.name}{playerB2 ? ` + ${playerB2.name}` : ''}
+                  </span>
+                  {isDoubles && playerB2 && (
+                    <button
+                      type="button"
+                      data-testid="both-fault-btn-B"
+                      disabled={isCompleted || isInterval}
+                      onClick={() => {
+                        nativeHaptics.selection();
+                        recordPlayerAction(playerB1.id, 'DROP', {
+                          isBothFault: true,
+                          attributedDropPlayerIds: [playerB1.id, playerB2.id],
+                          note: 'Both fault (0.5 each)',
+                        });
+                      }}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 disabled:opacity-40"
+                    >
+                      Both Fault (0.5)
+                    </button>
+                  )}
+                </div>
+                <div className={`grid gap-2 ${isDoubles ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <PlayerCard
+                    playerId={playerB1.id}
+                    name={playerB1.name}
+                    side="B"
+                    isServer={serveState?.serverPlayerId === playerB1.id}
+                    courtPosition={getCourtPosition('B', playerB1.id)}
+                    pointsWon={getPlayerStats(playerB1.id).pointsWon}
+                    drops={getPlayerStats(playerB1.id).drops}
+                    netContribution={getPlayerStats(playerB1.id).netContribution}
+                    buttonLabels={playerActionButtonLabels}
+                    layout={playerActionButtonLayout}
+                    disabled={isCompleted || isInterval}
+                    onPoint={() => handlePlayerAction(playerB1.id, 'POINT')}
+                    onDrop={() => handlePlayerAction(playerB1.id, 'DROP')}
+                    onLongPress={() => setSelectedPlayerForDetail(playerB1)}
+                  />
+                  {playerB2 && (
+                    <PlayerCard
+                      playerId={playerB2.id}
+                      name={playerB2.name}
+                      side="B"
+                      isServer={serveState?.serverPlayerId === playerB2.id}
+                      courtPosition={getCourtPosition('B', playerB2.id)}
+                      pointsWon={getPlayerStats(playerB2.id).pointsWon}
+                      drops={getPlayerStats(playerB2.id).drops}
+                      netContribution={getPlayerStats(playerB2.id).netContribution}
+                      buttonLabels={playerActionButtonLabels}
+                      layout={playerActionButtonLayout}
+                      disabled={isCompleted || isInterval}
+                      onPoint={() => handlePlayerAction(playerB2.id, 'POINT')}
+                      onDrop={() => handlePlayerAction(playerB2.id, 'DROP')}
+                      onLongPress={() => setSelectedPlayerForDetail(playerB2)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Detailed Point + Drop + Both Fault Attribution Trigger */}
+              <button
+                type="button"
+                data-testid="detailed-rally-btn"
+                disabled={isCompleted || isInterval}
+                onClick={() => {
+                  nativeHaptics.selection();
+                  setRallyWinnerSide('A');
+                  setRallyScorerId(playerA1.id);
+                  setRallyDropperMode('single');
+                  setRallyDropperId(playerB1.id);
+                  setRallyNote('');
+                  setShowDetailedRallySheet(true);
+                }}
+                className="w-full py-2 rounded-xl bg-black/5 dark:bg-white/10 text-[11px] font-semibold text-slate-600 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/15 transition-colors disabled:opacity-40"
+              >
+                + Record Detailed Rally (Scorer + Dropper / Both Fault)
+              </button>
             </div>
           )}
         </div>
@@ -1235,6 +1326,172 @@ export const AppleScoringScreen: React.FC = () => {
             Close
           </Button>
         </div>
+      </BottomSheet>
+
+      {/* Detailed Rally Attribution Sheet (Scorer + Opposing Dropper / Both Fault + Note) */}
+      <BottomSheet
+        isOpen={showDetailedRallySheet}
+        onClose={() => setShowDetailedRallySheet(false)}
+        title="Record Detailed Rally"
+      >
+        {(() => {
+          const winningTeamPlayers =
+            rallyWinnerSide === 'A'
+              ? [playerA1, playerA2].filter(Boolean) as typeof allPlayers
+              : [playerB1, playerB2].filter(Boolean) as typeof allPlayers;
+          const losingTeamPlayers =
+            rallyWinnerSide === 'A'
+              ? [playerB1, playerB2].filter(Boolean) as typeof allPlayers
+              : [playerA1, playerA2].filter(Boolean) as typeof allPlayers;
+
+          return (
+            <div className="space-y-4 pb-6 text-sm">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-1.5">
+                  1. Winning Team
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRallyWinnerSide('A');
+                      setRallyScorerId(playerA1.id);
+                      setRallyDropperId(playerB1.id);
+                    }}
+                    className={`p-2.5 rounded-xl font-bold border text-xs ${
+                      rallyWinnerSide === 'A'
+                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-black/5 dark:bg-white/5 border-transparent'
+                    }`}
+                  >
+                    Team A ({playerA1.name}{playerA2 ? ` + ${playerA2.name}` : ''})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRallyWinnerSide('B');
+                      setRallyScorerId(playerB1.id);
+                      setRallyDropperId(playerA1.id);
+                    }}
+                    className={`p-2.5 rounded-xl font-bold border text-xs ${
+                      rallyWinnerSide === 'B'
+                        ? 'bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300'
+                        : 'bg-black/5 dark:bg-white/5 border-transparent'
+                    }`}
+                  >
+                    Team B ({playerB1.name}{playerB2 ? ` + ${playerB2.name}` : ''})
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-1.5">
+                  2. Who Scored (+1 Point)?
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {winningTeamPlayers.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setRallyScorerId(p.id)}
+                      className={`p-2.5 rounded-xl font-semibold border text-xs ${
+                        rallyScorerId === p.id
+                          ? 'bg-emerald-500 text-white border-emerald-500'
+                          : 'bg-black/5 dark:bg-white/5 border-transparent'
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-1.5">
+                  3. Opposing Player Who Dropped / Faulted
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {losingTeamPlayers.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setRallyDropperMode('single');
+                        setRallyDropperId(p.id);
+                      }}
+                      className={`p-2.5 rounded-xl font-semibold border text-xs ${
+                        rallyDropperMode === 'single' && rallyDropperId === p.id
+                          ? 'bg-rose-500 text-white border-rose-500'
+                          : 'bg-black/5 dark:bg-white/5 border-transparent'
+                      }`}
+                    >
+                      {p.name} (-1.0)
+                    </button>
+                  ))}
+                  {losingTeamPlayers.length === 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setRallyDropperMode('both')}
+                      className={`col-span-2 p-2.5 rounded-xl font-bold border text-xs ${
+                        rallyDropperMode === 'both'
+                          ? 'bg-rose-500 text-white border-rose-500'
+                          : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                      }`}
+                    >
+                      Both Fault ({losingTeamPlayers[0]!.name} & {losingTeamPlayers[1]!.name} — 0.5 each)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+                  Optional Note / Reason
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Smash winner, net fault, miscommunication"
+                  value={rallyNote}
+                  onChange={(e) => setRallyNote(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-black/5 dark:bg-white/10 text-xs focus:outline-hidden"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  type="button"
+                  onClick={() => setShowDetailedRallySheet(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  type="button"
+                  onClick={async () => {
+                    const scorerId = rallyScorerId || winningTeamPlayers[0]!.id;
+                    const dropIds =
+                      rallyDropperMode === 'both'
+                        ? losingTeamPlayers.map((p) => p.id)
+                        : rallyDropperMode === 'single' && rallyDropperId
+                        ? [rallyDropperId]
+                        : undefined;
+                    await recordPlayerAction(scorerId, 'POINT', {
+                      attributedDropPlayerIds: dropIds,
+                      isBothFault: rallyDropperMode === 'both',
+                      note: rallyNote.trim() || undefined,
+                    });
+                    setShowDetailedRallySheet(false);
+                  }}
+                >
+                  Save Rally
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </BottomSheet>
     </div>
   );

@@ -61,6 +61,10 @@ export interface RankingMatchEvent {
   isPoint?: boolean;
   isSideOut?: boolean;
   isCompensated?: boolean;
+  attributedPointPlayerId?: string | null;
+  attributedDropPlayerIds?: string[] | null;
+  isBothFault?: boolean;
+  note?: string | null;
   payload?: Record<string, unknown> | null;
 }
 
@@ -163,6 +167,9 @@ export interface PlayerStats {
   // Shutout stats
   shutoutWins: number;
   shutoutsConceded: number;
+
+  // Shared / Both-fault count
+  sharedFaults: number;
 }
 
 export interface TeamStats {

@@ -72,6 +72,9 @@ export function initializePlayerStats(playerId: string, displayName = ''): Playe
     // Shutout stats
     shutoutWins: 0,
     shutoutsConceded: 0,
+
+    // Shared / Both-fault count
+    sharedFaults: 0,
   };
 }
 
@@ -212,11 +215,50 @@ export function computeAllPlayerStats(
                 if (event.isPoint) pStats.servicePointsWon++;
                 if (event.isSideOut) pStats.sideOutsCaused++;
               }
+              if (event.attributedDropPlayerIds && event.attributedDropPlayerIds.length > 0) {
+                const share = Number((1 / event.attributedDropPlayerIds.length).toFixed(2));
+                const isShared = event.attributedDropPlayerIds.length > 1;
+                for (const dId of event.attributedDropPlayerIds) {
+                  if (statsMap[dId]) {
+                    statsMap[dId]!.drops = Number((statsMap[dId]!.drops + share).toFixed(2));
+                    if (isShared) {
+                      statsMap[dId]!.sharedFaults = Number((statsMap[dId]!.sharedFaults + share).toFixed(2));
+                    }
+                    statsMap[dId]!.currentPointStreak = 0;
+                    statsMap[dId]!.netContribution = Number(
+                      (statsMap[dId]!.pointsWon - statsMap[dId]!.drops).toFixed(2)
+                    );
+                  }
+                }
+              }
             } else if (event.action === 'DROP') {
-              pStats.drops++;
-              pStats.currentPointStreak = 0;
+              if (event.isBothFault && event.attributedDropPlayerIds && event.attributedDropPlayerIds.length > 1) {
+                const share = Number((1 / event.attributedDropPlayerIds.length).toFixed(2));
+                for (const dId of event.attributedDropPlayerIds) {
+                  if (statsMap[dId]) {
+                    statsMap[dId]!.drops = Number((statsMap[dId]!.drops + share).toFixed(2));
+                    statsMap[dId]!.sharedFaults = Number((statsMap[dId]!.sharedFaults + share).toFixed(2));
+                    statsMap[dId]!.currentPointStreak = 0;
+                    statsMap[dId]!.netContribution = Number(
+                      (statsMap[dId]!.pointsWon - statsMap[dId]!.drops).toFixed(2)
+                    );
+                  }
+                }
+              } else {
+                pStats.drops = Number((pStats.drops + 1).toFixed(2));
+                pStats.currentPointStreak = 0;
+              }
+              if (event.attributedPointPlayerId && statsMap[event.attributedPointPlayerId]) {
+                const wStats = statsMap[event.attributedPointPlayerId]!;
+                wStats.pointsWon++;
+                wStats.currentPointStreak++;
+                if (wStats.currentPointStreak > wStats.bestPointStreak) {
+                  wStats.bestPointStreak = wStats.currentPointStreak;
+                }
+                wStats.netContribution = Number((wStats.pointsWon - wStats.drops).toFixed(2));
+              }
             }
-            pStats.netContribution = pStats.pointsWon - pStats.drops;
+            pStats.netContribution = Number((pStats.pointsWon - pStats.drops).toFixed(2));
           }
         }
 

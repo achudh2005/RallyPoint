@@ -262,6 +262,9 @@ export const ApplePlayersScreen: React.FC = () => {
       bestMatchStreak: entry?.stats?.bestMatchStreak ?? 0,
       clutchPointsTotal: entry?.stats?.clutchPointsTotal ?? 0,
       serveRegainedTotal: entry?.stats?.serveRegainedTotal ?? 0,
+      sharedFaults: entry?.stats?.sharedFaults ?? 0,
+      rankMovement: entry?.rankMovement,
+      movementDelta: entry?.movementDelta,
     };
     setSelectedPlayer(profile);
   };

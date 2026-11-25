@@ -574,6 +574,10 @@ export interface PlayerActionInput {
   shotType?: ShotType;
   rallyEndResult?: RallyEndResult;
   occurredAt?: string;
+  attributedPointPlayerId?: string;
+  attributedDropPlayerIds?: string[];
+  isBothFault?: boolean;
+  note?: string;
 }
 
 export function recordPlayerAction(
@@ -639,27 +643,33 @@ export function recordPlayerAction(
     deviceId: input.deviceId,
     shotType: input.shotType,
     rallyEndResult: input.rallyEndResult,
+    attributedPointPlayerId: input.attributedPointPlayerId,
+    attributedDropPlayerIds: input.attributedDropPlayerIds,
+    isBothFault: input.isBothFault,
+    note: input.note,
   };
 
   const nextState = cloneMatchState(rallyResult.state);
 
-  // Initialize or fetch stats
-  if (!nextState.playerStats[input.playerId]) {
-    nextState.playerStats[input.playerId] = {
-      playerId: input.playerId,
-      pointsWon: 0,
-      drops: 0,
-      netContribution: 0,
-      pointShareWithinTeam: 0,
-      dropShareWithinTeam: 0,
-      currentPointStreak: 0,
-      bestPointStreak: 0,
-      servicePointsWon: 0,
-      sideOutsCaused: 0,
-    };
-  }
+  const ensureStats = (pId: string) => {
+    if (!nextState.playerStats[pId]) {
+      nextState.playerStats[pId] = {
+        playerId: pId,
+        pointsWon: 0,
+        drops: 0,
+        netContribution: 0,
+        pointShareWithinTeam: 0,
+        dropShareWithinTeam: 0,
+        currentPointStreak: 0,
+        bestPointStreak: 0,
+        servicePointsWon: 0,
+        sideOutsCaused: 0,
+      };
+    }
+    return nextState.playerStats[pId]!;
+  };
 
-  const pStats = nextState.playerStats[input.playerId]!;
+  const pStats = ensureStats(input.playerId);
 
   if (input.action === 'POINT') {
     pStats.pointsWon += 1;
@@ -675,12 +685,42 @@ export function recordPlayerAction(
         pStats.sideOutsCaused += 1;
       }
     }
+    // Optional opposing drop attribution (single or Both Fault 0.5 each)
+    if (input.attributedDropPlayerIds && input.attributedDropPlayerIds.length > 0) {
+      const share = Number((1 / input.attributedDropPlayerIds.length).toFixed(2));
+      for (const dropId of input.attributedDropPlayerIds) {
+        const dStats = ensureStats(dropId);
+        dStats.drops = Number((dStats.drops + share).toFixed(2));
+        dStats.currentPointStreak = 0;
+        dStats.netContribution = Number((dStats.pointsWon - dStats.drops).toFixed(2));
+      }
+    }
   } else {
-    pStats.drops += 1;
-    pStats.currentPointStreak = 0;
+    if (input.isBothFault && input.attributedDropPlayerIds && input.attributedDropPlayerIds.length > 1) {
+      const share = Number((1 / input.attributedDropPlayerIds.length).toFixed(2));
+      for (const dropId of input.attributedDropPlayerIds) {
+        const dStats = ensureStats(dropId);
+        dStats.drops = Number((dStats.drops + share).toFixed(2));
+        dStats.currentPointStreak = 0;
+        dStats.netContribution = Number((dStats.pointsWon - dStats.drops).toFixed(2));
+      }
+    } else {
+      pStats.drops = Number((pStats.drops + 1).toFixed(2));
+      pStats.currentPointStreak = 0;
+    }
+    // Optional opposing point scorer attribution
+    if (input.attributedPointPlayerId) {
+      const wStats = ensureStats(input.attributedPointPlayerId);
+      wStats.pointsWon += 1;
+      wStats.currentPointStreak += 1;
+      if (wStats.currentPointStreak > wStats.bestPointStreak) {
+        wStats.bestPointStreak = wStats.currentPointStreak;
+      }
+      wStats.netContribution = Number((wStats.pointsWon - wStats.drops).toFixed(2));
+    }
   }
 
-  pStats.netContribution = pStats.pointsWon - pStats.drops;
+  pStats.netContribution = Number((pStats.pointsWon - pStats.drops).toFixed(2));
 
   updateTeamStatsShare(nextState);
 

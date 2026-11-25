@@ -151,6 +151,12 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
         playerIds: isDoubles
           ? [selectedPlayerIds[0] || 'p1', selectedPlayerIds[1] || 'p2']
           : [selectedPlayerIds[0] || 'p1'],
+        playerNames: isDoubles
+          ? [
+              communityPlayers.find((p) => p.id === selectedPlayerIds[0])?.displayName || 'Player A1',
+              communityPlayers.find((p) => p.id === selectedPlayerIds[1])?.displayName || 'Player A2',
+            ]
+          : [communityPlayers.find((p) => p.id === selectedPlayerIds[0])?.displayName || sideAName],
       },
       sideB: {
         id: 'sb',
@@ -158,6 +164,12 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
         playerIds: isDoubles
           ? [selectedPlayerIds[2] || 'p3', selectedPlayerIds[3] || 'p4']
           : [selectedPlayerIds[1] || 'p2'],
+        playerNames: isDoubles
+          ? [
+              communityPlayers.find((p) => p.id === selectedPlayerIds[2])?.displayName || 'Player B1',
+              communityPlayers.find((p) => p.id === selectedPlayerIds[3])?.displayName || 'Player B2',
+            ]
+          : [communityPlayers.find((p) => p.id === selectedPlayerIds[1])?.displayName || sideBName],
       },
       initialServerSide: firstServerSide,
       initialServerPlayerId:
