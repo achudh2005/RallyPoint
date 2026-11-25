@@ -2,6 +2,11 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [QA Phase 1] - Full Audit, Feature Matrix & Baseline Metrics
+### Added
+- **QA Feature Matrix (`/docs/qa/FEATURE_MATRIX.md`)**: Mapped all 30 inventory items to exact code locations, existing automated tests, and gap statuses (`EXISTS-WORKING`, `EXISTS-UNVERIFIED`, `PARTIAL`, `MISSING`).
+- **QA Living Report (`/docs/qa/REPORT.md`)**: Recorded Phase 1 baseline metrics (256 passing unit/integration tests across 45 files, `@rallypoint/scoring-rules` 91.81% coverage, `@rallypoint/ranking` 93.43% coverage, 7.19 MB `v1.2.0` release APK, bundle sizes, and 4 initial findings).
+
 ## [1.2.0] - Streaks & Match MVP Release (Phase 4)
 ### Added
 - **Idempotent Backfill Script (`packages/db/src/backfillStreaksAndMvp.ts`)**:
