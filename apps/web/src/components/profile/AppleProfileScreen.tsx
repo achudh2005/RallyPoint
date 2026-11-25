@@ -647,7 +647,7 @@ export const AppleProfileScreen: React.FC = () => {
             className="inline-block"
           >
             <Badge variant="neutral" size="sm">
-              RallyPoint UI v1.3.0 (Apple HIG)
+              RallyPoint UI v1.3.1 (Apple HIG)
             </Badge>
           </button>
           <p className="text-[11px] text-neutral-400">

@@ -3,7 +3,7 @@
 > Advanced Badminton Point-Tracking Web Application (PWA) built with an Event-Sourced architecture.
 
 [![CI](https://github.com/achudh2005/RallyPoint/actions/workflows/ci.yml/badge.svg)](https://github.com/achudh2005/RallyPoint/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-1.3.0-emerald.svg)](https://github.com/achudh2005/RallyPoint)
+[![Version](https://img.shields.io/badge/version-1.3.1-emerald.svg)](https://github.com/achudh2005/RallyPoint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Overview

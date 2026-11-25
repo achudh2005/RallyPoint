@@ -1,6 +1,6 @@
 {
   "name": "rallypoint",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "private": true,
   "description": "Advanced badminton point-tracking web app (PWA) with event-sourced engine",
   "workspaces": [
