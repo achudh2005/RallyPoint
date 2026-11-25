@@ -75,6 +75,19 @@ export const ShareableScorecard: React.FC<ShareableScorecardProps> = ({ state, e
             {state.winReason === 'RETIRE' && 'Won by Retirement'}
             {state.winReason === 'WALKOVER' && 'Won by Walkover'}
           </div>
+          {state.games.some(
+            (g) => (g.scoreA >= 3 && g.scoreB === 0) || (g.scoreB >= 3 && g.scoreA === 0)
+          ) && (
+            <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400/25 to-yellow-300/20 border border-amber-400/60 text-amber-300 text-[11px] font-black tracking-widest uppercase">
+              👑 SHUTOUT{' '}
+              {(() => {
+                const sg = state.games.find(
+                  (g) => (g.scoreA >= 3 && g.scoreB === 0) || (g.scoreB >= 3 && g.scoreA === 0)
+                )!;
+                return `${Math.max(sg.scoreA, sg.scoreB)}–0`;
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Head-to-Head Big Scores */}

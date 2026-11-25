@@ -52,6 +52,7 @@ export function rebuildRankings(
     'MOST_DROPS',
     'BEST_NET_CONTRIBUTION',
     'MOST_MVPS',
+    'MOST_SHUTOUT_WINS',
     'BEST_CLUTCH_PLAYER',
     'SERVE_WINNER',
     'LONGEST_STREAK',

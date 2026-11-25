@@ -1,9 +1,21 @@
 # RallyPoint Final QA & Release Verification Report
 
-**Living Report** — Updated at Fresh-Start Phase 1  
+**Living Report** — Updated at Fresh-Start Phase 2  
 **Target Release:** `v1.3.0` (in progress)  
 **Target Device:** iQOO Neo 10 (Android 15, 6.8" 144Hz AMOLED, punch-hole cutout, gesture nav)  
 **Manual Checklist:** [MANUAL_TEST_CHECKLIST.md](./MANUAL_TEST_CHECKLIST.md)
+
+---
+
+## Fresh-Start Phase 2: Shutout Rule (7-0) & Celebration Animation
+
+| Item | Status | Evidence / Notes |
+|------|--------|------------------|
+| Shutout rule in `@rallypoint/scoring-rules` (Rally & Service Point, 3–15 target, Game/Match effect, decider toggle, midpoint-switch skip, UNDO & replay) | **PASS** | `packages/scoring-rules/src/shutout.test.ts` (6 tests including `fast-check` property test). |
+| Ranking stats (`shutoutWins`, `shutoutsConceded`, `MOST_SHUTOUT_WINS`, +1 RP bonus) | **PASS** | `packages/ranking` (37 tests), `AppleRankingsScreen.tsx`. |
+| Setup & Live UI (`MatchSetupSheet` controls, pre-first-point toggle, `Shutout rule: 7-0` badge, `One point to shutout` banner, `ShareableScorecard` badge) | **PASS** | `MatchSetupSheet.tsx`, `AppleScoringScreen.tsx`, `ShareableScorecard.tsx`. |
+| `CelebrationOverlay` 6-beat animation (canvas particles, adaptive count, Web Audio, Haptics, tap-to-skip, Undo cancel, Back gesture, Reduced/Off, `prefers-reduced-motion`) | **PASS** | `CelebrationOverlay.test.tsx` (4 tests), bundle delta +18.31 kB raw (+5.31 kB gzip) < 150 KB. |
+| Real-phone 144Hz smoothness, Web Audio loudness & haptic feel on iQOO Neo 10 | **NEEDS MANUAL CHECK** | Added to `MANUAL_TEST_CHECKLIST.md` in Phase 4. |
 
 ---
 

@@ -2,6 +2,12 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Fresh-Start Phase 2] - Shutout Rule (7-0) & Celebration Animation
+### Added
+- **Shutout Rule Engine (`@rallypoint/scoring-rules`, `@rallypoint/ranking`)**: Added `ShutoutConfig` (`enabled`, `target` 3–15 default 7, `effect` `'GAME' | 'MATCH'`, `applyInDecider`), `GAME_END` (`reason: 'SHUTOUT'`) and `MATCH_END` (`reason: 'SHUTOUT_MATCH'`), midpoint-switch skip on shutout, full UNDO/replay support, and `shutoutWins`/`shutoutsConceded` + `MOST_SHUTOUT_WINS` leaderboard.
+- **Setup, Live UI & Scorecard (`MatchSetupSheet.tsx`, `AppleScoringScreen.tsx`, `ShareableScorecard.tsx`, `AppleProfileScreen.tsx`)**: Added Shutout rule configuration in Step 2 and pre-first-point Match Options, live `Shutout rule: 7-0` badge, `One point to shutout` banner, `Settings > Animations` (Full/Reduced/Off, Sound, Haptics, banner toggle), and static gold `SHUTOUT 7–0` badge on shareable scorecards.
+- **Broadcast-Style Celebration (`CelebrationOverlay.tsx`)**: Implemented 6-beat choreography (Impact, Slam, Light & Adaptive Canvas Particles, Letter-staggered Title, Winners Spotlight, Settle) with Web Audio API chime, layered Haptics, tap-to-skip, Back-gesture skip, Undo cancellation, `prefers-reduced-motion` support, and idempotent once-per-event playback guard (+18.31 kB raw bundle impact).
+
 ## [Fresh-Start Phase 1] - Fresh Start & Full Player Management
 ### Added
 - **Zero Pre-Loaded Data & CI Bundle Guard**: Removed all hardcoded demo players, sample matches, and seed exports from production web/APK bundles (`rankingStore.ts`, `playerRoutes.ts`, `rankingService.ts`, `packages/db/src/index.ts`, `ComponentGallery.tsx`). Added `npm run seed:demo` (dev-only) and `npm run check:no-demo` in CI (`ci.yml`, `android-apk.yml`).

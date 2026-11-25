@@ -14,6 +14,7 @@ import {
 import { useTheme } from '@rallypoint/ui';
 import { useMatchStore } from '../../store/matchStore.js';
 import { useRankingStore } from '../../store/rankingStore.js';
+import { useAlertsSettingsStore, type CelebrationIntensity } from '../../store/alertsSettingsStore.js';
 import {
   Moon,
   Palette,
@@ -62,6 +63,16 @@ export const AppleProfileScreen: React.FC = () => {
     restoreCommunityPlayer,
     resetAllData,
   } = useRankingStore();
+  const {
+    celebrationIntensity,
+    setCelebrationIntensity,
+    celebrationSound,
+    setCelebrationSound,
+    celebrationHaptics,
+    setCelebrationHaptics,
+    shutoutBannerEnabled,
+    setShutoutBannerEnabled,
+  } = useAlertsSettingsStore();
 
   const [showGallery, setShowGallery] = useState(false);
   const [showExportNotice, setShowExportNotice] = useState(false);
@@ -540,6 +551,57 @@ export const AppleProfileScreen: React.FC = () => {
               }
             />
           </GroupedSection>
+          {/* Animations & Celebrations */}
+          <GroupedSection header="Animations">
+            <GroupedRow
+              title="Celebration intensity"
+              subtitle="Shutout & match win effects"
+              leading={<Sparkles className="w-5 h-5 text-amber-500" />}
+              trailing={
+                <select
+                  aria-label="Celebration intensity"
+                  value={celebrationIntensity}
+                  onChange={(e) => setCelebrationIntensity(e.target.value as CelebrationIntensity)}
+                  className="px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-xs font-semibold"
+                >
+                  <option value="full">Full</option>
+                  <option value="reduced">Reduced</option>
+                  <option value="off">Off</option>
+                </select>
+              }
+            />
+            <GroupedRow
+              title="Celebration Sound"
+              subtitle="Synthesized impact & chime"
+              trailing={
+                <Toggle
+                  checked={celebrationSound}
+                  onChange={setCelebrationSound}
+                />
+              }
+            />
+            <GroupedRow
+              title="Celebration Haptics"
+              subtitle="Layered vibration on shutout"
+              trailing={
+                <Toggle
+                  checked={celebrationHaptics}
+                  onChange={setCelebrationHaptics}
+                />
+              }
+            />
+            <GroupedRow
+              title="One point to shutout banner"
+              subtitle="Show quiet alert at 6-0"
+              trailing={
+                <Toggle
+                  checked={shutoutBannerEnabled}
+                  onChange={setShutoutBannerEnabled}
+                />
+              }
+            />
+          </GroupedSection>
+
           {/* Data & Players */}
           <GroupedSection header="Data">
             <GroupedRow

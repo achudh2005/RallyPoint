@@ -68,6 +68,10 @@ export function initializePlayerStats(playerId: string, displayName = ''): Playe
     pointsWonOnReceive: 0,
     longestPointStreak: 0,
     comebackPoints: 0,
+
+    // Shutout stats
+    shutoutWins: 0,
+    shutoutsConceded: 0,
   };
 }
 
@@ -100,6 +104,8 @@ export function initializeTeamStats(
     netContribution: 0,
     currentStreak: 0,
     bestStreak: 0,
+    shutoutWins: 0,
+    shutoutsConceded: 0,
   };
 }
 
@@ -316,12 +322,19 @@ export function computeAllPlayerStats(
       let sideBPoints = 0;
       let sideAGames = 0;
       let sideBGames = 0;
+      let sideAShutouts = 0;
+      let sideBShutouts = 0;
 
       for (const g of match.games) {
         sideAPoints += g.scoreA;
         sideBPoints += g.scoreB;
-        if (g.winnerSide === 'A' || g.scoreA > g.scoreB) sideAGames++;
-        else if (g.winnerSide === 'B' || g.scoreB > g.scoreA) sideBGames++;
+        if (g.winnerSide === 'A' || g.scoreA > g.scoreB) {
+          sideAGames++;
+          if (g.winReason === 'SHUTOUT') sideAShutouts++;
+        } else if (g.winnerSide === 'B' || g.scoreB > g.scoreA) {
+          sideBGames++;
+          if (g.winReason === 'SHUTOUT') sideBShutouts++;
+        }
       }
 
       if (sideAPoints === 0 && sideBPoints === 0 && validEvents.length > 0) {
@@ -366,8 +379,9 @@ export function computeAllPlayerStats(
       const mult = isServiceMatch ? config.serviceMultiplier : config.rallyMultiplier;
 
       // Attribute to Side A
+      const shutoutBonusA = sideAShutouts * (config.shutoutWinBonus ?? 1);
       const rpA = Math.round(
-        (matchWinnerSide === 'A' ? winnerRp + (giantKillerA ? config.rallyGiantKillerBonus : 0) : loserRp) * mult
+        ((matchWinnerSide === 'A' ? winnerRp + (giantKillerA ? config.rallyGiantKillerBonus : 0) : loserRp) + shutoutBonusA) * mult
       );
 
       for (const p of sideAPlayers) {
@@ -382,6 +396,8 @@ export function computeAllPlayerStats(
         pStats.pointDifference = pStats.pointsScored - pStats.pointsConceded;
         pStats.gamesWon += sideAGames;
         pStats.gamesLost += sideBGames;
+        pStats.shutoutWins += sideAShutouts;
+        pStats.shutoutsConceded += sideBShutouts;
 
         const totalPts = pStats.pointsScored + pStats.pointsConceded;
         pStats.pointSharePct = totalPts > 0 ? Number(((pStats.pointsScored / totalPts) * 100).toFixed(2)) : 0;
@@ -409,8 +425,9 @@ export function computeAllPlayerStats(
       }
 
       // Attribute to Side B
+      const shutoutBonusB = sideBShutouts * (config.shutoutWinBonus ?? 1);
       const rpB = Math.round(
-        (matchWinnerSide === 'B' ? winnerRp + (giantKillerB ? config.rallyGiantKillerBonus : 0) : loserRp) * mult
+        ((matchWinnerSide === 'B' ? winnerRp + (giantKillerB ? config.rallyGiantKillerBonus : 0) : loserRp) + shutoutBonusB) * mult
       );
 
       for (const p of sideBPlayers) {
@@ -425,6 +442,8 @@ export function computeAllPlayerStats(
         pStats.pointDifference = pStats.pointsScored - pStats.pointsConceded;
         pStats.gamesWon += sideBGames;
         pStats.gamesLost += sideAGames;
+        pStats.shutoutWins += sideBShutouts;
+        pStats.shutoutsConceded += sideAShutouts;
 
         const totalPts = pStats.pointsScored + pStats.pointsConceded;
         pStats.pointSharePct = totalPts > 0 ? Number(((pStats.pointsScored / totalPts) * 100).toFixed(2)) : 0;
@@ -581,12 +600,19 @@ export function computeAllTeamStats(
       let sideBPoints = 0;
       let sideAGames = 0;
       let sideBGames = 0;
+      let sideAShutouts = 0;
+      let sideBShutouts = 0;
 
       for (const g of match.games) {
         sideAPoints += g.scoreA;
         sideBPoints += g.scoreB;
-        if (g.winnerSide === 'A' || g.scoreA > g.scoreB) sideAGames++;
-        else if (g.winnerSide === 'B' || g.scoreB > g.scoreA) sideBGames++;
+        if (g.winnerSide === 'A' || g.scoreA > g.scoreB) {
+          sideAGames++;
+          if (g.winReason === 'SHUTOUT') sideAShutouts++;
+        } else if (g.winnerSide === 'B' || g.scoreB > g.scoreA) {
+          sideBGames++;
+          if (g.winReason === 'SHUTOUT') sideBShutouts++;
+        }
       }
 
       const matchWinnerSide =
@@ -641,6 +667,8 @@ export function computeAllTeamStats(
         t.pointDifference = t.pointsFor - t.pointsAgainst;
         t.gamesWon += sideAGames;
         t.gamesLost += sideBGames;
+        t.shutoutWins += sideAShutouts;
+        t.shutoutsConceded += sideBShutouts;
 
         const totalPts = t.pointsFor + t.pointsAgainst;
         t.pointSharePct = totalPts > 0 ? Number(((t.pointsFor / totalPts) * 100).toFixed(2)) : 0;
@@ -671,6 +699,8 @@ export function computeAllTeamStats(
         t.pointDifference = t.pointsFor - t.pointsAgainst;
         t.gamesWon += sideBGames;
         t.gamesLost += sideAGames;
+        t.shutoutWins += sideBShutouts;
+        t.shutoutsConceded += sideAShutouts;
 
         const totalPts = t.pointsFor + t.pointsAgainst;
         t.pointSharePct = totalPts > 0 ? Number(((t.pointsFor / totalPts) * 100).toFixed(2)) : 0;

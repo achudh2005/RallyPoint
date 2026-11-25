@@ -17,7 +17,7 @@ import {
   Button,
   Badge,
 } from '@rallypoint/ui';
-import { useMatchStore } from '../../store/matchStore.js';
+import { useMatchStore, type ExtendedMatchConfig } from '../../store/matchStore.js';
 import { Side, RallyEndType } from '@rallypoint/engine';
 import { TVScoreboardScreen } from '../scoreboard/TVScoreboardScreen.js';
 import { nativeKeepAwake } from '../../mobile/keepAwake.js';
@@ -52,6 +52,7 @@ export const AppleScoringScreen: React.FC = () => {
     toggleInterval,
     retireMatch,
     resetMatch,
+    updateShutoutConfig,
   } = useMatchStore();
 
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -202,6 +203,20 @@ export const AppleScoringScreen: React.FC = () => {
   const pointThresholds = useAlertsSettingsStore((s) => s.pointThresholds);
   const dropThresholds = useAlertsSettingsStore((s) => s.dropThresholds);
   const teamRunThresholds = useAlertsSettingsStore((s) => s.teamRunThresholds);
+  const shutoutBannerEnabled = useAlertsSettingsStore((s) => s.shutoutBannerEnabled);
+  const shutoutConfig =
+    scoringRulesState?.formatConfig.shutout ?? (config as ExtendedMatchConfig).shutout;
+  const shutoutTarget = shutoutConfig?.target || 7;
+  const shutoutAllowedInGame = !(
+    currentGameNumber === config.bestOf && shutoutConfig?.applyInDecider === false
+  );
+  const isOnePointToShutout = Boolean(
+    shutoutConfig?.enabled &&
+      shutoutBannerEnabled &&
+      shutoutAllowedInGame &&
+      ((currentScoreA === shutoutTarget - 1 && currentScoreB === 0) ||
+        (currentScoreB === shutoutTarget - 1 && currentScoreA === 0))
+  );
 
   const streakConfig: StreakAlertsConfig = React.useMemo(() => ({
     pointStreakThresholds: streakAlertsEnabled && pointStreakEnabled ? pointThresholds : [],
@@ -478,6 +493,14 @@ export const AppleScoringScreen: React.FC = () => {
               <span className="font-mono text-[9px] opacity-80">{liveAwards.mvp.mvpScore.toFixed(1)}</span>
             </button>
           )}
+          {shutoutConfig?.enabled && (
+            <span
+              data-testid="shutout-rule-badge"
+              className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[10px] font-bold text-amber-600 dark:text-amber-400"
+            >
+              Shutout rule: {shutoutTarget}-0
+            </span>
+          )}
         </div>
 
         {/* Action icons */}
@@ -530,6 +553,16 @@ export const AppleScoringScreen: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* One Point to Shutout Banner */}
+      {isOnePointToShutout && (
+        <div
+          data-testid="one-point-to-shutout-banner"
+          className="bg-amber-500/15 border-b border-amber-500/30 py-1 px-4 text-center text-xs font-bold text-amber-700 dark:text-amber-300"
+        >
+          ⚡ One point to shutout ({shutoutTarget}-0)
+        </div>
+      )}
 
       {/* Main Scoring Arena */}
       <main className="flex-1 flex flex-col landscape:flex-row overflow-hidden relative">
@@ -958,6 +991,29 @@ export const AppleScoringScreen: React.FC = () => {
         title="Match Options"
       >
         <div className="space-y-2 pt-2 pb-4">
+          {events.length === 0 && (
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div>
+                <p className="text-sm font-semibold">Shutout rule (win at {shutoutTarget}-0)</p>
+                <p className="text-[11px] text-slate-500">Editable before the first point</p>
+              </div>
+              <input
+                type="checkbox"
+                aria-label="Toggle shutout rule before first point"
+                checked={Boolean(shutoutConfig?.enabled)}
+                onChange={(e) =>
+                  updateShutoutConfig({
+                    enabled: e.target.checked,
+                    target: shutoutTarget,
+                    effect: shutoutConfig?.effect || 'GAME',
+                    applyInDecider: shutoutConfig?.applyInDecider ?? true,
+                  })
+                }
+                className="w-4 h-4 accent-amber-500"
+              />
+            </div>
+          )}
+
           <button
             onClick={() => {
               setShowMoreMenu(false);

@@ -12,6 +12,7 @@ import {
   MatchState as ScoringRulesMatchState,
   ScoringFormat,
   FormatConfig,
+  ShutoutConfig,
   FORMAT_PRESETS,
   ShotType,
   RallyEndResult,
@@ -22,6 +23,7 @@ export function convertEngineConfigToScoringConfig(
   engineConfig: EngineMatchConfig & {
     scoringFormat?: ScoringFormat;
     customFormatConfig?: Partial<FormatConfig>;
+    shutout?: ShutoutConfig;
     firstServerSide?: 'A' | 'B';
     firstServerPlayerId?: string;
   }
@@ -58,6 +60,7 @@ export function convertEngineConfigToScoringConfig(
     matchType,
     scoringFormat: format,
     customFormatConfig: engineConfig.customFormatConfig,
+    shutout: engineConfig.shutout,
     bestOf: engineConfig.bestOf || 3,
     sideA: {
       player1: sideAPlayer1,
@@ -165,6 +168,7 @@ export {
 export type {
   ScoringFormat,
   FormatConfig,
+  ShutoutConfig,
   ShotType,
   RallyEndResult,
   ScoringRulesMatchState,

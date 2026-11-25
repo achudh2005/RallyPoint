@@ -24,6 +24,7 @@ import {
   syncScoringStateToEngineState,
   ScoringFormat,
   FormatConfig,
+  ShutoutConfig,
   ScoringRulesMatchState,
   PlayerActionEvent,
 } from './scoringBridge.js';
@@ -31,8 +32,18 @@ import {
 export interface ExtendedMatchConfig extends MatchConfig {
   scoringFormat?: ScoringFormat;
   customFormatConfig?: Partial<FormatConfig>;
+  shutout?: ShutoutConfig;
   firstServerSide?: 'A' | 'B';
   firstServerPlayerId?: string;
+}
+
+export interface PendingShutoutCelebration {
+  eventId: string;
+  winnerSide: 'A' | 'B';
+  scoreA: number;
+  scoreB: number;
+  gameNumber: number;
+  isMatchWin: boolean;
 }
 
 interface MatchStore {
@@ -57,7 +68,13 @@ interface MatchStore {
   playerActionButtonLabels: 'POINT_DROP' | 'WINNER_ERROR' | 'PLUS_MINUS';
   playerActionButtonLayout: 'comfortable' | 'compact';
 
+  // Shutout celebration state (plays live once per shutout event)
+  pendingShutoutCelebration: PendingShutoutCelebration | null;
+  playedCelebrationIds: string[];
+
   // Actions
+  dismissShutoutCelebration: () => void;
+  updateShutoutConfig: (shutout: ShutoutConfig) => void;
   startMatch: (config: ExtendedMatchConfig, enableRallyTagging?: boolean) => Promise<void>;
   recordPoint: (side: Side, rallyEndType?: RallyEndType) => Promise<void>;
   recordPlayerAction: (playerId: string, action: 'POINT' | 'DROP') => Promise<void>;
@@ -125,6 +142,23 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   showPlayerActionButtons: true,
   playerActionButtonLabels: 'POINT_DROP',
   playerActionButtonLayout: 'comfortable',
+  pendingShutoutCelebration: null,
+  playedCelebrationIds: [],
+  dismissShutoutCelebration: () => set({ pendingShutoutCelebration: null }),
+  updateShutoutConfig: (shutout) => {
+    const { match, events, scoringRulesState } = get();
+    if (!match || events.length > 0 || !scoringRulesState) return;
+    const updatedConfig: ExtendedMatchConfig = { ...match.config, shutout };
+    const updatedScoringState: ScoringRulesMatchState = {
+      ...scoringRulesState,
+      config: { ...scoringRulesState.config, shutout },
+      formatConfig: { ...scoringRulesState.formatConfig, shutout },
+    };
+    set({
+      match: { ...match, config: updatedConfig },
+      scoringRulesState: updatedScoringState,
+    });
+  },
   setShowPlayerActionButtons: (val: boolean) => set({ showPlayerActionButtons: val }),
   setPlayerActionButtonLabels: (labels) => set({ playerActionButtonLabels: labels }),
   setPlayerActionButtonLayout: (layout) => set({ playerActionButtonLayout: layout }),
@@ -219,12 +253,37 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     triggerHaptic(50);
     const targetSide = pendingPointSide ?? side;
 
-    if (scoringRulesState && scoringFormat !== 'RALLY_21') {
+    if (scoringRulesState && (scoringFormat !== 'RALLY_21' || scoringRulesState.formatConfig.shutout?.enabled)) {
       const rallyRes = recordRally(scoringRulesState, {
         winningSide: targetSide as 'A' | 'B',
       });
       const nextEngineState = syncScoringStateToEngineState(rallyRes.state, match.config);
       const announcement = generateAriaAnnouncement(nextEngineState);
+
+      const gameEndShutout = rallyRes.events.find(
+        (e) => e.type === 'GAME_END' && e.reason === 'SHUTOUT'
+      );
+      const matchEndShutout = rallyRes.events.find(
+        (e) => e.type === 'MATCH_END' && e.reason === 'SHUTOUT_MATCH'
+      );
+      const { playedCelebrationIds } = get();
+      let nextCelebration = get().pendingShutoutCelebration;
+      let nextPlayedIds = playedCelebrationIds;
+      if (
+        gameEndShutout &&
+        gameEndShutout.type === 'GAME_END' &&
+        !playedCelebrationIds.includes(gameEndShutout.id)
+      ) {
+        nextPlayedIds = [...playedCelebrationIds, gameEndShutout.id];
+        nextCelebration = {
+          eventId: gameEndShutout.id,
+          winnerSide: gameEndShutout.winnerSide,
+          scoreA: gameEndShutout.scoreA,
+          scoreB: gameEndShutout.scoreB,
+          gameNumber: gameEndShutout.gameNumber,
+          isMatchWin: Boolean(matchEndShutout),
+        };
+      }
 
       const event: MatchEvent = {
         id: `pt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -243,6 +302,8 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         events: nextEvents,
         pendingPointSide: null,
         announcement,
+        pendingShutoutCelebration: nextCelebration,
+        playedCelebrationIds: nextPlayedIds,
       });
 
       await db.matches.put({
@@ -300,6 +361,31 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     const nextEngineState = syncScoringStateToEngineState(res.state, match.config);
     const announcement = generateAriaAnnouncement(nextEngineState);
 
+    const gameEndShutout = res.events.find(
+      (e) => e.type === 'GAME_END' && e.reason === 'SHUTOUT'
+    );
+    const matchEndShutout = res.events.find(
+      (e) => e.type === 'MATCH_END' && e.reason === 'SHUTOUT_MATCH'
+    );
+    const { playedCelebrationIds } = get();
+    let nextCelebration = get().pendingShutoutCelebration;
+    let nextPlayedIds = playedCelebrationIds;
+    if (
+      gameEndShutout &&
+      gameEndShutout.type === 'GAME_END' &&
+      !playedCelebrationIds.includes(gameEndShutout.id)
+    ) {
+      nextPlayedIds = [...playedCelebrationIds, gameEndShutout.id];
+      nextCelebration = {
+        eventId: gameEndShutout.id,
+        winnerSide: gameEndShutout.winnerSide,
+        scoreA: gameEndShutout.scoreA,
+        scoreB: gameEndShutout.scoreB,
+        gameNumber: gameEndShutout.gameNumber,
+        isMatchWin: Boolean(matchEndShutout),
+      };
+    }
+
     const nextEvents = [...events, res.actionEvent as any];
 
     set({
@@ -308,6 +394,8 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       match: nextEngineState,
       events: nextEvents,
       announcement,
+      pendingShutoutCelebration: nextCelebration,
+      playedCelebrationIds: nextPlayedIds,
     });
 
     try {
@@ -375,6 +463,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         match: nextEngineState,
         events: nextEvents,
         announcement,
+        pendingShutoutCelebration: null,
       });
 
       await db.matches.put({
@@ -445,7 +534,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
     triggerHaptic(30);
 
-    if (scoringRulesState && scoringFormat !== 'RALLY_21') {
+    if (scoringRulesState && (scoringFormat !== 'RALLY_21' || scoringRulesState.formatConfig.shutout?.enabled)) {
       const undoneScoringState = scoringUndo(scoringRulesState);
       const nextEngineState = syncScoringStateToEngineState(undoneScoringState, match.config);
       const nextEvents = [...events];

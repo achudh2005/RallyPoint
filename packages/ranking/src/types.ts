@@ -78,6 +78,7 @@ export interface RankingGame {
   scoreB: number;
   winnerSide?: 'A' | 'B' | null;
   isSettingGame?: boolean;
+  winReason?: 'NORMAL' | 'SHUTOUT';
 }
 
 export interface RankingMatch {
@@ -158,6 +159,10 @@ export interface PlayerStats {
   pointsWonOnReceive: number;
   longestPointStreak: number;
   comebackPoints: number;
+
+  // Shutout stats
+  shutoutWins: number;
+  shutoutsConceded: number;
 }
 
 export interface TeamStats {
@@ -183,6 +188,8 @@ export interface TeamStats {
   netContribution: number;
   currentStreak: number;
   bestStreak: number;
+  shutoutWins: number;
+  shutoutsConceded: number;
 }
 
 export type RankingCategory =
@@ -192,6 +199,7 @@ export type RankingCategory =
   | 'MOST_DROPS'
   | 'BEST_NET_CONTRIBUTION'
   | 'MOST_MVPS'
+  | 'MOST_SHUTOUT_WINS'
   | 'BEST_CLUTCH_PLAYER'
   | 'SERVE_WINNER'
   | 'LONGEST_STREAK'
@@ -288,6 +296,7 @@ export interface RankingConfig {
   serviceSettingBonus: number;
   rallyMultiplier: number;
   serviceMultiplier: number;
+  shutoutWinBonus: number;
 }
 
 export const DEFAULT_RANKING_WEIGHTS: OverallRankingWeights = {
@@ -316,6 +325,7 @@ export const DEFAULT_RANKING_CONFIG: RankingConfig = {
   serviceSettingBonus: 1,
   rallyMultiplier: 1.0,
   serviceMultiplier: 1.0,
+  shutoutWinBonus: 1,
 };
 
 export interface PlayerMvpContribution {

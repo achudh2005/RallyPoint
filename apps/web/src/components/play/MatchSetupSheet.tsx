@@ -10,7 +10,8 @@ import {
 } from '@rallypoint/ui';
 import { useRankingStore } from '../../store/rankingStore.js';
 import { useMatchStore } from '../../store/matchStore.js';
-import { ScoringFormat } from '@rallypoint/scoring-rules';
+import { useAlertsSettingsStore } from '../../store/alertsSettingsStore.js';
+import { ScoringFormat, type ShutoutConfig } from '@rallypoint/scoring-rules';
 import { Search, Sparkles, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export interface MatchSetupSheetProps {
@@ -26,6 +27,7 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
 }) => {
   const { communityPlayers, addCommunityPlayer, autoSuggestDoublesPairs } = useRankingStore();
   const { startMatch } = useMatchStore();
+  const { lastShutoutConfig, setLastShutoutConfig } = useAlertsSettingsStore();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -42,6 +44,14 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
   const [customTarget, setCustomTarget] = useState(21);
   const [customWinBy, setCustomWinBy] = useState(2);
   const [customCap, setCustomCap] = useState(30);
+  const [shutoutEnabled, setShutoutEnabled] = useState(lastShutoutConfig.enabled);
+  const [shutoutTarget, setShutoutTarget] = useState(lastShutoutConfig.target || 7);
+  const [shutoutEffect, setShutoutEffect] = useState<'GAME' | 'MATCH'>(
+    lastShutoutConfig.effect || 'GAME'
+  );
+  const [shutoutDecider, setShutoutDecider] = useState(
+    lastShutoutConfig.applyInDecider ?? true
+  );
 
   // Step 3: Who serves first?
   const [firstServerSide, setFirstServerSide] = useState<'A' | 'B'>('A');
@@ -154,7 +164,23 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
         firstServerSide === 'A'
           ? (selectedPlayerIds[0] || 'p1')
           : (isDoubles ? (selectedPlayerIds[2] || 'p3') : (selectedPlayerIds[1] || 'p2')),
+      shutout: shutoutEnabled
+        ? {
+            enabled: true,
+            target: shutoutTarget,
+            effect: shutoutEffect,
+            applyInDecider: shutoutDecider,
+          }
+        : undefined,
     };
+
+    const nextShutoutPref: ShutoutConfig = {
+      enabled: shutoutEnabled,
+      target: shutoutTarget,
+      effect: shutoutEffect,
+      applyInDecider: shutoutDecider,
+    };
+    setLastShutoutConfig(nextShutoutPref);
 
     startMatch(config);
 
@@ -504,6 +530,80 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
                       }}
                       className="w-16 px-2 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-right font-semibold text-neutral-800 dark:text-neutral-200"
                     />
+                  </div>
+
+                  {/* Shutout Rule (7-0) */}
+                  <div className="pt-2 border-t border-neutral-200/60 dark:border-neutral-800/80 space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-neutral-700 dark:text-neutral-200">
+                        Shutout rule (win at {shutoutTarget}-0)
+                      </span>
+                      <input
+                        type="checkbox"
+                        aria-label="Shutout rule (win at 7-0)"
+                        checked={shutoutEnabled}
+                        onChange={(e) => setShutoutEnabled(e.target.checked)}
+                        className="w-4 h-4 accent-amber-500"
+                      />
+                    </div>
+                    {shutoutEnabled && (
+                      <div className="space-y-2.5 pl-2 border-l-2 border-amber-500/40">
+                        <div className="flex justify-between items-center">
+                          <span>Target points (3–15):</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              aria-label="Decrease shutout target"
+                              onClick={() => setShutoutTarget((v) => Math.max(3, v - 1))}
+                              className="w-6 h-6 rounded-md bg-black/5 dark:bg-white/10 font-bold"
+                            >
+                              -
+                            </button>
+                            <span className="font-bold text-neutral-900 dark:text-white w-5 text-center">
+                              {shutoutTarget}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Increase shutout target"
+                              onClick={() => setShutoutTarget((v) => Math.min(15, v + 1))}
+                              className="w-6 h-6 rounded-md bg-black/5 dark:bg-white/10 font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <span>Effect:</span>
+                          <SegmentedControl
+                            value={shutoutEffect}
+                            onChange={(val: string) =>
+                              setShutoutEffect(val === 'MATCH' ? 'MATCH' : 'GAME')
+                            }
+                            options={[
+                              { id: 'GAME', label: 'Wins the game' },
+                              { id: 'MATCH', label: 'Wins the match' },
+                            ]}
+                          />
+                        </div>
+
+                        <div className="flex justify-between items-center">
+                          <span>Apply in deciding game</span>
+                          <input
+                            type="checkbox"
+                            aria-label="Apply in deciding game"
+                            checked={shutoutDecider}
+                            onChange={(e) => setShutoutDecider(e.target.checked)}
+                            className="w-4 h-4 accent-amber-500"
+                          />
+                        </div>
+
+                        <p className="text-[11px] text-neutral-400">
+                          If one side reaches {shutoutTarget} and the other has 0, the{' '}
+                          {shutoutEffect === 'MATCH' ? 'match' : 'game'} ends.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

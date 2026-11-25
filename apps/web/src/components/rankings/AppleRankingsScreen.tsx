@@ -25,6 +25,7 @@ import { exportRankingsCSV } from '../../analytics/exportUtils.js';
 const CATEGORY_CHIPS: { id: RankingCategory; label: string }[] = [
   { id: 'OVERALL', label: 'Top Players' },
   { id: 'MOST_MVPS', label: 'Most MVPs' },
+  { id: 'MOST_SHUTOUT_WINS', label: 'Most Shutout Wins' },
   { id: 'BEST_CLUTCH_PLAYER', label: 'Best Clutch' },
   { id: 'SERVE_WINNER', label: 'Serve Winner' },
   { id: 'LONGEST_STREAK', label: 'Longest Streak' },

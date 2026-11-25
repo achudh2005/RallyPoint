@@ -33,6 +33,13 @@ export interface SettingThreshold {
   extraPoints: number;
 }
 
+export interface ShutoutConfig {
+  enabled: boolean;
+  target: number; // 3..15, default 7
+  effect: 'GAME' | 'MATCH'; // default 'GAME'
+  applyInDecider: boolean; // default true
+}
+
 export interface FormatConfig {
   format: ScoringFormat;
   scoringType: ScoringType;
@@ -41,6 +48,7 @@ export interface FormatConfig {
   cap: number;
   midpointSideChange: number;
   settingThresholds: SettingThreshold[];
+  shutout?: ShutoutConfig;
 }
 
 export const FORMAT_PRESETS: Record<ScoringFormat, FormatConfig> = {
@@ -121,6 +129,7 @@ export interface MatchConfig {
   matchType: 'SINGLES' | 'DOUBLES';
   scoringFormat: ScoringFormat;
   customFormatConfig?: Partial<FormatConfig>;
+  shutout?: ShutoutConfig;
   bestOf: number; // e.g. 3
   sideA: MatchParticipantSide;
   sideB: MatchParticipantSide;
@@ -234,6 +243,7 @@ export interface GameEndEvent extends BaseScoringEvent {
   winnerSide: 'A' | 'B';
   scoreA: number;
   scoreB: number;
+  reason?: 'NORMAL' | 'SHUTOUT';
 }
 
 export interface MatchEndEvent extends BaseScoringEvent {
@@ -241,6 +251,7 @@ export interface MatchEndEvent extends BaseScoringEvent {
   winnerSide: 'A' | 'B';
   gamesA: number;
   gamesB: number;
+  reason?: 'NORMAL' | 'SHUTOUT_MATCH' | 'RETIRE' | 'WALKOVER';
 }
 
 export interface IntervalEvent extends BaseScoringEvent {
@@ -278,6 +289,7 @@ export interface GameState {
   scoreA: number;
   scoreB: number;
   winnerSide?: 'A' | 'B';
+  winReason?: 'NORMAL' | 'SHUTOUT';
   isComplete: boolean;
   targetPoints: number;
   reachedSettingThresholds: number[]; // e.g. [13, 14] or [9, 10]

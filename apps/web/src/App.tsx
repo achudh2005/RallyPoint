@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ThemeProvider, BottomSheet, Button } from '@rallypoint/ui';
 import { useMatchStore } from './store/matchStore.js';
 import { useRankingStore } from './store/rankingStore.js';
+import { useAlertsSettingsStore } from './store/alertsSettingsStore.js';
+import { CelebrationOverlay, type CelebrationConfig } from './components/effects/CelebrationOverlay.js';
 import { TabBar, MainTab } from './components/navigation/TabBar.js';
 import { PlayScreen } from './components/play/PlayScreen.js';
 import { AppleScoringScreen } from './components/scoring/AppleScoringScreen.js';
@@ -27,7 +29,41 @@ export const AppContent: React.FC = () => {
     toggleLargeText,
     resetMatch,
     resumeLastMatch,
+    pendingShutoutCelebration,
+    dismissShutoutCelebration,
+    undoAction,
   } = useMatchStore();
+  const { communityPlayers } = useRankingStore();
+  const { celebrationIntensity, celebrationSound, celebrationHaptics } = useAlertsSettingsStore();
+
+  const shutoutOverlayConfig: CelebrationConfig | null = React.useMemo(() => {
+    if (!pendingShutoutCelebration || !match) return null;
+    const isA = pendingShutoutCelebration.winnerSide === 'A';
+    const sideIds = isA ? match.config.sideA.playerIds : match.config.sideB.playerIds;
+    const sideName = isA ? match.config.sideA.name : match.config.sideB.name;
+    const winners = sideIds.map((id, idx) => {
+      const cp = communityPlayers.find((p) => p.id === id);
+      const fallback = sideName.split('&')[idx]?.trim() || sideName;
+      return {
+        id,
+        name: cp?.nickname || cp?.displayName || fallback,
+        avatarUrl: cp?.avatarUrl,
+      };
+    });
+    const winnerLabel = winners.map((w) => w.name).join(' & ');
+    const winScore = isA
+      ? pendingShutoutCelebration.scoreA
+      : pendingShutoutCelebration.scoreB;
+    return {
+      id: pendingShutoutCelebration.eventId,
+      kind: pendingShutoutCelebration.isMatchWin ? 'SHUTOUT_MATCH' : 'SHUTOUT_GAME',
+      title: 'SHUTOUT',
+      scoreText: `${winScore}–0`,
+      subtitle: `${winnerLabel} win without conceding a point`,
+      winners,
+      isMatchWin: pendingShutoutCelebration.isMatchWin,
+    };
+  }, [pendingShutoutCelebration, match, communityPlayers]);
 
   const [activeTab, setActiveTab] = useState<MainTab>('play');
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -80,6 +116,17 @@ export const AppContent: React.FC = () => {
     return (
       <ErrorBoundary>
         <AppleScoringScreen />
+        <CelebrationOverlay
+          config={shutoutOverlayConfig}
+          intensity={celebrationIntensity}
+          soundEnabled={celebrationSound}
+          hapticsEnabled={celebrationHaptics}
+          onComplete={dismissShutoutCelebration}
+          onUndo={() => {
+            dismissShutoutCelebration();
+            undoAction();
+          }}
+        />
         <div aria-live="assertive" className="sr-only">
           {announcement}
         </div>
@@ -92,6 +139,17 @@ export const AppContent: React.FC = () => {
     return (
       <ErrorBoundary>
         <ConfettiCelebration />
+        <CelebrationOverlay
+          config={shutoutOverlayConfig}
+          intensity={celebrationIntensity}
+          soundEnabled={celebrationSound}
+          hapticsEnabled={celebrationHaptics}
+          onComplete={dismissShutoutCelebration}
+          onUndo={() => {
+            dismissShutoutCelebration();
+            undoAction();
+          }}
+        />
         <div className="min-h-screen bg-neutral-100 dark:bg-black text-neutral-900 dark:text-white p-4 pb-20">
           <header className="max-w-md mx-auto mb-2 flex items-center justify-between">
             <span className="font-bold text-lg">🏸 RallyPoint</span>

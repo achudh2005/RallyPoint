@@ -1,6 +1,32 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { StreakAlertsConfig } from '@rallypoint/scoring-rules';
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import type { StreakAlertsConfig, ShutoutConfig } from '@rallypoint/scoring-rules';
+
+const safeStorage: StateStorage = {
+  getItem: (name) => {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(name) : null;
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(name, value);
+    } catch {
+      // Ignore in test environments without localStorage
+    }
+  },
+  removeItem: (name) => {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(name);
+    } catch {
+      // Ignore
+    }
+  },
+};
+
+export type CelebrationIntensity = 'full' | 'reduced' | 'off';
 
 export interface AlertsSettingsState {
   streakAlertsEnabled: boolean;
@@ -10,6 +36,11 @@ export interface AlertsSettingsState {
   strictMode: boolean;
   streakSnappedEnabled: boolean;
   streakHaptics: boolean;
+  shutoutBannerEnabled: boolean;
+  celebrationIntensity: CelebrationIntensity;
+  celebrationSound: boolean;
+  celebrationHaptics: boolean;
+  lastShutoutConfig: ShutoutConfig;
   language: 'en' | 'ml';
   pointThresholds: number[];
   dropThresholds: number[];
@@ -23,6 +54,11 @@ export interface AlertsSettingsState {
   setStrictMode: (val: boolean) => void;
   setStreakSnappedEnabled: (val: boolean) => void;
   setStreakHaptics: (val: boolean) => void;
+  setShutoutBannerEnabled: (val: boolean) => void;
+  setCelebrationIntensity: (val: CelebrationIntensity) => void;
+  setCelebrationSound: (val: boolean) => void;
+  setCelebrationHaptics: (val: boolean) => void;
+  setLastShutoutConfig: (cfg: ShutoutConfig) => void;
   setLanguage: (lang: 'en' | 'ml') => void;
   toStreakConfig: () => StreakAlertsConfig;
 }
@@ -37,6 +73,16 @@ export const useAlertsSettingsStore = create<AlertsSettingsState>()(
       strictMode: false,
       streakSnappedEnabled: false,
       streakHaptics: true,
+      shutoutBannerEnabled: true,
+      celebrationIntensity: 'full',
+      celebrationSound: true,
+      celebrationHaptics: true,
+      lastShutoutConfig: {
+        enabled: false,
+        target: 7,
+        effect: 'GAME',
+        applyInDecider: true,
+      },
       language: 'en',
       pointThresholds: [3, 5, 7, 10],
       dropThresholds: [3, 5],
@@ -49,6 +95,11 @@ export const useAlertsSettingsStore = create<AlertsSettingsState>()(
       setStrictMode: (val) => set({ strictMode: val }),
       setStreakSnappedEnabled: (val) => set({ streakSnappedEnabled: val }),
       setStreakHaptics: (val) => set({ streakHaptics: val }),
+      setShutoutBannerEnabled: (val) => set({ shutoutBannerEnabled: val }),
+      setCelebrationIntensity: (val) => set({ celebrationIntensity: val }),
+      setCelebrationSound: (val) => set({ celebrationSound: val }),
+      setCelebrationHaptics: (val) => set({ celebrationHaptics: val }),
+      setLastShutoutConfig: (cfg) => set({ lastShutoutConfig: cfg }),
       setLanguage: (lang) => set({ language: lang }),
 
       toStreakConfig: () => {
@@ -67,6 +118,7 @@ export const useAlertsSettingsStore = create<AlertsSettingsState>()(
     }),
     {
       name: 'rallypoint-alerts-settings',
+      storage: createJSONStorage(() => safeStorage),
     }
   )
 );

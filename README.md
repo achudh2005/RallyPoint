@@ -16,6 +16,9 @@ RallyPoint is packaged as both a Progressive Web App (PWA) and a native Android 
 - **Fresh Start & Player Management**:
   - Starts completely empty on first launch (`Season 1`, zero demo players or matches), enforced by `npm run check:no-demo` in CI (`npm run seed:demo` for local dev seeding only).
   - Full player lifecycle: single & bulk add, compressed photos, rename (propagates to all historical matches & rankings), duplicate detection & merge, smart archive/hide/restore, live-match removal protection, and `RESET` wipe with JSON backup.
+- **Shutout Rule (7-0) & Celebration**:
+  - Configurable shutout rule (default 7-0, 3–15 target, Game or Match win, decider toggle) across Rally Point and Service Point with full UNDO/replay support and `MOST_SHUTOUT_WINS` leaderboard.
+  - 6-beat `CelebrationOverlay` animation with adaptive 2D canvas particles, Web Audio chime, Capacitor Haptics, tap/Back skip, Undo cancel, and Reduced/Off accessibility modes.
 
 ## Streak Alerts & Match MVP Engine
 - **Streak Calculation Engine (`@rallypoint/scoring-rules`)**:

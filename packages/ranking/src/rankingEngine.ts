@@ -186,6 +186,11 @@ export function generatePlayerLeaderboard(
         if (b.mvpRate !== a.mvpRate) return b.mvpRate - a.mvpRate;
         return b.wins - a.wins;
       }
+      case 'MOST_SHUTOUT_WINS': {
+        if (b.shutoutWins !== a.shutoutWins) return b.shutoutWins - a.shutoutWins;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.pointDifference - a.pointDifference;
+      }
       case 'BEST_CLUTCH_PLAYER': {
         const cpmA = a.matchesPlayed > 0 ? a.clutchPointsTotal / a.matchesPlayed : 0;
         const cpmB = b.matchesPlayed > 0 ? b.clutchPointsTotal / b.matchesPlayed : 0;
@@ -326,6 +331,8 @@ function isPlayerTied(
       return a.serviceHolds === b.serviceHolds && a.sideOutsWon === b.sideOutsWon;
     case 'MOST_MVPS':
       return a.mvpCount === b.mvpCount && a.mvpRate === b.mvpRate && a.wins === b.wins;
+    case 'MOST_SHUTOUT_WINS':
+      return a.shutoutWins === b.shutoutWins && a.wins === b.wins;
     case 'BEST_CLUTCH_PLAYER':
       return a.clutchPointsTotal === b.clutchPointsTotal && a.matchesPlayed === b.matchesPlayed;
     case 'SERVE_WINNER':
@@ -355,6 +362,8 @@ function getHeadlineValue(
       return stats.netContribution;
     case 'MOST_MVPS':
       return stats.mvpCount;
+    case 'MOST_SHUTOUT_WINS':
+      return stats.shutoutWins;
     case 'BEST_CLUTCH_PLAYER':
       return stats.matchesPlayed > 0 ? Number((stats.clutchPointsTotal / stats.matchesPlayed).toFixed(1)) : 0;
     case 'SERVE_WINNER':
@@ -397,6 +406,8 @@ function formatHeadline(
       return `${value > 0 ? '+' : ''}${value} Net`;
     case 'MOST_MVPS':
       return `${value} MVPs`;
+    case 'MOST_SHUTOUT_WINS':
+      return `${value} Shutouts`;
     case 'BEST_CLUTCH_PLAYER':
       return `${value} CPM`;
     case 'SERVE_WINNER':

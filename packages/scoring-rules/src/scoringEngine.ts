@@ -25,6 +25,7 @@ export function createMatch(config: MatchConfig): MatchState {
   const formatConfig: FormatConfig = {
     ...preset,
     ...(config.customFormatConfig || {}),
+    shutout: config.shutout ?? config.customFormatConfig?.shutout,
   };
 
   const initialGame: GameState = {
@@ -358,11 +359,21 @@ export function recordRally(
     }
   }
 
-  // Check Midpoint Switch in deciding game
+  // Check Shutout & Game Completion before midpoint switch so a shutout win skips midpoint interval
+  const shutoutWon = checkShutoutWon(
+    game,
+    next.formatConfig,
+    next.currentGameNumber,
+    next.config.bestOf
+  );
+  const normalWon = shutoutWon ? null : checkGameWon(game, next.formatConfig);
+  const gameWon = shutoutWon || normalWon;
+
+  // Check Midpoint Switch in deciding game (only if game is still ongoing)
   const isDecidingGame = next.currentGameNumber === next.config.bestOf;
   const midpoint = next.formatConfig.midpointSideChange;
   const maxScore = Math.max(game.scoreA, game.scoreB);
-  if (isDecidingGame && !game.sidesSwappedMidpoint && maxScore >= midpoint) {
+  if (!gameWon && isDecidingGame && !game.sidesSwappedMidpoint && maxScore >= midpoint) {
     game.sidesSwappedMidpoint = true;
     next.sidesSwappedInDecidingGame = true;
     const intervalEvent: IntervalEvent = {
@@ -377,11 +388,11 @@ export function recordRally(
     newEvents.push(intervalEvent);
   }
 
-  // Check Game Completion
-  const gameWon = checkGameWon(game, next.formatConfig);
   if (gameWon) {
+    const isShutout = Boolean(shutoutWon);
     game.isComplete = true;
     game.winnerSide = gameWon;
+    game.winReason = isShutout ? 'SHUTOUT' : 'NORMAL';
 
     if (gameWon === 'A') {
       next.gamesWonA += 1;
@@ -398,14 +409,20 @@ export function recordRally(
       winnerSide: gameWon,
       scoreA: game.scoreA,
       scoreB: game.scoreB,
+      reason: isShutout ? 'SHUTOUT' : 'NORMAL',
     };
     newEvents.push(gameEndEvent);
 
     // Check Match Completion
     const gamesNeeded = Math.ceil(next.config.bestOf / 2);
-    if (next.gamesWonA >= gamesNeeded || next.gamesWonB >= gamesNeeded) {
+    const shutoutEndsMatch = isShutout && next.formatConfig.shutout?.effect === 'MATCH';
+    if (shutoutEndsMatch || next.gamesWonA >= gamesNeeded || next.gamesWonB >= gamesNeeded) {
       next.status = 'COMPLETED';
-      next.winnerSide = next.gamesWonA >= gamesNeeded ? 'A' : 'B';
+      next.winnerSide = shutoutEndsMatch
+        ? gameWon
+        : next.gamesWonA >= gamesNeeded
+        ? 'A'
+        : 'B';
       const matchEndEvent: MatchEndEvent = {
         id: `ev-${state.config.id}-${nextSeq}`,
         sequenceNumber: nextSeq++,
@@ -414,6 +431,7 @@ export function recordRally(
         winnerSide: next.winnerSide,
         gamesA: next.gamesWonA,
         gamesB: next.gamesWonB,
+        reason: shutoutEndsMatch ? 'SHUTOUT_MATCH' : 'NORMAL',
       };
       newEvents.push(matchEndEvent);
     } else {
@@ -777,6 +795,23 @@ function updateTeamStatsShare(state: MatchState): void {
 
   calcSide(state.config.sideA.player1.id, state.config.sideA.player2?.id);
   calcSide(state.config.sideB.player1.id, state.config.sideB.player2?.id);
+}
+
+function checkShutoutWon(
+  game: GameState,
+  format: FormatConfig,
+  currentGameNumber: number,
+  bestOf: number
+): 'A' | 'B' | null {
+  const shutout = format.shutout;
+  if (!shutout || !shutout.enabled) return null;
+  const isDecider = currentGameNumber === bestOf;
+  if (isDecider && !shutout.applyInDecider) return null;
+
+  const target = Math.max(3, Math.min(15, shutout.target || 7));
+  if (game.scoreA >= target && game.scoreB === 0) return 'A';
+  if (game.scoreB >= target && game.scoreA === 0) return 'B';
+  return null;
 }
 
 function checkGameWon(game: GameState, format: FormatConfig): 'A' | 'B' | null {
