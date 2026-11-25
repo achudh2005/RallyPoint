@@ -42,6 +42,12 @@ export interface PlayerProfileData {
   pointsWon?: number;
   drops?: number;
   netContribution?: number;
+  mvpCount?: number;
+  fighterCount?: number;
+  mvpRate?: number;
+  bestMatchStreak?: number;
+  clutchPointsTotal?: number;
+  serveRegainedTotal?: number;
 }
 
 export interface ApplePlayerProfileSheetProps {
@@ -133,6 +139,74 @@ export const ApplePlayerProfileSheet: React.FC<ApplePlayerProfileSheetProps> = (
             <span className="text-2xl font-black tracking-tight text-neutral-800 dark:text-neutral-200">
               {player.totalMatches}
             </span>
+          </div>
+        </div>
+
+        {/* Trophy Shelf & MVP Card */}
+        <div
+          data-testid="player-trophy-shelf"
+          className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/25 space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Trophy Shelf &amp; Streaks
+              </span>
+            </div>
+            <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400">
+              {Math.round((player.mvpRate || 0) * 100)}% MVP Rate
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-2 rounded-xl bg-black/5 dark:bg-white/5">
+              <span className="text-base block">🌟</span>
+              <span className="text-sm font-black text-neutral-900 dark:text-white">
+                {player.mvpCount ?? 0}
+              </span>
+              <span className="text-[10px] text-neutral-500 block">MVPs</span>
+            </div>
+            <div className="p-2 rounded-xl bg-black/5 dark:bg-white/5">
+              <span className="text-base block">🛡️</span>
+              <span className="text-sm font-black text-neutral-900 dark:text-white">
+                {player.fighterCount ?? 0}
+              </span>
+              <span className="text-[10px] text-neutral-500 block">Fighter</span>
+            </div>
+            <div className="p-2 rounded-xl bg-black/5 dark:bg-white/5">
+              <span className="text-base block">🔥</span>
+              <span className="text-sm font-black text-neutral-900 dark:text-white">
+                {player.bestMatchStreak ?? player.longestStreak ?? 0}
+              </span>
+              <span className="text-[10px] text-neutral-500 block">Best Streak</span>
+            </div>
+          </div>
+
+          {/* Strengths Badge Line */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {(player.clutchPointsTotal ?? 0) > 0 && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                Clutch Finisher ({player.clutchPointsTotal})
+              </span>
+            )}
+            {(player.serveRegainedTotal ?? 0) > 0 && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                Serve Breaker ({player.serveRegainedTotal})
+              </span>
+            )}
+            {(player.bestMatchStreak ?? 0) >= 3 && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                Streak Machine
+              </span>
+            )}
+            {(player.clutchPointsTotal ?? 0) === 0 &&
+              (player.serveRegainedTotal ?? 0) === 0 &&
+              (player.bestMatchStreak ?? 0) < 3 && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 text-neutral-500">
+                  Steady Competitor
+                </span>
+              )}
           </div>
         </div>
 

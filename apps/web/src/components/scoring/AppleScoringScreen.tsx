@@ -23,6 +23,7 @@ import { TVScoreboardScreen } from '../scoreboard/TVScoreboardScreen.js';
 import { nativeKeepAwake } from '../../mobile/keepAwake.js';
 import { registerBackHandler } from '../../mobile/backButton.js';
 import { nativeHaptics } from '../../mobile/haptics.js';
+import { nativeNotifications } from '../../mobile/notifications.js';
 import { PlayerCard } from './PlayerCard.js';
 import { QuickEditSheet } from './QuickEditSheet.js';
 import { PlayerDetailSheet } from './PlayerDetailSheet.js';
@@ -342,6 +343,13 @@ export const AppleScoringScreen: React.FC = () => {
     const currentRules = useMatchStore.getState().scoringRulesState;
     if (currentRules && currentRules.status === 'COMPLETED') {
       await nativeHaptics.matchWon();
+      if (liveAwards?.isQualified && liveAwards.mvp) {
+        nativeNotifications.notifyMatchMvp(
+          liveAwards.mvp.name,
+          liveAwards.mvp.mvpScore,
+          `${config.sideA.name} vs ${config.sideB.name}`
+        );
+      }
     }
   };
 

@@ -285,13 +285,13 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
         </h4>
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 text-center">
-            <span className="text-sm block">🎯</span>
-            <span className="text-[10px] uppercase font-bold text-gray-400 block">Top Scorer</span>
+            <span className="text-sm block">🌟</span>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">MVP of the Week</span>
             <span className="text-xs font-bold text-gray-200 truncate block mt-0.5">
-              {mvp ? mvp.name : winnerName}
+              {awards.mvp ? awards.mvp.name : mvp ? mvp.name : winnerName}
             </span>
             <span className="text-[10px] text-emerald-400 font-mono font-semibold">
-              {mvp ? `${mvp.pointsWon} pts` : 'Leader'}
+              {awards.mvp ? `${awards.mvp.mvpScore.toFixed(1)} rating` : mvp ? `${mvp.pointsWon} pts` : 'Leader'}
             </span>
           </div>
           <div className="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 text-center">
@@ -306,12 +306,16 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
           </div>
           <div className="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 text-center">
             <span className="text-sm block">🔥</span>
-            <span className="text-[10px] uppercase font-bold text-gray-400 block">Clutch Player</span>
+            <span className="text-[10px] uppercase font-bold text-gray-400 block">Streak Master</span>
             <span className="text-xs font-bold text-gray-200 truncate block mt-0.5">
-              {winnerName}
+              {awards.allContributions.length > 0
+                ? [...awards.allContributions].sort((a, b) => b.bestPointStreak - a.bestPointStreak)[0]?.name
+                : winnerName}
             </span>
             <span className="text-[10px] text-amber-400 font-mono font-semibold">
-              Deuce Winner
+              {awards.allContributions.length > 0
+                ? `${[...awards.allContributions].sort((a, b) => b.bestPointStreak - a.bestPointStreak)[0]?.bestPointStreak || 0} Streak`
+                : 'Hot Hand'}
             </span>
           </div>
         </div>

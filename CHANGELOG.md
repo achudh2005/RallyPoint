@@ -2,6 +2,19 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Streaks & MVP Phase 3] - Community Leaderboards, Trophy Shelf, Weekly Accolades & Notifications
+### Added
+- **New Community Leaderboard Boards (`AppleRankingsScreen.tsx`)**:
+  - Added `Most MVPs`, `Best Clutch`, `Serve Winner`, and `Longest Streak` category chips alongside `Matches: N` and Rally/Service Point filters.
+- **Player Profile Trophy Shelf & Strengths (`ApplePlayerProfileSheet.tsx`)**:
+  - Added Trophy Shelf & Streaks card displaying MVP count, MVP Rate %, Fighter Awards, Best Point Streak, and dynamic Strengths badges (`Clutch Finisher`, `Serve Breaker`, `Streak Machine`).
+- **Weekly Accolades (`MatchSummary.tsx`, `AppleMatchSummarySheet.tsx`)**:
+  - Updated Weekly Accolades to highlight `MVP of the Week` and `Streak Master`.
+- **Native Local Notifications (`apps/web/src/mobile/notifications.ts`)**:
+  - Added `@capacitor/local-notifications` integration notifying when a player earns Match MVP on Android.
+- **CSV Export Enhancements (`apps/web/src/analytics/exportUtils.ts`)**:
+  - Extended `exportRankingsCSV` with `MVPs`, `Fighter_Awards`, `MVP_Rate_Pct`, `Best_Streak`, `Clutch_Points`, and `Serve_Regained` columns.
+
 ## [Streaks & MVP Phase 2] - Mobile Streak Banner, Live Alerts Settings & Match MVP Reveal
 ### Added
 - **Live Streak Alert Banner (`apps/web/src/components/scoring/StreakBanner.tsx`)**:

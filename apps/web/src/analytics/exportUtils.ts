@@ -171,6 +171,12 @@ export function exportRankingsCSV(
       'Drops',
       'Net_Contribution',
       'Win_Rate_Pct',
+      'MVPs',
+      'Fighter_Awards',
+      'MVP_Rate_Pct',
+      'Best_Streak',
+      'Clutch_Points',
+      'Serve_Regained',
       'Category',
       'Scoring_Filter',
     ],
@@ -185,6 +191,12 @@ export function exportRankingsCSV(
     const drops = (e.stats?.drops ?? e.stats?.pointsConceded ?? 0).toString();
     const net = (e.stats?.netContribution ?? ((e.stats?.pointsWon ?? 0) - (e.stats?.drops ?? 0))).toString();
     const winRate = (e.stats?.winRate ?? 0).toString();
+    const mvps = (e.stats?.mvpCount ?? 0).toString();
+    const fighters = (e.stats?.fighterCount ?? 0).toString();
+    const mvpRate = Math.round((e.stats?.mvpRate ?? 0) * 100).toString();
+    const bestStreak = (e.stats?.bestMatchStreak ?? e.stats?.longestWinStreak ?? 0).toString();
+    const clutchPts = (e.stats?.clutchPointsTotal ?? 0).toString();
+    const serveRegained = (e.stats?.serveRegainedTotal ?? 0).toString();
 
     rows.push([
       rank.toString(),
@@ -195,6 +207,12 @@ export function exportRankingsCSV(
       drops,
       net,
       winRate,
+      mvps,
+      fighters,
+      mvpRate,
+      bestStreak,
+      clutchPts,
+      serveRegained,
       category,
       scoringFilter,
     ]);

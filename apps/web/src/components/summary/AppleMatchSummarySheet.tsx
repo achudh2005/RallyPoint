@@ -333,13 +333,13 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
         </span>
         <div className="grid grid-cols-3 gap-2">
           <div className="p-3 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 text-center">
-            <span className="text-base mb-1 block">🎯</span>
-            <span className="text-[10px] uppercase font-bold text-neutral-400 block">Top Scorer</span>
+            <span className="text-base mb-1 block">🌟</span>
+            <span className="text-[10px] uppercase font-bold text-neutral-400 block">MVP of the Week</span>
             <span className="text-xs font-extrabold text-neutral-800 dark:text-neutral-200 truncate block mt-0.5">
-              {mvp ? mvp.name : winner}
+              {awards.mvp ? awards.mvp.name : mvp ? mvp.name : winner}
             </span>
             <span className="text-[10px] text-emerald-500 font-mono font-semibold">
-              {mvp ? `${mvp.pointsWon} pts` : 'Week leader'}
+              {awards.mvp ? `${awards.mvp.mvpScore.toFixed(1)} rating` : mvp ? `${mvp.pointsWon} pts` : 'Week leader'}
             </span>
           </div>
           <div className="p-3 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 text-center">
@@ -354,12 +354,16 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
           </div>
           <div className="p-3 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 text-center">
             <span className="text-base mb-1 block">🔥</span>
-            <span className="text-[10px] uppercase font-bold text-neutral-400 block">Clutch Player</span>
+            <span className="text-[10px] uppercase font-bold text-neutral-400 block">Streak Master</span>
             <span className="text-xs font-extrabold text-neutral-800 dark:text-neutral-200 truncate block mt-0.5">
-              {winner}
+              {awards.allContributions.length > 0
+                ? [...awards.allContributions].sort((a, b) => b.bestPointStreak - a.bestPointStreak)[0]?.name
+                : winner}
             </span>
             <span className="text-[10px] text-amber-500 font-mono font-semibold">
-              Deuce Winner
+              {awards.allContributions.length > 0
+                ? `${[...awards.allContributions].sort((a, b) => b.bestPointStreak - a.bestPointStreak)[0]?.bestPointStreak || 0} Streak`
+                : 'Hot Hand'}
             </span>
           </div>
         </div>

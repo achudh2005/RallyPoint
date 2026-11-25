@@ -10,6 +10,10 @@ describe('AppleRankingsScreen Component (Phase 3)', () => {
     expect(screen.getByText('Players')).toBeInTheDocument();
     expect(screen.getByText('Teams & Pairs')).toBeInTheDocument();
     expect(screen.getByText('Top Players')).toBeInTheDocument();
+    expect(screen.getByText('Most MVPs')).toBeInTheDocument();
+    expect(screen.getByText('Best Clutch')).toBeInTheDocument();
+    expect(screen.getByText('Serve Winner')).toBeInTheDocument();
+    expect(screen.getByText('Longest Streak')).toBeInTheDocument();
     expect(screen.getByText('Top Point Scorers')).toBeInTheDocument();
     expect(screen.getByText('Most Drops')).toBeInTheDocument();
     expect(screen.getByText('Best Net Contribution')).toBeInTheDocument();

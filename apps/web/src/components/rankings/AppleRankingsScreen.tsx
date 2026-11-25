@@ -24,6 +24,10 @@ import { exportRankingsCSV } from '../../analytics/exportUtils.js';
 
 const CATEGORY_CHIPS: { id: RankingCategory; label: string }[] = [
   { id: 'OVERALL', label: 'Top Players' },
+  { id: 'MOST_MVPS', label: 'Most MVPs' },
+  { id: 'BEST_CLUTCH_PLAYER', label: 'Best Clutch' },
+  { id: 'SERVE_WINNER', label: 'Serve Winner' },
+  { id: 'LONGEST_STREAK', label: 'Longest Streak' },
   { id: 'TOP_POINT_SCORERS', label: 'Top Point Scorers' },
   { id: 'MOST_DROPS', label: 'Most Drops' },
   { id: 'BEST_NET_CONTRIBUTION', label: 'Best Net Contribution' },
@@ -73,6 +77,12 @@ export const AppleRankingsScreen: React.FC = () => {
       netContribution: entry.stats?.netContribution ?? ((entry.stats?.pointsWon ?? 0) - (entry.stats?.drops ?? 0)),
       pointsWon: entry.stats?.pointsWon,
       drops: entry.stats?.drops,
+      mvpCount: entry.stats?.mvpCount ?? 0,
+      fighterCount: entry.stats?.fighterCount ?? 0,
+      mvpRate: entry.stats?.mvpRate ?? 0,
+      bestMatchStreak: entry.stats?.bestMatchStreak ?? 0,
+      clutchPointsTotal: entry.stats?.clutchPointsTotal ?? 0,
+      serveRegainedTotal: entry.stats?.serveRegainedTotal ?? 0,
     };
     setSelectedPlayer(stats);
   };
