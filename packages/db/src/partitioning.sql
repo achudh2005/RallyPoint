@@ -15,6 +15,14 @@ CREATE TRIGGER trg_match_events_append_only
 BEFORE UPDATE OR DELETE ON match_events
 FOR EACH ROW EXECUTE FUNCTION enforce_match_events_append_only();
 
+-- 1b. Enforce non-negative scores on games
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_games_non_negative_scores') THEN
+        ALTER TABLE games ADD CONSTRAINT chk_games_non_negative_scores CHECK (score_a >= 0 AND score_b >= 0);
+    END IF;
+END $$;
+
 -- 2. Declarative Monthly Partition Table Creation Helper
 CREATE OR REPLACE FUNCTION create_monthly_match_events_partition(target_date DATE)
 RETURNS TEXT AS $$

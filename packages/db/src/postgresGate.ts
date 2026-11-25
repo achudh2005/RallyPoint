@@ -84,8 +84,8 @@ async function runPostgresGate() {
   const seedStart = Date.now();
 
   await prisma.$executeRawUnsafe(`
-    INSERT INTO players (id, display_name, created_at, updated_at)
-    SELECT 'qa-p-' || g, 'QA Player ' || g, NOW(), NOW()
+    INSERT INTO players (id, first_name, last_name, display_name, created_at, updated_at)
+    SELECT 'qa-p-' || g, 'QA', 'Player ' || g, 'QA Player ' || g, NOW(), NOW()
     FROM generate_series(1, 200) AS g
     ON CONFLICT (id) DO NOTHING;
   `);
