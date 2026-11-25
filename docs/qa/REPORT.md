@@ -68,3 +68,4 @@
 - **Phase 1 Finding #2:** `apps/web/e2e/match.spec.ts` targets legacy UI selectors (`Bo1`, `tap-left-side`) and does not cover the redesigned Apple UI. Scheduled for Phase 3 rewrite.
 - **Phase 1 Finding #3:** `MatchSetupSheet.tsx` has read-only `customWinBy` and `customCap` state without UI controls for custom scoring format. Scheduled for Phase 2/3 fix.
 - **Phase 1 Finding #4:** Vite production bundle emits `vendor` chunk at `663.72 kB` (> 600 kB warning). Scheduled for Phase 4 code-splitting.
+- **Phase 2 Finding #5 (FIXED):** `packages/db/src/auditLog.sql` `trg_audit_log_capture()` omitted `id` when inserting into `audit_logs`, causing a `NULL` constraint violation (`P2011`) on Postgres 16 after `prisma db push` created `audit_logs` without a SQL `DEFAULT`. Fixed by generating `v_log_id` explicitly in `trg_audit_log_capture()`.

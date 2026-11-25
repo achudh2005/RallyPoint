@@ -21,7 +21,9 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_user VARCHAR(128);
     v_row_id VARCHAR(128);
+    v_log_id TEXT;
 BEGIN
+    v_log_id := 'cuid_' || substr(md5(random()::text || clock_timestamp()::text), 1, 24);
     -- Extract active user from session setting or default to 'SYSTEM'
     BEGIN
         v_user := COALESCE(current_setting('app.current_user_id', true), 'SYSTEM');
@@ -31,18 +33,18 @@ BEGIN
 
     IF (TG_OP = 'INSERT') THEN
         v_row_id := NEW.id::text;
-        INSERT INTO audit_logs (table_name, row_id, action, old_data, new_data, changed_by, created_at)
-        VALUES (TG_TABLE_NAME, v_row_id, 'INSERT', NULL, to_jsonb(NEW), v_user, NOW());
+        INSERT INTO audit_logs (id, table_name, row_id, action, old_data, new_data, changed_by, created_at)
+        VALUES (v_log_id, TG_TABLE_NAME, v_row_id, 'INSERT', NULL, to_jsonb(NEW), v_user, NOW());
         RETURN NEW;
     ELSIF (TG_OP = 'UPDATE') THEN
         v_row_id := NEW.id::text;
-        INSERT INTO audit_logs (table_name, row_id, action, old_data, new_data, changed_by, created_at)
-        VALUES (TG_TABLE_NAME, v_row_id, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW), v_user, NOW());
+        INSERT INTO audit_logs (id, table_name, row_id, action, old_data, new_data, changed_by, created_at)
+        VALUES (v_log_id, TG_TABLE_NAME, v_row_id, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW), v_user, NOW());
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
         v_row_id := OLD.id::text;
-        INSERT INTO audit_logs (table_name, row_id, action, old_data, new_data, changed_by, created_at)
-        VALUES (TG_TABLE_NAME, v_row_id, 'DELETE', to_jsonb(OLD), NULL, v_user, NOW());
+        INSERT INTO audit_logs (id, table_name, row_id, action, old_data, new_data, changed_by, created_at)
+        VALUES (v_log_id, TG_TABLE_NAME, v_row_id, 'DELETE', to_jsonb(OLD), NULL, v_user, NOW());
         RETURN OLD;
     END IF;
     RETURN NULL;
