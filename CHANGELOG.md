@@ -2,6 +2,13 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [1.3.0] - Fresh Start, Shutout Rule (7-0) & MVP Perfection
+### Summary
+- Fresh start with zero preloaded demo players, matches, or rankings (`Season 1` auto-initialized, enforced by `check:no-demo` in CI).
+- Full player CRUD: single & bulk add, compressed photos, rename propagation, duplicate warnings & merge, smart archive/hide/restore, live-match removal protection, and `RESET` wipe with backup.
+- Shutout rule (default 7-0, configurable 3–15 target, Game/Match effect, decider toggle) with 6-beat `CelebrationOverlay` animation, Web Audio chime, Capacitor haptics, `MOST_SHUTOUT_WINS` leaderboard, and gold `SHUTOUT 7–0` scorecard badge.
+- Match MVP single source of truth (`computeMatchAwards`) with relative qualification for shortened/shutout games, `"Why not me?"` breakdown, 7-tap MVP Debug Inspector, and 12+1 golden/property tests.
+
 ## [Fresh-Start Phase 3] - Match MVP Perfection
 ### Fixed & Added
 - **Single-Source-of-Truth MVP (`packages/ranking/src/mvp.ts`, `AppleMatchSummarySheet.tsx`)**: Fixed `AppleMatchSummarySheet` to feed `useMatchStore().events` and full match metadata (`scoringFormat`, `targetPoints`, `bestOf`, `status`, `isShutout`) into `computeMatchAwards`, and unified share text to use `awards.mvp`.

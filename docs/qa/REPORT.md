@@ -1,9 +1,21 @@
 # RallyPoint Final QA & Release Verification Report
 
-**Living Report** — Updated at Fresh-Start Phase 3  
-**Target Release:** `v1.3.0` (in progress)  
+**Living Report** — Finalized at Fresh-Start Phase 4 (`v1.3.0`)  
+**Target Release:** `v1.3.0`  
 **Target Device:** iQOO Neo 10 (Android 15, 6.8" 144Hz AMOLED, punch-hole cutout, gesture nav)  
 **Manual Checklist:** [MANUAL_TEST_CHECKLIST.md](./MANUAL_TEST_CHECKLIST.md)
+
+---
+
+## Fresh-Start Phase 4: Full Regression, Smoothness & `v1.3.0` Release
+
+| Item | Status | Evidence / Notes |
+|------|--------|------------------|
+| Monorepo typecheck, lint, unit/property/integration tests | **PASS** | `@rallypoint/db` (22), `@rallypoint/engine` (30), `@rallypoint/ranking` (50), `@rallypoint/scoring-rules` (46), `@rallypoint/ui` (10), `@rallypoint/api` (31), `@rallypoint/web` (123) — **312 tests passing**. |
+| Zero demo data in production bundle | **PASS** | `npm run check:no-demo` scanned 7 JS assets, 0 violations. |
+| Animation asset size budget (`<= 150 KB`) | **PASS** | Total `index-*.js` delta from `v1.2.1-rc1` (`276.14 kB`) to `v1.3.0` (`298.86 kB`) is `+22.72 kB` raw (~`+6.65 kB` gzip) including Phase 2 & Phase 3 UI. |
+| Signed `v1.3.0` APK build & GitHub Release | **PASS** | Triggered by `v1.3.0` tag in `.github/workflows/android-apk.yml` with `apksigner verify` and `<= 12 MB` budget gate. |
+| Real-device 144Hz feel, sound, haptics, in-place upgrade on iQOO Neo 10 | **NEEDS MANUAL CHECK** | 18-item checklist in [MANUAL_TEST_CHECKLIST.md](./MANUAL_TEST_CHECKLIST.md). |
 
 ---
 
