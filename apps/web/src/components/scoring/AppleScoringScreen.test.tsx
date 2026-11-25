@@ -179,5 +179,33 @@ describe('AppleScoringScreen Component (Phase 2)', () => {
       expect(dropBtn.className).toContain('min-h-[64px]');
       expect(pointBtn.parentElement?.className).toContain('gap-3');
     });
+
+    it('triggers streak alert banner when player reaches 3 consecutive points', async () => {
+      render(<AppleScoringScreen />);
+
+      for (let i = 0; i < 3; i++) {
+        await act(async () => {
+          await useMatchStore.getState().recordPlayerAction('p-viktor', 'POINT');
+        });
+      }
+
+      expect(screen.getByTestId('streak-banner')).toBeInTheDocument();
+      expect(screen.getByText(/Viktor Axelsen is on fire: 3 points in a row/i)).toBeInTheDocument();
+    });
+
+    it('renders mid-match MVP peek chip after 5 attributed player actions', async () => {
+      render(<AppleScoringScreen />);
+
+      // Record 5 attributed actions for Viktor Axelsen
+      for (let i = 0; i < 5; i++) {
+        await act(async () => {
+          await useMatchStore.getState().recordPlayerAction('p-viktor', 'POINT');
+        });
+      }
+
+      const peekChip = screen.getByTestId('mid-match-mvp-peek-chip');
+      expect(peekChip).toBeInTheDocument();
+      expect(peekChip.textContent).toContain('Viktor Axelsen');
+    });
   });
 });

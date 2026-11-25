@@ -53,6 +53,19 @@ export const nativeHaptics = {
   },
 
   /**
+   * Subtle alert feedback for streak banners
+   */
+  streakAlert: async () => {
+    try {
+      if (isNativePlatform) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(20);
+      }
+    } catch {}
+  },
+
+  /**
    * Distinct warning/alert pattern when a game finishes or side changes
    */
   sideChange: async () => {

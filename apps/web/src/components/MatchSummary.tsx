@@ -5,6 +5,8 @@ import { PointLog } from './PointLog.js';
 import { AnalyticsDashboard } from './analytics/AnalyticsDashboard.js';
 import { nativeShare } from '../mobile/nativeShare.js';
 import { Share2, Check } from 'lucide-react';
+import { computeMatchAwards, type RankingMatchEvent } from '@rallypoint/ranking';
+import { MvpRevealCard } from './summary/MvpRevealCard.js';
 
 interface MatchSummaryProps {
   state: MatchState;
@@ -85,6 +87,41 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
     playerList.length > 1
       ? [...playerList].sort((a, b) => (b.drops !== a.drops ? b.drops - a.drops : a.net - b.net))[0]
       : null;
+
+  const awards = React.useMemo(() => {
+    const rankingEvents: RankingMatchEvent[] = (events || []).map((ev: any, idx: number) => ({
+      id: ev.id || `ev-${idx}`,
+      sequenceNumber: ev.sequenceNumber || idx + 1,
+      eventType: ev.type || 'PLAYER_ACTION',
+      playerId: ev.playerId,
+      side: ev.side,
+      action: ev.action,
+      isPoint: ev.isPoint,
+      isSideOut: ev.isSideOut,
+      payload: {
+        servingSideAtRally: ev.servingSideAtRally,
+      },
+    }));
+
+    const participants = [
+      ...playerIdsA.map((id: string, idx: number) => ({
+        playerId: id,
+        displayName: playerNamesA[idx] || (playerIdsA.length === 1 ? nameA : id),
+        side: 'A' as const,
+      })),
+      ...playerIdsB.map((id: string, idx: number) => ({
+        playerId: id,
+        displayName: playerNamesB[idx] || (playerIdsB.length === 1 ? nameB : id),
+        side: 'B' as const,
+      })),
+    ];
+
+    return computeMatchAwards(rankingEvents, undefined, {
+      matchType: state.config.mode === 'doubles' ? 'DOUBLES' : 'SINGLES',
+      winnerSide: state.winnerSide,
+      participants,
+    });
+  }, [events, state.config, playerIdsA, playerIdsB, playerNamesA, playerNamesB, state.winnerSide, nameA, nameB]);
 
   const handleShare = async () => {
     const scoresStr = state.games.map((g) => `${g.scoreA}-${g.scoreB}`).join(', ');
@@ -181,6 +218,9 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({ state }) => {
           </div>
         </div>
       </div>
+
+      {/* Official Match MVP Reveal */}
+      <MvpRevealCard awards={awards} matchTitle={`${nameA} vs ${nameB}`} />
 
       {/* Match Highlights: MVP & Needs Warm-Up */}
       <div className="space-y-3">

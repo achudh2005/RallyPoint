@@ -2,6 +2,20 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [Streaks & MVP Phase 2] - Mobile Streak Banner, Live Alerts Settings & Match MVP Reveal
+### Added
+- **Live Streak Alert Banner (`apps/web/src/components/scoring/StreakBanner.tsx`)**:
+  - Slim, translucent pill banner positioned safely below the status bar and punch-hole camera cutout (`env(safe-area-inset-top)`), with `pointer-events: none` so live score taps are never blocked.
+  - Auto-dismisses after 2.5s, enforces a 20s minimum gap with max queue 1, and immediately replaces lower-priority banners when a larger milestone occurs.
+  - Respects `prefers-reduced-motion`, TalkBack `aria-live="polite"`, and modal sheet suppression.
+- **Live Alerts Settings (`apps/web/src/store/alertsSettingsStore.ts`, `LiveAlertsSettings.tsx`)**:
+  - Added Settings > Live Streak Alerts section in `AppleProfileScreen` with master toggle, point streak, drop streak (gentle phrasing), team run, strict mode, streak snapped, subtle haptics, and English / Malayalam (`ml`) language toggles.
+- **Match MVP Reveal & Mid-Match Peek (`MvpRevealCard.tsx`, `AppleScoringScreen.tsx`, `AppleMatchSummarySheet.tsx`, `MatchSummary.tsx`)**:
+  - Added full MVP reveal card with rating score, reason chips, one-line summary, gentle confetti burst, Fighter Award badge, "See all" full participant breakdown, native share, and "How is MVP calculated?" explanation sheet.
+  - Added live mid-match `"🌟 MVP: [Name]"` peek chip in `AppleScoringScreen` header once 5 attributed actions are recorded.
+- **Test Coverage**:
+  - Added unit tests for `StreakBanner`, `MvpRevealCard`, and live streak + mid-match MVP peek in `AppleScoringScreen.test.tsx`.
+
 ## [Streaks & MVP Phase 1] - Pure Streak & MVP Calculation Engines, Prisma Models & Endpoints
 ### Added
 - **Streak Calculation Engine (`@rallypoint/scoring-rules/src/streaks.ts`)**:

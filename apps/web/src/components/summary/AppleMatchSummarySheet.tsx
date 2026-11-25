@@ -12,6 +12,8 @@ import { getStats } from '@rallypoint/engine';
 import { Share2, ListChecks, Check } from 'lucide-react';
 import { nativeShare } from '../../mobile/nativeShare.js';
 import { registerBackHandler } from '../../mobile/backButton.js';
+import { computeMatchAwards, type RankingMatchEvent } from '@rallypoint/ranking';
+import { MvpRevealCard } from './MvpRevealCard.js';
 
 export interface AppleMatchSummarySheetProps {
   state: MatchState;
@@ -146,6 +148,41 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
 
   const pointEvents = history.filter((e): e is PointEvent => e.type === 'POINT');
 
+  const awards = React.useMemo(() => {
+    const rankingEvents: RankingMatchEvent[] = (history || []).map((ev: any, idx: number) => ({
+      id: ev.id || `ev-${idx}`,
+      sequenceNumber: ev.sequenceNumber || idx + 1,
+      eventType: ev.type || 'PLAYER_ACTION',
+      playerId: ev.playerId,
+      side: ev.side,
+      action: ev.action,
+      isPoint: ev.isPoint,
+      isSideOut: ev.isSideOut,
+      payload: {
+        servingSideAtRally: ev.servingSideAtRally,
+      },
+    }));
+
+    const participants = [
+      ...playerIdsA.map((id, idx) => ({
+        playerId: id,
+        displayName: playerNamesA[idx] || (playerIdsA.length === 1 ? teamAName : id),
+        side: 'A' as const,
+      })),
+      ...playerIdsB.map((id, idx) => ({
+        playerId: id,
+        displayName: playerNamesB[idx] || (playerIdsB.length === 1 ? teamBName : id),
+        side: 'B' as const,
+      })),
+    ];
+
+    return computeMatchAwards(rankingEvents, undefined, {
+      matchType: config.mode === 'doubles' ? 'DOUBLES' : 'SINGLES',
+      winnerSide,
+      participants,
+    });
+  }, [history, config, playerIdsA, playerIdsB, playerNamesA, playerNamesB, winnerSide, teamAName, teamBName]);
+
   return (
     <div className="space-y-5 pb-6 text-neutral-900 dark:text-white max-w-md mx-auto">
       {/* Hero Winner Card */}
@@ -227,6 +264,9 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Official Match MVP Reveal */}
+      <MvpRevealCard awards={awards} matchTitle={`${teamAName} vs ${teamBName}`} />
 
       {/* Match Highlights: MVP & Needs Warm-Up */}
       <div className="space-y-3">

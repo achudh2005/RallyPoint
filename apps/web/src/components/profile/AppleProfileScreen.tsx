@@ -34,6 +34,7 @@ import { FuntouchBatteryModal } from '../mobile/FuntouchBatteryModal.js';
 import { checkForAppUpdates, UpdateCheckResult } from '../../mobile/updateChecker.js';
 import { UpdateModal } from '../../mobile/UpdateModal.js';
 import { Sparkles } from 'lucide-react';
+import { LiveAlertsSettings } from './LiveAlertsSettings.js';
 
 export const AppleProfileScreen: React.FC = () => {
   const { accent, setAccent } = useTheme();
@@ -311,6 +312,9 @@ export const AppleProfileScreen: React.FC = () => {
             />
           </GroupedSection>
         </GroupedList>
+
+        {/* Live Streak Alerts Group */}
+        <LiveAlertsSettings />
 
         {/* Scoring & Haptics Group */}
         <GroupedList>

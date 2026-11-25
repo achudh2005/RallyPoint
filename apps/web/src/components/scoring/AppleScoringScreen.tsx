@@ -26,6 +26,10 @@ import { nativeHaptics } from '../../mobile/haptics.js';
 import { PlayerCard } from './PlayerCard.js';
 import { QuickEditSheet } from './QuickEditSheet.js';
 import { PlayerDetailSheet } from './PlayerDetailSheet.js';
+import { computeStreaks, type StreakMilestoneAlert, type StreakAlertsConfig } from '@rallypoint/scoring-rules';
+import { computeMatchAwards, type MatchAwardsResult, type RankingMatchEvent } from '@rallypoint/ranking';
+import { StreakBanner } from './StreakBanner.js';
+import { useAlertsSettingsStore } from '../../store/alertsSettingsStore.js';
 
 export const AppleScoringScreen: React.FC = () => {
   const {
@@ -59,6 +63,8 @@ export const AppleScoringScreen: React.FC = () => {
     side: 'A' | 'B';
   } | null>(null);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [showLiveMvpPeek, setShowLiveMvpPeek] = useState(false);
+  const [currentStreakAlert, setCurrentStreakAlert] = useState<StreakMilestoneAlert | null>(null);
   const [undoToast, setUndoToast] = useState<string | null>(null);
   const [lastTaggedPointSide, setLastTaggedPointSide] = useState<Side | null>(null);
   const [serveNotice, setServeNotice] = useState<string | null>(null);
@@ -184,6 +190,136 @@ export const AppleScoringScreen: React.FC = () => {
     side: 'A' | 'B';
   }[];
 
+  // Live Streak Detection
+  const streakAlertsEnabled = useAlertsSettingsStore((s) => s.streakAlertsEnabled);
+  const pointStreakEnabled = useAlertsSettingsStore((s) => s.pointStreakEnabled);
+  const dropStreakEnabled = useAlertsSettingsStore((s) => s.dropStreakEnabled);
+  const teamRunEnabled = useAlertsSettingsStore((s) => s.teamRunEnabled);
+  const strictMode = useAlertsSettingsStore((s) => s.strictMode);
+  const streakSnappedEnabled = useAlertsSettingsStore((s) => s.streakSnappedEnabled);
+  const alertLanguage = useAlertsSettingsStore((s) => s.language);
+  const pointThresholds = useAlertsSettingsStore((s) => s.pointThresholds);
+  const dropThresholds = useAlertsSettingsStore((s) => s.dropThresholds);
+  const teamRunThresholds = useAlertsSettingsStore((s) => s.teamRunThresholds);
+
+  const streakConfig: StreakAlertsConfig = React.useMemo(() => ({
+    pointStreakThresholds: streakAlertsEnabled && pointStreakEnabled ? pointThresholds : [],
+    dropStreakThresholds: streakAlertsEnabled && dropStreakEnabled ? dropThresholds : [],
+    teamRunThresholds: streakAlertsEnabled && teamRunEnabled ? teamRunThresholds : [],
+    strictMode,
+    streakSnappedEnabled,
+    dropStreaksEnabled: streakAlertsEnabled && dropStreakEnabled,
+    language: alertLanguage,
+  }), [
+    streakAlertsEnabled,
+    pointStreakEnabled,
+    dropStreakEnabled,
+    teamRunEnabled,
+    strictMode,
+    streakSnappedEnabled,
+    alertLanguage,
+    pointThresholds,
+    dropThresholds,
+    teamRunThresholds,
+  ]);
+
+  useEffect(() => {
+    if (!streakAlertsEnabled || events.length === 0) {
+      setCurrentStreakAlert(null);
+      return;
+    }
+
+    const adaptedEvents = events.map((ev: any, idx: number) => ({
+      ...ev,
+      id: ev.id || `ev-${idx}`,
+      type: ev.type || 'PLAYER_ACTION',
+      playerId: ev.playerId,
+      side: ev.side,
+      action: ev.action,
+      resultingWinnerSide: ev.resultingWinnerSide || (ev.action === 'POINT' ? ev.side : ev.side === 'A' ? 'B' : 'A'),
+      isPoint: ev.isPoint !== false,
+      isSideOut: !!ev.isSideOut,
+      timestamp: ev.timestamp || Date.now(),
+    }));
+
+    const lookup = {
+      getPlayerName: (id: string) => {
+        if (playerA1.id === id) return playerA1.name;
+        if (playerA2?.id === id) return playerA2.name;
+        if (playerB1.id === id) return playerB1.name;
+        if (playerB2?.id === id) return playerB2.name;
+        return id;
+      },
+      getTeamName: (side: 'A' | 'B') => {
+        return side === 'A' ? config.sideA.name : config.sideB.name;
+      },
+    };
+
+    const res = computeStreaks(adaptedEvents as any, streakConfig, lookup);
+    setCurrentStreakAlert((prev) => {
+      const next = res.currentMilestone || null;
+      if (prev?.id === next?.id) return prev;
+      return next;
+    });
+  }, [events, streakConfig, config]);
+
+  // Mid-Match Live MVP Calculation
+  const liveAwards: MatchAwardsResult | null = React.useMemo(() => {
+    if (events.length === 0) return null;
+
+    const rankingEvents: RankingMatchEvent[] = events.map((ev: any, idx: number) => ({
+      id: ev.id || `ev-${idx}`,
+      sequenceNumber: ev.sequenceNumber || idx + 1,
+      eventType: ev.type || 'PLAYER_ACTION',
+      playerId: ev.playerId,
+      side: ev.side,
+      action: ev.action,
+      isPoint: ev.isPoint,
+      isSideOut: ev.isSideOut,
+      payload: {
+        servingSideAtRally: ev.servingSideAtRally,
+      },
+    }));
+
+    const participants = [
+      {
+        playerId: playerA1.id,
+        displayName: playerA1.name,
+        side: 'A' as const,
+      },
+      ...(playerA2
+        ? [
+            {
+              playerId: playerA2.id,
+              displayName: playerA2.name,
+              side: 'A' as const,
+            },
+          ]
+        : []),
+      {
+        playerId: playerB1.id,
+        displayName: playerB1.name,
+        side: 'B' as const,
+      },
+      ...(playerB2
+        ? [
+            {
+              playerId: playerB2.id,
+              displayName: playerB2.name,
+              side: 'B' as const,
+            },
+          ]
+        : []),
+    ];
+
+    return computeMatchAwards(rankingEvents, undefined, {
+      matchType: isDoubles ? 'DOUBLES' : 'SINGLES',
+      scoringFormat,
+      winnerSide: match?.status === 'COMPLETED' ? (match.winnerSide as 'A' | 'B') : undefined,
+      participants,
+    });
+  }, [events, config, isDoubles, scoringFormat, match?.status, match?.winnerSide]);
+
   // Debounced player actions (300ms accidental tap prevention)
   const handlePlayerAction = async (playerId: string, action: 'POINT' | 'DROP') => {
     if (isCompleted || isInterval) return;
@@ -292,6 +428,12 @@ export const AppleScoringScreen: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-black text-slate-900 dark:text-white select-none overflow-hidden safe-left safe-right">
+      {/* Top Streak Alert Banner */}
+      <StreakBanner
+        currentAlert={currentStreakAlert}
+        suppressed={showMoreMenu || showQuickEditSheet || !!selectedPlayerForDetail || showScoreboard || !!activeSettingChoice}
+      />
+
       {/* Top Quiet Bar */}
       <header className="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top,0px),10px)] pb-2 border-b border-black/5 dark:border-white/10 shrink-0">
         <button
@@ -306,7 +448,7 @@ export const AppleScoringScreen: React.FC = () => {
           <span>Matches</span>
         </button>
 
-        {/* Center Pill: Game status & scoring format */}
+        {/* Center Pill: Game status, scoring format & live MVP peek */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold tracking-tight text-slate-800 dark:text-zinc-100">
             Game {currentGameNumber} of {totalGames}
@@ -314,6 +456,20 @@ export const AppleScoringScreen: React.FC = () => {
           <Badge variant="accent" size="sm">
             {formatLabel}
           </Badge>
+          {liveAwards?.isQualified && liveAwards.mvp && (
+            <button
+              data-testid="mid-match-mvp-peek-chip"
+              onClick={() => {
+                nativeHaptics.selection();
+                setShowLiveMvpPeek(true);
+              }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 transition-all ml-0.5"
+              title="Live Match MVP Standings"
+            >
+              <span>🌟 {liveAwards.mvp.name}</span>
+              <span className="font-mono text-[9px] opacity-80">{liveAwards.mvp.mvpScore.toFixed(1)}</span>
+            </button>
+          )}
         </div>
 
         {/* Action icons */}
@@ -944,6 +1100,76 @@ export const AppleScoringScreen: React.FC = () => {
               </div>
             ))
           )}
+        </div>
+      </BottomSheet>
+
+      {/* Live MVP Standings Bottom Sheet */}
+      <BottomSheet
+        isOpen={showLiveMvpPeek}
+        onClose={() => setShowLiveMvpPeek(false)}
+        title="Live Match MVP Standings"
+      >
+        <div className="space-y-4 pb-6 text-xs text-neutral-800 dark:text-neutral-200">
+          {liveAwards?.mvp ? (
+            <div>
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] uppercase font-bold text-amber-500">
+                    Leader so far
+                  </span>
+                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400 text-sm">
+                    {liveAwards.mvp.mvpScore.toFixed(1)} pts
+                  </span>
+                </div>
+                <h3 className="text-base font-extrabold text-neutral-900 dark:text-white">
+                  {liveAwards.mvp.name}
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  {liveAwards.mvp.summaryLine}
+                </p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {liveAwards.mvp.reasonChips.map((c, i) => (
+                    <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-2">
+                All Players
+              </span>
+              <div className="space-y-1.5">
+                {liveAwards.allContributions.map((p, idx) => (
+                  <div
+                    key={p.playerId}
+                    className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-neutral-400 font-bold w-4">#{idx + 1}</span>
+                      <div>
+                        <span className="font-bold text-neutral-900 dark:text-white">{p.name}</span>
+                        <span className="block text-[10px] text-neutral-500">
+                          {p.pointsWon} pts · {p.drops} drops · Streak {p.bestPointStreak}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">
+                      {p.mvpScore.toFixed(1)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-neutral-500 py-4">
+              MVP rankings will unlock after 5 attributed points.
+            </p>
+          )}
+
+          <Button variant="secondary" size="md" fullWidth onClick={() => setShowLiveMvpPeek(false)}>
+            Close
+          </Button>
         </div>
       </BottomSheet>
     </div>
