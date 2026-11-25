@@ -109,6 +109,8 @@ jobs:
       - name: Build Debug & Release APKs with Gradle
         working-directory: apps/web/android
         run: |
+          export VERSION_CODE=$(( 100 + $(git rev-list --count HEAD) ))
+          echo "Building APKs with monotonic VERSION_CODE=$VERSION_CODE"
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
           ./gradlew assembleRelease --stacktrace
