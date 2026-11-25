@@ -89,19 +89,29 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Current Debug APK
+      - name: Configure Keystore from Secrets
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > apps/web/android/app/release.keystore
+            echo "KEYSTORE_FILE=release.keystore" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+          fi
+
+      - name: Build Current Debug & Release APKs
         working-directory: apps/web/android
         run: |
           export VERSION_CODE=$(( 100 + $(git rev-list --count HEAD) ))
-          echo "Building debug APK with monotonic VERSION_CODE=$VERSION_CODE"
+          echo "Building APKs with monotonic VERSION_CODE=$VERSION_CODE"
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug assembleRelease --stacktrace
 
-      - name: Download Previous Release (v1.2.0) Debug APK for Upgrade Test
+      - name: Download Previous Release (v1.2.0) Release APK for Upgrade Test
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download v1.2.0 --pattern "RallyPoint-debug.apk" --dir /tmp/old-apk || true
+          gh release download v1.2.0 --pattern "RallyPoint-release.apk" --dir /tmp/old-apk || true
 
       - name: Enable KVM
         run: |
