@@ -2,6 +2,14 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [1.2.0] - Streaks & Match MVP Release (Phase 4)
+### Added
+- **Idempotent Backfill Script (`packages/db/src/backfillStreaksAndMvp.ts`)**:
+  - Added `npm run db:backfill-awards` to compute and persist `MatchAward` and `PlayerMatchStreak` records across historical completed matches containing `PLAYER_ACTION` events.
+- **v1.2.0 Mobile APK Release**:
+  - Bumped monorepo, `@rallypoint/web`, Android `build.gradle`, and `docs/install/index.html` to `1.2.0`.
+  - Triggered headless GitHub Actions Android APK build (`v1.2.0`) with signed release APK and SHA-256 verification.
+
 ## [Streaks & MVP Phase 3] - Community Leaderboards, Trophy Shelf, Weekly Accolades & Notifications
 ### Added
 - **New Community Leaderboard Boards (`AppleRankingsScreen.tsx`)**:

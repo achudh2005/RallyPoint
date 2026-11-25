@@ -1,6 +1,6 @@
 {
   "name": "rallypoint",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Advanced badminton point-tracking web app (PWA) with event-sourced engine",
   "workspaces": [
@@ -17,6 +17,7 @@
     "db:migrate": "npm run --workspace=@rallypoint/db migrate",
     "db:seed": "npm run --workspace=@rallypoint/db seed",
     "db:rebuild-stats": "npm run --workspace=@rallypoint/db rebuild-stats",
+    "db:backfill-awards": "tsx packages/db/src/backfillStreaksAndMvp.ts",
     "seed:community": "tsx packages/db/src/seedCommunityRankings.ts",
     "rebuild-rankings": "tsx packages/ranking/src/cli.ts",
     "build:web": "npm run --workspace=@rallypoint/web build:web",
