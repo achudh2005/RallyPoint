@@ -18,3 +18,7 @@
 
 # Preserve line numbers and file names for crash analytics
 -keepattributes SourceFile,LineNumberTable
+
+# Suppress R8 warnings for compile-time annotations in Tink / AndroidX Security
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
