@@ -2,6 +2,15 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [QA Phase 4] - Performance Budgets, Code-Splitting & Glitch Hunt
+### Added
+- **Bundle Splitting (`apps/web/vite.config.ts`)**:
+  - Split `framer-motion`, `lucide-react`, `@capacitor/*`/`dexie`, and `canvas-confetti` into dedicated chunks, reducing `vendor` from `663.72 kB` to `345.91 kB` with zero >600 kB warnings.
+- **Performance & Soak Tests (`packages/scoring-rules/src/perfBudget.test.ts`, `packages/ranking/src/perfBudget.test.ts`)**:
+  - Verified 200-rally streak & MVP computation in `< 10 ms` and 20-match back-to-back soak test under `1000 ms`.
+- **Glitch Hunt & Seeded Monkey Stress Tests (`apps/web/src/components/scoring/GlitchHunt.test.tsx`)**:
+  - Verified 300ms double-tap debounce, undo spam past `0-0`, 60+ character player names, empty states, and a 200-step seeded randomized monkey sequence.
+
 ## [QA Phase 3] - Playwright E2E, Component Tests & Android API 35 Emulator Gate
 ### Added
 - **Updated Playwright E2E Suite (`apps/web/e2e/match.spec.ts`)**:

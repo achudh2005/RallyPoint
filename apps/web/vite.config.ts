@@ -23,8 +23,17 @@ export default defineConfig({
             if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) {
               return 'charts';
             }
-            if (id.includes('html-to-image')) {
+            if (id.includes('html-to-image') || id.includes('canvas-confetti')) {
               return 'export';
+            }
+            if (id.includes('framer-motion')) {
+              return 'motion';
+            }
+            if (id.includes('lucide-react')) {
+              return 'icons';
+            }
+            if (id.includes('@capacitor') || id.includes('dexie')) {
+              return 'mobile-storage';
             }
             return 'vendor';
           }

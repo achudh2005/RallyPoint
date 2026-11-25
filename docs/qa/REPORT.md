@@ -1,7 +1,7 @@
 # RallyPoint Final QA & Release Verification Report
 
 **Living Report** — Updated across QA Phases 1–5  
-**Current Phase:** Phase 3 (End-to-End, Visual, Accessibility & Android Emulator Verification)  
+**Current Phase:** Phase 4 (Performance Budgets, Bundle Splitting & Glitch Hunt)  
 **Target Device:** iQOO Neo 10 (Android 15, 6.8" 144Hz AMOLED, punch-hole cutout, gesture nav)  
 **Target Release:** `v1.2.1-rc1` (Baseline: `v1.2.0`)
 
@@ -17,7 +17,7 @@
 | `@rallypoint/db` Tests | 22 passed (5 files) | Real Postgres 16 + 1M load | **PASS** (Postgres 16 `postgresGate.ts` in CI) |
 | `@rallypoint/api` Tests | 26 passed (3 files) | Auth/roles/idempotency/WS <1s | **PASS (31 tests, 4 files)** |
 | `@rallypoint/web` Tests | 103 passed (26 files) | Unit + Playwright E2E | PASS (unit) / GAP (E2E outdated) |
-| Web Vite Build | 46.51s (`vendor` 663.72 kB > 600 kB) | < 600 kB chunks | **WARN** (code-splitting in Phase 4) |
+| Web Vite Build | 46.51s (`vendor` 663.72 kB > 600 kB) | < 600 kB chunks | **PASS** (`vendor` split to **345.91 kB**; max chunk 347.55 kB) |
 | `v1.2.0` Release APK Size | **7,539,255 B** (~7.19 MB) | <= 10 MB | PASS |
 | `v1.2.0` Debug APK Size | **11,722,135 B** (~11.18 MB) | — | PASS |
 
@@ -67,6 +67,6 @@
 - **Phase 1 Finding #1:** `@rallypoint/ranking` `npm run test:coverage` fails its 95% global threshold (`93.43%` lines/stmts), and `@rallypoint/scoring-rules` is at `91.81%`. Scheduled for Phase 2 fix.
 - **Phase 1 Finding #2:** `apps/web/e2e/match.spec.ts` targets legacy UI selectors (`Bo1`, `tap-left-side`) and does not cover the redesigned Apple UI. Scheduled for Phase 3 rewrite.
 - **Phase 1 Finding #3:** `MatchSetupSheet.tsx` has read-only `customWinBy` and `customCap` state without UI controls for custom scoring format. Scheduled for Phase 2/3 fix.
-- **Phase 1 Finding #4:** Vite production bundle emits `vendor` chunk at `663.72 kB` (> 600 kB warning). Scheduled for Phase 4 code-splitting.
+- **Phase 1 Finding #4 (FIXED):** Vite `vendor` chunk reduced from `663.72 kB` to `345.91 kB` via `manualChunks` splitting (`motion`, `icons`, `mobile-storage`, `export`, `charts`), eliminating all >600 kB warnings.
 - **Phase 2 Finding #5 (FIXED):** `packages/db/src/auditLog.sql` `trg_audit_log_capture()` omitted `id` when inserting into `audit_logs`, causing a `NULL` constraint violation (`P2011`) on Postgres 16 after `prisma db push` created `audit_logs` without a SQL `DEFAULT`. Fixed by generating `v_log_id` explicitly in `trg_audit_log_capture()`.
 - **Phase 2 Finding #6 (FIXED):** `packages/db/src/partitioning.sql` defined `enforce_match_events_append_only()` function but never attached the `BEFORE UPDATE OR DELETE` trigger to `match_events`! Caught by `postgresGate.ts` in CI and fixed by creating `trg_match_events_append_only` on `match_events`.
