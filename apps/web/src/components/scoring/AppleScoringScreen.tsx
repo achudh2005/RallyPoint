@@ -77,6 +77,12 @@ export const AppleScoringScreen: React.FC = () => {
   const [lastTaggedPointSide, setLastTaggedPointSide] = useState<Side | null>(null);
   const [serveNotice, setServeNotice] = useState<string | null>(null);
 
+  // Auto Drop Attribution Popup state
+  const [showDropperSheet, setShowDropperSheet] = useState(false);
+  const [pendingPointPlayerId, setPendingPointPlayerId] = useState<string | null>(null);
+  const [pendingPointSide, setPendingPointSide] = useState<'A' | 'B' | null>(null);
+  const [pendingScoreTapSide, setPendingScoreTapSide] = useState<Side | null>(null);
+
   const tagTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const undoToastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const prevServeSideRef = useRef<string | null>(null);
@@ -84,8 +90,15 @@ export const AppleScoringScreen: React.FC = () => {
 
   // Android Back Button handler for options bottom sheet
   useEffect(() => {
-    if (!showMoreMenu && !showQuickEditSheet && !selectedPlayerForDetail) return;
+    if (!showMoreMenu && !showQuickEditSheet && !selectedPlayerForDetail && !showDropperSheet) return;
     return registerBackHandler(() => {
+      if (showDropperSheet) {
+        setShowDropperSheet(false);
+        setPendingPointPlayerId(null);
+        setPendingPointSide(null);
+        setPendingScoreTapSide(null);
+        return true;
+      }
       if (selectedPlayerForDetail) {
         setSelectedPlayerForDetail(null);
         return true;
@@ -310,6 +323,10 @@ export const AppleScoringScreen: React.FC = () => {
       action: ev.action,
       isPoint: ev.isPoint,
       isSideOut: ev.isSideOut,
+      attributedPointPlayerId: ev.attributedPointPlayerId,
+      attributedDropPlayerIds: ev.attributedDropPlayerIds,
+      isBothFault: ev.isBothFault,
+      note: ev.note,
       payload: {
         servingSideAtRally: ev.servingSideAtRally,
       },
@@ -354,25 +371,7 @@ export const AppleScoringScreen: React.FC = () => {
     });
   }, [events, config, isDoubles, scoringFormat, match?.status, match?.winnerSide]);
 
-  // Debounced player actions (300ms accidental tap prevention)
-  const handlePlayerAction = async (playerId: string, action: 'POINT' | 'DROP') => {
-    if (isCompleted || isInterval) return;
-
-    const now = Date.now();
-    if (now - lastActionTimestampRef.current < 300) {
-      return; // Debounce guard
-    }
-    lastActionTimestampRef.current = now;
-
-    if (action === 'POINT') {
-      await nativeHaptics.pointScored();
-    } else {
-      await nativeHaptics.dropScored();
-    }
-
-    await recordPlayerAction(playerId, action);
-
-    // Check if match was completed by this action
+  const checkMatchCompletedHaptics = async () => {
     const currentRules = useMatchStore.getState().scoringRulesState;
     if (currentRules && currentRules.status === 'COMPLETED') {
       await nativeHaptics.matchWon();
@@ -386,7 +385,100 @@ export const AppleScoringScreen: React.FC = () => {
     }
   };
 
-  // Big team score tap (unattributed points)
+  // Debounced player actions (300ms accidental tap prevention)
+  const handlePlayerAction = async (playerId: string, action: 'POINT' | 'DROP') => {
+    if (isCompleted || isInterval) return;
+
+    const now = Date.now();
+    if (now - lastActionTimestampRef.current < 300) {
+      return; // Debounce guard
+    }
+    lastActionTimestampRef.current = now;
+
+    if (action === 'POINT') {
+      await nativeHaptics.pointScored();
+      const scoringSide: 'A' | 'B' =
+        playerId === playerA1.id || playerId === playerA2?.id ? 'A' : 'B';
+      const oppPlayers =
+        scoringSide === 'A'
+          ? [playerB1, playerB2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[]
+          : [playerA1, playerA2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[];
+
+      if (isDoubles && oppPlayers.length >= 2) {
+        setPendingPointPlayerId(playerId);
+        setPendingPointSide(scoringSide);
+        setPendingScoreTapSide(null);
+        setShowDropperSheet(true);
+        return;
+      }
+
+      // Singles: auto-attribute single opposing player
+      await recordPlayerAction(playerId, 'POINT', {
+        attributedDropPlayerIds: oppPlayers[0] ? [oppPlayers[0].id] : undefined,
+      });
+      await checkMatchCompletedHaptics();
+      return;
+    }
+
+    await nativeHaptics.dropScored();
+    await recordPlayerAction(playerId, action);
+    await checkMatchCompletedHaptics();
+  };
+
+  const handleConfirmDropperSelection = async (
+    mode: 'single' | 'both' | 'skip',
+    dropperId?: string
+  ) => {
+    const side = pendingPointSide;
+    const scorerId = pendingPointPlayerId;
+    const scoreTapSide = pendingScoreTapSide;
+
+    setShowDropperSheet(false);
+    setPendingPointPlayerId(null);
+    setPendingPointSide(null);
+    setPendingScoreTapSide(null);
+
+    if (!side) return;
+
+    const oppPlayers =
+      side === 'A'
+        ? ([playerB1, playerB2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[])
+        : ([playerA1, playerA2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[]);
+
+    nativeHaptics.selection();
+
+    if (scorerId) {
+      if (mode === 'single' && dropperId) {
+        await recordPlayerAction(scorerId, 'POINT', {
+          attributedDropPlayerIds: [dropperId],
+        });
+      } else if (mode === 'both' && oppPlayers.length >= 2) {
+        await recordPlayerAction(scorerId, 'POINT', {
+          attributedDropPlayerIds: [oppPlayers[0]!.id, oppPlayers[1]!.id],
+          isBothFault: true,
+          note: 'Both fault (0.5 each)',
+        });
+      } else {
+        await recordPlayerAction(scorerId, 'POINT');
+      }
+    } else if (scoreTapSide) {
+      if (mode === 'single' && dropperId) {
+        await recordPlayerAction(dropperId, 'DROP');
+      } else if (mode === 'both' && oppPlayers.length >= 2) {
+        await recordPlayerAction(oppPlayers[0]!.id, 'DROP', {
+          attributedDropPlayerIds: [oppPlayers[0]!.id, oppPlayers[1]!.id],
+          isBothFault: true,
+          note: 'Both fault (0.5 each)',
+        });
+      } else {
+        await recordUnattributedPoint(scoreTapSide);
+      }
+    }
+
+    await checkMatchCompletedHaptics();
+  };
+
+  // Big team score tap
   const handleScoreTap = async (side: Side) => {
     if (isCompleted || isInterval) return;
 
@@ -396,7 +488,21 @@ export const AppleScoringScreen: React.FC = () => {
 
     await nativeHaptics.pointScored();
     if (showPlayerActionButtons) {
+      const oppPlayers =
+        side === 'A'
+          ? ([playerB1, playerB2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[])
+          : ([playerA1, playerA2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[]);
+
+      if (isDoubles && oppPlayers.length >= 2) {
+        setPendingPointPlayerId(null);
+        setPendingPointSide(side);
+        setPendingScoreTapSide(side);
+        setShowDropperSheet(true);
+        return;
+      }
+
       await recordUnattributedPoint(side);
+      await checkMatchCompletedHaptics();
     } else {
       await recordPoint(side);
     }
@@ -582,6 +688,31 @@ export const AppleScoringScreen: React.FC = () => {
         </div>
       )}
 
+      {/* Deuce / 14-all Win-by-2 Banner */}
+      {(() => {
+        const fmt = scoringRulesState?.formatConfig;
+        const target = fmt?.targetPoints || config.pointsToWinGame || 21;
+        const cap = fmt?.cap || 30;
+        const winBy = fmt?.winBy || 2;
+        const isDeuce =
+          !isCompleted &&
+          winBy >= 2 &&
+          currentScoreA >= target - 1 &&
+          currentScoreB >= target - 1 &&
+          currentScoreA < cap &&
+          currentScoreB < cap &&
+          Math.abs(currentScoreA - currentScoreB) < winBy;
+        if (!isDeuce) return null;
+        return (
+          <div
+            data-testid="deuce-rule-banner"
+            className="bg-emerald-500/15 border-b border-emerald-500/30 py-1 px-4 text-center text-xs font-bold text-emerald-700 dark:text-emerald-300"
+          >
+            🔥 {target - 1}-all Deuce — First team to lead by {winBy} points wins!
+          </div>
+        );
+      })()}
+
       {/* Main Scoring Arena */}
       <main className="flex-1 flex flex-col landscape:flex-row overflow-hidden relative">
         {/* Landscape Left Column: Side A Player Cards */}
@@ -718,24 +849,6 @@ export const AppleScoringScreen: React.FC = () => {
                   <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 truncate">
                     Team A: {playerA1.name}{playerA2 ? ` + ${playerA2.name}` : ''}
                   </span>
-                  {isDoubles && playerA2 && (
-                    <button
-                      type="button"
-                      data-testid="both-fault-btn-A"
-                      disabled={isCompleted || isInterval}
-                      onClick={() => {
-                        nativeHaptics.selection();
-                        recordPlayerAction(playerA1.id, 'DROP', {
-                          isBothFault: true,
-                          attributedDropPlayerIds: [playerA1.id, playerA2.id],
-                          note: 'Both fault (0.5 each)',
-                        });
-                      }}
-                      className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 disabled:opacity-40"
-                    >
-                      Both Fault (0.5)
-                    </button>
-                  )}
                 </div>
                 <div className={`grid gap-2 ${isDoubles ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <PlayerCard
@@ -784,24 +897,6 @@ export const AppleScoringScreen: React.FC = () => {
                   <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 truncate">
                     Team B: {playerB1.name}{playerB2 ? ` + ${playerB2.name}` : ''}
                   </span>
-                  {isDoubles && playerB2 && (
-                    <button
-                      type="button"
-                      data-testid="both-fault-btn-B"
-                      disabled={isCompleted || isInterval}
-                      onClick={() => {
-                        nativeHaptics.selection();
-                        recordPlayerAction(playerB1.id, 'DROP', {
-                          isBothFault: true,
-                          attributedDropPlayerIds: [playerB1.id, playerB2.id],
-                          note: 'Both fault (0.5 each)',
-                        });
-                      }}
-                      className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 disabled:opacity-40"
-                    >
-                      Both Fault (0.5)
-                    </button>
-                  )}
                 </div>
                 <div className={`grid gap-2 ${isDoubles ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <PlayerCard
@@ -840,25 +935,6 @@ export const AppleScoringScreen: React.FC = () => {
                   )}
                 </div>
               </div>
-
-              {/* Detailed Point + Drop + Both Fault Attribution Trigger */}
-              <button
-                type="button"
-                data-testid="detailed-rally-btn"
-                disabled={isCompleted || isInterval}
-                onClick={() => {
-                  nativeHaptics.selection();
-                  setRallyWinnerSide('A');
-                  setRallyScorerId(playerA1.id);
-                  setRallyDropperMode('single');
-                  setRallyDropperId(playerB1.id);
-                  setRallyNote('');
-                  setShowDetailedRallySheet(true);
-                }}
-                className="w-full py-2 rounded-xl bg-black/5 dark:bg-white/10 text-[11px] font-semibold text-slate-600 dark:text-zinc-300 hover:bg-black/10 dark:hover:bg-white/15 transition-colors disabled:opacity-40"
-              >
-                + Record Detailed Rally (Scorer + Dropper / Both Fault)
-              </button>
             </div>
           )}
         </div>
@@ -1005,6 +1081,78 @@ export const AppleScoringScreen: React.FC = () => {
           setShowQuickEditSheet(true);
         }}
       />
+
+      {/* Auto Drop Attribution Popup (after a team/player scores in doubles) */}
+      <BottomSheet
+        isOpen={showDropperSheet}
+        onClose={() => {
+          setShowDropperSheet(false);
+          setPendingPointPlayerId(null);
+          setPendingPointSide(null);
+          setPendingScoreTapSide(null);
+        }}
+        title={
+          pendingPointSide === 'A'
+            ? `Who from ${config.sideB.name} dropped this point?`
+            : `Who from ${config.sideA.name} dropped this point?`
+        }
+      >
+        {(() => {
+          const oppPlayers =
+            pendingPointSide === 'A'
+              ? ([playerB1, playerB2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[])
+              : ([playerA1, playerA2].filter(Boolean) as { id: string; name: string; side: 'A' | 'B' }[]);
+          const scorerName = pendingPointPlayerId
+            ? allPlayers.find((p) => p.id === pendingPointPlayerId)?.name
+            : pendingPointSide === 'A'
+            ? config.sideA.name
+            : config.sideB.name;
+
+          return (
+            <div className="space-y-3 pt-1 pb-4" data-testid="auto-dropper-sheet">
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                Point scored by <strong className="text-slate-900 dark:text-white">{scorerName}</strong>. Select who dropped the point:
+              </p>
+
+              <div className="grid grid-cols-1 gap-2.5">
+                {oppPlayers.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    data-testid={`dropper-btn-${p.id}`}
+                    onClick={() => handleConfirmDropperSelection('single', p.id)}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold text-sm text-left flex items-center justify-between transition-colors"
+                  >
+                    <span>{p.name} dropped</span>
+                    <span className="text-xs font-mono opacity-80">+1 Drop</span>
+                  </button>
+                ))}
+
+                {oppPlayers.length >= 2 && (
+                  <button
+                    type="button"
+                    data-testid="dropper-btn-both-fault"
+                    onClick={() => handleConfirmDropperSelection('both')}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-800 dark:text-amber-300 font-bold text-sm text-left flex items-center justify-between transition-colors"
+                  >
+                    <span>Both Fault ({oppPlayers[0]!.name} &amp; {oppPlayers[1]!.name})</span>
+                    <span className="text-xs font-mono opacity-80">0.5 each</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  data-testid="dropper-btn-skip"
+                  onClick={() => handleConfirmDropperSelection('skip')}
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                >
+                  Skip (Unattributed)
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </BottomSheet>
 
       {/* Setting Choice Modal (Service Point: Set to 17 or Play to 15) */}
       <BottomSheet

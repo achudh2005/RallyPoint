@@ -122,11 +122,44 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
 
   for (const ev of effectiveEvents || []) {
     if (ev.type === 'PLAYER_ACTION' || (ev as any).action) {
-      const pId = (ev as any).playerId;
-      const act = (ev as any).action;
-      if (pId && playerStatsMap[pId]) {
-        if (act === 'POINT') playerStatsMap[pId].pointsWon++;
-        else if (act === 'DROP') playerStatsMap[pId].drops++;
+      const anyEv = ev as any;
+      const pId = anyEv.playerId;
+      const act = anyEv.action;
+      if (act === 'POINT') {
+        const scorerEntry = pId ? playerStatsMap[pId] : undefined;
+        if (scorerEntry) {
+          scorerEntry.pointsWon++;
+        }
+        if (Array.isArray(anyEv.attributedDropPlayerIds) && anyEv.attributedDropPlayerIds.length > 0) {
+          const share = Number((1 / anyEv.attributedDropPlayerIds.length).toFixed(2));
+          for (const dId of anyEv.attributedDropPlayerIds) {
+            const dropEntry = playerStatsMap[dId];
+            if (dropEntry) {
+              dropEntry.drops = Number((dropEntry.drops + share).toFixed(2));
+            }
+          }
+        }
+      } else if (act === 'DROP') {
+        if (anyEv.isBothFault && Array.isArray(anyEv.attributedDropPlayerIds) && anyEv.attributedDropPlayerIds.length > 1) {
+          const share = Number((1 / anyEv.attributedDropPlayerIds.length).toFixed(2));
+          for (const dId of anyEv.attributedDropPlayerIds) {
+            const dropEntry = playerStatsMap[dId];
+            if (dropEntry) {
+              dropEntry.drops = Number((dropEntry.drops + share).toFixed(2));
+            }
+          }
+        } else {
+          const dropEntry = pId ? playerStatsMap[pId] : undefined;
+          if (dropEntry) {
+            dropEntry.drops = Number((dropEntry.drops + 1).toFixed(2));
+          }
+        }
+        const winnerEntry = anyEv.attributedPointPlayerId
+          ? playerStatsMap[anyEv.attributedPointPlayerId]
+          : undefined;
+        if (winnerEntry) {
+          winnerEntry.pointsWon++;
+        }
       }
     }
   }
@@ -156,6 +189,10 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
       action: ev.action,
       isPoint: ev.isPoint,
       isSideOut: ev.isSideOut,
+      attributedPointPlayerId: ev.attributedPointPlayerId,
+      attributedDropPlayerIds: ev.attributedDropPlayerIds,
+      isBothFault: ev.isBothFault,
+      note: ev.note,
       payload: {
         servingSideAtRally: ev.servingSideAtRally,
         reason: ev.reason,
@@ -481,13 +518,25 @@ export const AppleMatchSummarySheet: React.FC<AppleMatchSummarySheetProps> = ({
           <GroupedList>
             <GroupedSection header="All Scored Points">
               {pointEvents.map((ev, i) => {
+                const anyEv = ev as any;
                 const side = ev.side;
-                const scorerName = side === 'A' ? teamAName : teamBName;
+                const scorerPlayer = anyEv.playerId && playerStatsMap[anyEv.playerId]?.name;
+                const scorerName = scorerPlayer || (side === 'A' ? teamAName : teamBName);
+                const dropNames = Array.isArray(anyEv.attributedDropPlayerIds)
+                  ? anyEv.attributedDropPlayerIds
+                      .map((id: string) => playerStatsMap[id]?.name || id)
+                      .join(' & ')
+                  : '';
+                const subtitle = anyEv.isBothFault
+                  ? `Both Fault (${dropNames})`
+                  : dropNames
+                  ? `Dropped by ${dropNames}`
+                  : `Scored for Side ${side}`;
                 return (
                   <GroupedRow
                     key={ev.id || i}
                     title={`Point #${i + 1} - ${scorerName}`}
-                    subtitle={`Scored for Side ${side}`}
+                    subtitle={subtitle}
                     trailing={
                       <span className="text-xs font-bold font-mono">
                         {side === winnerSide ? '⭐️' : ''}

@@ -39,6 +39,7 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
   // Step 2: How do you want to score?
   const [systemType, setSystemType] = useState<'RALLY' | 'SERVICE'>('RALLY');
   const [targetScore, setTargetScore] = useState<'21' | '15' | '11'>('21');
+  const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [useCustomRules, setUseCustomRules] = useState(false);
   const [customTarget, setCustomTarget] = useState(21);
@@ -142,7 +143,7 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
             cap: customCap,
           }
         : undefined,
-      bestOf: 3,
+      bestOf,
       pointsToWinGame: targetPoints,
       tiebreakCap: customCap,
       sideA: {
@@ -471,6 +472,22 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
                         { id: '11', label: '11 Points (Sprint)' },
                       ]
                 }
+              />
+            </div>
+
+            {/* Number of Games (Best Of) Segmented Control */}
+            <div className="bg-white dark:bg-[#1C1C1E] p-3 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/80 space-y-2">
+              <label className="text-[13px] font-semibold text-neutral-600 dark:text-neutral-400">
+                Number of Games (Best Of):
+              </label>
+              <SegmentedControl
+                value={String(bestOf)}
+                onChange={(val: string) => setBestOf(Number(val) as 1 | 3 | 5)}
+                options={[
+                  { id: '1', label: '1 Game' },
+                  { id: '3', label: 'Best of 3' },
+                  { id: '5', label: 'Best of 5' },
+                ]}
               />
             </div>
 

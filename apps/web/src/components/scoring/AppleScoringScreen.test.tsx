@@ -207,5 +207,67 @@ describe('AppleScoringScreen Component (Phase 2)', () => {
       expect(peekChip).toBeInTheDocument();
       expect(peekChip.textContent).toContain('Viktor Axelsen');
     });
+
+    it('opens auto dropper attribution popup on doubles POINT and attributes drop or Both Fault', async () => {
+      useMatchStore.getState().resetMatch();
+      await useMatchStore.getState().startMatch({
+        id: 'm-doubles-popup',
+        mode: 'doubles',
+        bestOf: 3,
+        pointsToWinGame: 21,
+        tiebreakCap: 30,
+        sideA: {
+          id: 'sa',
+          name: 'Viktor & Anders',
+          playerIds: ['p-viktor', 'p-antonsen'],
+          playerNames: ['Viktor Axelsen', 'Anders Antonsen'],
+        },
+        sideB: {
+          id: 'sb',
+          name: 'Momota & Shi',
+          playerIds: ['p-momota', 'p-shi'],
+          playerNames: ['Kento Momota', 'Shi Yuqi'],
+        },
+        initialServerSide: 'A',
+        initialServerPlayerId: 'p-viktor',
+      });
+
+      render(<AppleScoringScreen />);
+
+      const pointBtn = screen.getByTestId('point-btn-p-viktor');
+      await act(async () => {
+        fireEvent.click(pointBtn);
+      });
+
+      const sheet = await screen.findByTestId('auto-dropper-sheet');
+      expect(sheet).toBeInTheDocument();
+      expect(screen.getByTestId('dropper-btn-p-momota')).toBeInTheDocument();
+      expect(screen.getByTestId('dropper-btn-p-shi')).toBeInTheDocument();
+      expect(screen.getByTestId('dropper-btn-both-fault')).toBeInTheDocument();
+
+      // Click Momota dropped
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('dropper-btn-p-momota'));
+      });
+
+      const stats = useMatchStore.getState().scoringRulesState?.playerStats;
+      expect(stats?.['p-viktor']?.pointsWon).toBe(1);
+      expect(stats?.['p-momota']?.drops).toBe(1);
+
+      // Advance time past 300ms debounce and test Both Fault
+      await new Promise((r) => setTimeout(r, 320));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('point-btn-p-viktor'));
+      });
+      await screen.findByTestId('auto-dropper-sheet');
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('dropper-btn-both-fault'));
+      });
+
+      const statsAfter = useMatchStore.getState().scoringRulesState?.playerStats;
+      expect(statsAfter?.['p-viktor']?.pointsWon).toBe(2);
+      expect(statsAfter?.['p-momota']?.drops).toBe(1.5);
+      expect(statsAfter?.['p-shi']?.drops).toBe(0.5);
+    });
   });
 });

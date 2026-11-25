@@ -31,27 +31,43 @@ export function convertEngineConfigToScoringConfig(
   const matchType = engineConfig.mode === 'doubles' ? 'DOUBLES' : 'SINGLES';
   const format: ScoringFormat = engineConfig.scoringFormat || 'RALLY_21';
 
+  // Prefer explicit playerNames[] over splitting team name (fixes UUID display)
+  const sideANames = (engineConfig as any).sideA?.playerNames as string[] | undefined;
+  const sideBNames = (engineConfig as any).sideB?.playerNames as string[] | undefined;
+
   const sideAPlayer1 = {
     id: engineConfig.sideA.playerIds[0] || 'p1',
-    name: engineConfig.sideA.name.split('&')[0]?.trim() || engineConfig.sideA.name,
+    name:
+      sideANames?.[0] ||
+      engineConfig.sideA.name.split('&')[0]?.trim() ||
+      engineConfig.sideA.name,
   };
   const sideAPlayer2 =
     engineConfig.mode === 'doubles'
       ? {
           id: engineConfig.sideA.playerIds[1] || 'p2',
-          name: engineConfig.sideA.name.split('&')[1]?.trim() || 'Partner A',
+          name:
+            sideANames?.[1] ||
+            engineConfig.sideA.name.split('&')[1]?.trim() ||
+            'Partner A',
         }
       : undefined;
 
   const sideBPlayer1 = {
     id: engineConfig.sideB.playerIds[0] || 'p3',
-    name: engineConfig.sideB.name.split('&')[0]?.trim() || engineConfig.sideB.name,
+    name:
+      sideBNames?.[0] ||
+      engineConfig.sideB.name.split('&')[0]?.trim() ||
+      engineConfig.sideB.name,
   };
   const sideBPlayer2 =
     engineConfig.mode === 'doubles'
       ? {
           id: engineConfig.sideB.playerIds[1] || 'p4',
-          name: engineConfig.sideB.name.split('&')[1]?.trim() || 'Partner B',
+          name:
+            sideBNames?.[1] ||
+            engineConfig.sideB.name.split('&')[1]?.trim() ||
+            'Partner B',
         }
       : undefined;
 
