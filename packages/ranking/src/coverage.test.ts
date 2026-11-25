@@ -152,6 +152,30 @@ describe('Ranking Engine Comprehensive Coverage', () => {
   });
 
   it('computes match stats where side B wins and points derived from events', () => {
+    const clubSinglesMatch: RankingMatch = {
+      id: 'm-club-singles',
+      matchType: 'SINGLES',
+      scoringFormat: 'RALLY_21',
+      teamAId: 'club-a',
+      teamBId: 'club-b',
+      participants: [
+        { playerId: 'p1', displayName: 'P1', side: 'A', position: 1 },
+        { playerId: 'p2', displayName: 'P2', side: 'B', position: 1 },
+      ],
+      winnerSide: 'A',
+      status: 'COMPLETED',
+      games: [{ gameNumber: 1, scoreA: 21, scoreB: 15, winnerSide: 'A' }],
+      events: [
+        { id: 'e1', sequenceNumber: 1, eventType: 'PLAYER_ACTION', playerId: 'p1', side: 'A', action: 'POINT', isPoint: true },
+        { id: 'e2', sequenceNumber: 2, eventType: 'PLAYER_ACTION', playerId: 'p1', side: 'A', action: 'DROP', isPoint: true },
+        { id: 'e3', sequenceNumber: 3, eventType: 'PLAYER_ACTION', playerId: 'p2', side: 'B', action: 'POINT', isPoint: true },
+        { id: 'e4', sequenceNumber: 4, eventType: 'PLAYER_ACTION', playerId: 'p2', side: 'B', action: 'DROP', isPoint: true },
+      ],
+    };
+    const clubRes = computeAllTeamStats([clubSinglesMatch]);
+    expect(clubRes['club-a']).toBeDefined();
+    expect(clubRes['club-b']).toBeDefined();
+
     const matchSideBWins: RankingMatch = {
       id: 'm-side-b',
       matchType: 'DOUBLES',

@@ -80,6 +80,16 @@ jobs:
         run: |
           npm run seed:community
 
+      - name: Postgres 16 Trigger, Constraint & 1M Event Load Gate
+        env:
+          DATABASE_URL: postgres://rallypoint:rallypoint_secret@localhost:5432/rallypoint_db
+        run: npx tsx packages/db/src/postgresGate.ts
+
+      - name: Coverage Gate (Scoring Rules & Ranking >= 95%)
+        run: |
+          npm run --workspace=@rallypoint/scoring-rules test:coverage
+          npm run --workspace=@rallypoint/ranking test:coverage
+
       - name: Typecheck
         run: npm run typecheck
 

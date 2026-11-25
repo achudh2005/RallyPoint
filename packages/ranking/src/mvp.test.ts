@@ -267,6 +267,28 @@ describe('Match MVP Engine (Feature 2)', () => {
     expect(resWinnerDefault.mvp!.playerId).toBe('p1');
   });
 
+  it('handles Service Point side-outs (isPoint: false, isSideOut: true) for POINT and DROP', () => {
+    const events: RankingMatchEvent[] = [
+      makeAction(1, 'p-anu', 'A', 'POINT', 'B', false, true), // Receiver POINT side-out
+      makeAction(2, 'p-anu', 'A', 'DROP', 'A', false, true),  // Server DROP side-out
+      makeAction(3, 'p-anu', 'A', 'POINT', 'B', true, false),
+      makeAction(4, 'p-anu', 'A', 'POINT', 'B', true, false),
+      makeAction(5, 'p-anu', 'A', 'POINT', 'B', true, false),
+      { id: 'ev-6', sequenceNumber: 6, eventType: 'SIDE_OUT', payload: { newServingSide: 'A' } },
+      { id: 'ev-7', sequenceNumber: 7, eventType: 'SETTING_CHOICE', payload: {} },
+      { id: 'ev-8', sequenceNumber: 8, eventType: 'GAME_END', payload: { gameNumber: 1 } },
+    ];
+
+    const res = computeMatchAwards(events, undefined, {
+      matchType: 'DOUBLES',
+      scoringFormat: 'SERVICE_POINT_15',
+      winnerSide: 'A',
+      participants,
+    });
+    expect(res.isQualified).toBe(true);
+    expect(res.mvp!.serveRegained).toBe(4);
+  });
+
   it('property-based test: replay equals incremental state', () => {
     const actionArbitrary = fc.record({
       seq: fc.integer({ min: 1, max: 50 }),

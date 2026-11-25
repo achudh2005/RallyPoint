@@ -40,8 +40,10 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
   const [systemType, setSystemType] = useState<'RALLY' | 'SERVICE'>('RALLY');
   const [targetScore, setTargetScore] = useState<'21' | '15' | '11'>('21');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [customWinBy] = useState(2);
-  const [customCap] = useState(30);
+  const [useCustomRules, setUseCustomRules] = useState(false);
+  const [customTarget, setCustomTarget] = useState(21);
+  const [customWinBy, setCustomWinBy] = useState(2);
+  const [customCap, setCustomCap] = useState(30);
 
   // Step 3: Who serves first?
   const [firstServerSide, setFirstServerSide] = useState<'A' | 'B'>('A');
@@ -100,6 +102,7 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
   };
 
   const getResolvedScoringFormat = (): ScoringFormat => {
+    if (useCustomRules) return 'CUSTOM';
     if (systemType === 'RALLY') {
       if (targetScore === '21') return 'RALLY_21';
       if (targetScore === '15') return 'RALLY_15';
@@ -114,12 +117,20 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
   const handleStart = () => {
     Haptics.pointScored();
     const scoringFormat = getResolvedScoringFormat();
-    const targetPoints = parseInt(targetScore, 10);
+    const targetPoints = useCustomRules ? customTarget : parseInt(targetScore, 10);
 
     const config: any = {
       id: `m-${Date.now()}`,
       mode: isDoubles ? 'doubles' : 'singles',
       scoringFormat,
+      customFormatConfig: useCustomRules
+        ? {
+            scoringType: systemType,
+            targetPoints: customTarget,
+            winBy: customWinBy,
+            cap: customCap,
+          }
+        : undefined,
       bestOf: 3,
       pointsToWinGame: targetPoints,
       tiebreakCap: customCap,
@@ -390,16 +401,59 @@ export const MatchSetupSheet: React.FC<MatchSetupSheetProps> = ({
               {showAdvanced && (
                 <div className="pt-3 space-y-3 text-xs text-neutral-500 dark:text-neutral-400 border-t border-neutral-200/60 dark:border-neutral-800/80 mt-2">
                   <div className="flex justify-between items-center">
+                    <span>Use Custom Format Rules</span>
+                    <input
+                      type="checkbox"
+                      aria-label="Use Custom Format Rules"
+                      checked={useCustomRules}
+                      onChange={(e) => setUseCustomRules(e.target.checked)}
+                      className="w-4 h-4 accent-emerald-500"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Target Points:</span>
+                    <input
+                      type="number"
+                      aria-label="Custom Target Points"
+                      min={5}
+                      max={30}
+                      value={customTarget}
+                      onChange={(e) => {
+                        setCustomTarget(Math.max(5, Math.min(30, Number(e.target.value) || 21)));
+                        setUseCustomRules(true);
+                      }}
+                      className="w-16 px-2 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-right font-semibold text-neutral-800 dark:text-neutral-200"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
                     <span>Win by Margin:</span>
-                    <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                      {customWinBy} points
-                    </span>
+                    <input
+                      type="number"
+                      aria-label="Custom Win by Margin"
+                      min={1}
+                      max={5}
+                      value={customWinBy}
+                      onChange={(e) => {
+                        setCustomWinBy(Math.max(1, Math.min(5, Number(e.target.value) || 2)));
+                        setUseCustomRules(true);
+                      }}
+                      className="w-16 px-2 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-right font-semibold text-neutral-800 dark:text-neutral-200"
+                    />
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Sudden Death Cap:</span>
-                    <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                      {customCap} points
-                    </span>
+                    <input
+                      type="number"
+                      aria-label="Custom Sudden Death Cap"
+                      min={5}
+                      max={40}
+                      value={customCap}
+                      onChange={(e) => {
+                        setCustomCap(Math.max(5, Math.min(40, Number(e.target.value) || 30)));
+                        setUseCustomRules(true);
+                      }}
+                      className="w-16 px-2 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-right font-semibold text-neutral-800 dark:text-neutral-200"
+                    />
                   </div>
                 </div>
               )}

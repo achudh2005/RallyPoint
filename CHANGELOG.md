@@ -2,6 +2,19 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [QA Phase 2] - 95%+ Core Coverage, Postgres 16 1M-Event Gate & API Matrix
+### Added
+- **Exhaustive Scoring & Streak Tests (`packages/scoring-rules/src/qaExhaustive.test.ts`)**:
+  - Verified Rally Point 21/15/11 deuce/hard-cap boundaries, Service Point 15/11 setting choices (13/14-all and 9/10-all), 1-down doubles start, custom format, UNDO across match end, `fast-check` random action+undo replay equivalence, and legacy streak paths (**97.10%** coverage).
+- **Ranking & MVP Coverage (`packages/ranking/src/mvp.test.ts`, `coverage.test.ts`)**:
+  - Added Service Point side-out MVP tests and club-singles team aggregation tests (**95.02%** coverage, passing 95% gate).
+- **PostgreSQL 16 Scale & Trigger Gate (`packages/db/src/postgresGate.ts`, `.github/workflows/ci.yml`)**:
+  - Added CI verification for append-only `UPDATE`/`DELETE` triggers, negative score constraints, 200 players / 20k matches / 1M events load, and `EXPLAIN ANALYZE` latency budgets (<200ms leaderboard, <50ms ingestion).
+- **API & Socket.IO Matrix (`apps/api/src/qaApiMatrix.test.ts`)**:
+  - Added Supertest integration tests for all 4 RBAC roles, Zod 400 validation, 3x idempotent event batch retries, out-of-order two-device `sequenceNumber` conflict resolution, and `<1s` Socket.IO namespace initialization.
+- **Custom Scoring UI Fix (`apps/web/src/components/play/MatchSetupSheet.tsx`)**:
+  - Wired editable custom target, win-by margin, and sudden-death cap controls into Advanced Scoring Options.
+
 ## [QA Phase 1] - Full Audit, Feature Matrix & Baseline Metrics
 ### Added
 - **QA Feature Matrix (`/docs/qa/FEATURE_MATRIX.md`)**: Mapped all 30 inventory items to exact code locations, existing automated tests, and gap statuses (`EXISTS-WORKING`, `EXISTS-UNVERIFIED`, `PARTIAL`, `MISSING`).

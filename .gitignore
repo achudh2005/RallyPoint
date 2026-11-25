@@ -11,6 +11,7 @@ blob-report
 
 # Production build
 dist
+dist-apks
 build
 .next
 out

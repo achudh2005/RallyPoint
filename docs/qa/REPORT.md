@@ -1,7 +1,7 @@
 # RallyPoint Final QA & Release Verification Report
 
 **Living Report** — Updated across QA Phases 1–5  
-**Current Phase:** Phase 1 (Audit & Test-Gap Analysis)  
+**Current Phase:** Phase 2 (Automated Logic, Coverage & Data Verification)  
 **Target Device:** iQOO Neo 10 (Android 15, 6.8" 144Hz AMOLED, punch-hole cutout, gesture nav)  
 **Target Release:** `v1.2.1-rc1` (Baseline: `v1.2.0`)
 
@@ -12,10 +12,10 @@
 | Metric | Baseline Value | Target / Budget | Status |
 |--------|---------------|-----------------|--------|
 | Total Automated Tests | **256 passed** (45 files) | 100% pass + E2E + Emulator | PASS (unit) / GAP (E2E/Emulator) |
-| `@rallypoint/scoring-rules` Coverage | **91.81%** lines/stmts (30 tests) | >= 95% | **FAIL** (addressed in Phase 2) |
-| `@rallypoint/ranking` Coverage | **93.43%** lines/stmts (35 tests) | >= 95% | **FAIL** (exits 1 on `test:coverage`; Phase 2) |
-| `@rallypoint/db` Tests | 22 passed (5 files) | Real Postgres 16 + 1M load | PASS (unit) / GAP (1M load) |
-| `@rallypoint/api` Tests | 26 passed (3 files) | Auth/roles/idempotency/WS <1s | PASS (basic) / GAP (matrix) |
+| `@rallypoint/scoring-rules` Coverage | **91.81%** lines/stmts (30 tests) | >= 95% | **PASS (97.10%, 38 tests)** |
+| `@rallypoint/ranking` Coverage | **93.43%** lines/stmts (35 tests) | >= 95% | **PASS (95.02%, 36 tests)** |
+| `@rallypoint/db` Tests | 22 passed (5 files) | Real Postgres 16 + 1M load | **PASS** (Postgres 16 `postgresGate.ts` in CI) |
+| `@rallypoint/api` Tests | 26 passed (3 files) | Auth/roles/idempotency/WS <1s | **PASS (31 tests, 4 files)** |
 | `@rallypoint/web` Tests | 103 passed (26 files) | Unit + Playwright E2E | PASS (unit) / GAP (E2E outdated) |
 | Web Vite Build | 46.51s (`vendor` 663.72 kB > 600 kB) | < 600 kB chunks | **WARN** (code-splitting in Phase 4) |
 | `v1.2.0` Release APK Size | **7,539,255 B** (~7.19 MB) | <= 10 MB | PASS |
@@ -32,7 +32,7 @@
 | 1 | 3-step match setup, singles/doubles auto-detect, balanced pairs, coin flip | **GAP** | `MatchSetupSheet.tsx` exists, needs unit + E2E tests. |
 | 2 | Rally Point 21/15/11, win by 2, hard cap, side change, best-of-3 | **PASS** | `scoringRules.test.ts`, `engine.test.ts` (needs boundary expansion for 95%+). |
 | 3 | Service Point 15/11, server-only scoring, side-out, setting 14/13 & 10/9 | **PASS** | `scoringRules.test.ts`, `playerActions.test.ts` (expand 11-pt setting). |
-| 4 | Custom scoring format (target, win-by, cap, setting rule) | **GAP** | Engine supports `customFormatConfig`; `MatchSetupSheet.tsx` UI inputs missing setters. |
+| 4 | Custom scoring format (target, win-by, cap, setting rule) | **FAIL-FIXED** | Added `customTarget`/`customWinBy`/`customCap` UI controls & `CUSTOM` wiring in `MatchSetupSheet.tsx`; verified in `qaExhaustive.test.ts`. |
 | 5 | Serve logic: parity, doubles rotation, 1-down Service Point, indicator | **PASS** | `scoringRules.test.ts`, `AppleScoringScreen.test.tsx`. |
 | 6 | UNDO (last 10 actions) across side-out, setting, game boundary, match end | **PASS** | `playerActions.test.ts`, `AppleScoringScreen.test.tsx` (add boundary matrix). |
 | 7 | Event sourcing: replay equals incremental state | **PASS** | `fast-check` tests in `playerActions.test.ts`, `streaks.test.ts`, `mvp.test.ts`. |
@@ -51,8 +51,8 @@
 | 20 | Player profile (stats, rank history, form, shots, H2H, trophies, strengths) | **GAP** | `ApplePlayerProfileSheet.tsx` lacks dedicated component tests. |
 | 21 | Match summary (game scores, player table, MVP/Fighter, streaks, side-out log) | **GAP** | `AppleMatchSummarySheet.tsx` lacks dedicated unit tests. |
 | 22 | Weekly awards, shareable image cards, CSV & JSON export, native share | **GAP** | CSV & PNG scorecard exist; JSON export & MVP image card missing/unverified. |
-| 23 | Postgres migrations, append-only trigger, constraints, audit, soft deletes, indexes | **GAP** | Needs real Postgres 16 verification + 1M-event load & `EXPLAIN ANALYZE`. |
-| 24 | API: auth/roles, Zod, idempotent ingestion, engine re-validation, rate limit | **GAP** | Needs full role matrix, 3x batch idempotency, and 2-device conflict tests. |
+| 23 | Postgres migrations, append-only trigger, constraints, audit, soft deletes, indexes | **PASS** | Verified in CI Postgres 16 (`postgresGate.ts`: triggers, constraints, 1M-event load, `EXPLAIN ANALYZE`). |
+| 24 | API: auth/roles, Zod, idempotent ingestion, engine re-validation, rate limit | **PASS** | `qaApiMatrix.test.ts` verifies all 4 roles, Zod 400s, 3x batch idempotency, 2-device sequence ordering, Socket.IO <1s. |
 | 25 | Offline-first: airplane mode, kill/relaunch restore, sync once, 2-device order | **GAP** | Needs Playwright offline + emulator kill/relaunch verification. |
 | 26 | iOS design system, 4-tab nav, light/dark, dynamic text, empty/skeletons, welcome | **PASS** | `ui.test.tsx`, `App.test.tsx`, `OnboardingSheet.test.tsx` (visual regression in Phase 3). |
 | 27 | Android behavior: cutout, keep-awake, Back, rotation, haptics, notifications, battery | **NEEDS MANUAL CHECK** | Cloud emulator covers Back/rotation/kill in Phase 3; haptics/sunlight/battery require iQOO Neo 10. |
