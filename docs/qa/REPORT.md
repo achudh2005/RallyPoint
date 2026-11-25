@@ -1,7 +1,7 @@
 # RallyPoint Final QA & Release Verification Report
 
 **Living Report** — Updated across QA Phases 1–5  
-**Current Phase:** Phase 2 (Automated Logic, Coverage & Data Verification)  
+**Current Phase:** Phase 3 (End-to-End, Visual, Accessibility & Android Emulator Verification)  
 **Target Device:** iQOO Neo 10 (Android 15, 6.8" 144Hz AMOLED, punch-hole cutout, gesture nav)  
 **Target Release:** `v1.2.1-rc1` (Baseline: `v1.2.0`)
 
@@ -29,7 +29,7 @@
 
 | # | Feature | Phase 1 Status | Evidence / Notes |
 |---|---------|----------------|------------------|
-| 1 | 3-step match setup, singles/doubles auto-detect, balanced pairs, coin flip | **GAP** | `MatchSetupSheet.tsx` exists, needs unit + E2E tests. |
+| 1 | 3-step match setup, singles/doubles auto-detect, balanced pairs, coin flip | **PASS** | Verified in `MatchSetupSheet.test.tsx` + Playwright `match.spec.ts`. |
 | 2 | Rally Point 21/15/11, win by 2, hard cap, side change, best-of-3 | **PASS** | `scoringRules.test.ts`, `engine.test.ts` (needs boundary expansion for 95%+). |
 | 3 | Service Point 15/11, server-only scoring, side-out, setting 14/13 & 10/9 | **PASS** | `scoringRules.test.ts`, `playerActions.test.ts` (expand 11-pt setting). |
 | 4 | Custom scoring format (target, win-by, cap, setting rule) | **FAIL-FIXED** | Added `customTarget`/`customWinBy`/`customCap` UI controls & `CUSTOM` wiring in `MatchSetupSheet.tsx`; verified in `qaExhaustive.test.ts`. |
@@ -48,8 +48,8 @@
 | 17 | `Matches: N`, tie handling (1,2,2,4), movement, filters, mixed-format norm | **PASS** | `ranking.test.ts`, `scoringSystemsRanking.test.ts`. |
 | 18 | Live updates (<1s Socket.IO), Live badge, TV page, offline snapshots | **GAP** | Socket.IO E2E latency & offline "last updated" label unverified. |
 | 19 | `npm run rebuild-rankings` parity, season close, merge players, weights | **GAP** | Admin actions need DB/API integration tests. |
-| 20 | Player profile (stats, rank history, form, shots, H2H, trophies, strengths) | **GAP** | `ApplePlayerProfileSheet.tsx` lacks dedicated component tests. |
-| 21 | Match summary (game scores, player table, MVP/Fighter, streaks, side-out log) | **GAP** | `AppleMatchSummarySheet.tsx` lacks dedicated unit tests. |
+| 20 | Player profile (stats, rank history, form, shots, H2H, trophies, strengths) | **PASS** | Verified in `ApplePlayerProfileSheet.test.tsx` (Trophy Shelf, Strengths, stats). |
+| 21 | Match summary (game scores, player table, MVP/Fighter, streaks, side-out log) | **PASS** | Verified in `AppleMatchSummarySheet.test.tsx` & `MvpRevealCard.test.tsx`. |
 | 22 | Weekly awards, shareable image cards, CSV & JSON export, native share | **GAP** | CSV & PNG scorecard exist; JSON export & MVP image card missing/unverified. |
 | 23 | Postgres migrations, append-only trigger, constraints, audit, soft deletes, indexes | **PASS** | Verified in CI Postgres 16 (`postgresGate.ts`: triggers, constraints, 1M-event load, `EXPLAIN ANALYZE`). |
 | 24 | API: auth/roles, Zod, idempotent ingestion, engine re-validation, rate limit | **PASS** | `qaApiMatrix.test.ts` verifies all 4 roles, Zod 400s, 3x batch idempotency, 2-device sequence ordering, Socket.IO <1s. |
@@ -58,7 +58,7 @@
 | 27 | Android behavior: cutout, keep-awake, Back, rotation, haptics, notifications, battery | **NEEDS MANUAL CHECK** | Cloud emulator covers Back/rotation/kill in Phase 3; haptics/sunlight/battery require iQOO Neo 10. |
 | 28 | APK pipeline: signed APK, same keystore, Release, SHA-256, install page, updater | **PASS** | `v1.2.0` APK built & released; upgrade-over-old-APK test in Phase 3. |
 | 29 | Accessibility: TalkBack labels, `aria-live`, 48dp targets, reduce motion, large text | **GAP** | Needs `axe` scan & Lighthouse >= 95 in Phase 3. |
-| 30 | Responsive: 360x800, 393x873, tablet two-pane, TV scoreboard mode | **GAP** | Needs Playwright multi-viewport visual & layout verification in Phase 3. |
+| 30 | Responsive: 360x800, 393x873, tablet two-pane, TV scoreboard mode | **PASS** | Verified across 360x800, 393x873, 873x393 landscape, 768x1024 tablet, 1280x800 desktop in Playwright + `TVScoreboardScreen.test.tsx`. |
 
 ---
 

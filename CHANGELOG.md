@@ -2,6 +2,15 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [QA Phase 3] - Playwright E2E, Component Tests & Android API 35 Emulator Gate
+### Added
+- **Updated Playwright E2E Suite (`apps/web/e2e/match.spec.ts`)**:
+  - Added full end-to-end journeys for 393x873 (iQOO Neo 10), 360x800, 873x393 landscape, 768x1024 tablet, and 1280x800 desktop: 3-step setup, doubles POINT/DROP scoring, StreakBanner trigger & UNDO rollback, mid-match MVP peek, Quick Edit, Service Point 15 side-outs, Rankings CSV export, and touch-target/overflow checks.
+- **Closed Phase 1 Component Test Gaps**:
+  - Added `ApplePlayerProfileSheet.test.tsx`, `AppleMatchSummarySheet.test.tsx`, and `MatchSetupSheet.test.tsx`.
+- **Android API 35 Emulator & Upgrade CI Workflow (`.github/workflows/qa-e2e-emulator.yml`)**:
+  - Added headless Playwright E2E job and `reactivecircus/android-emulator-runner` API 35 job verifying `v1.2.0` -> current in-place APK upgrade, rotation, Back key, force-stop kill/relaunch, airplane-mode toggle, and `dumpsys gfxinfo` frame stats.
+
 ## [QA Phase 2] - 95%+ Core Coverage, Postgres 16 1M-Event Gate & API Matrix
 ### Added
 - **Exhaustive Scoring & Streak Tests (`packages/scoring-rules/src/qaExhaustive.test.ts`)**:
