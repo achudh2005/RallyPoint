@@ -136,6 +136,15 @@ jobs:
           echo "=== SHA-256 Checksums ==="
           cat *.sha256
 
+          echo "=== Security: APK Signature & Size Budget Gate ==="
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          if [ -x "$APKSIGNER" ] && [ -f RallyPoint-release.apk ]; then
+            "$APKSIGNER" verify --verbose RallyPoint-release.apk
+          fi
+          RELEASE_BYTES=$(wc -c < RallyPoint-release.apk)
+          echo "RallyPoint-release.apk size: $RELEASE_BYTES bytes (budget <= 12582912)"
+          test "$RELEASE_BYTES" -le 12582912
+
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -174,6 +183,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: RallyPoint ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
           files: |
             release-assets/RallyPoint-release.apk
             release-assets/RallyPoint-debug.apk

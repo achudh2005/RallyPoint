@@ -33,7 +33,7 @@ import { nativePermissions } from '../../mobile/permissions.js';
 import { FuntouchBatteryModal } from '../mobile/FuntouchBatteryModal.js';
 import { checkForAppUpdates, UpdateCheckResult } from '../../mobile/updateChecker.js';
 import { UpdateModal } from '../../mobile/UpdateModal.js';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Bug } from 'lucide-react';
 import { LiveAlertsSettings } from './LiveAlertsSettings.js';
 
 export const AppleProfileScreen: React.FC = () => {
@@ -49,6 +49,8 @@ export const AppleProfileScreen: React.FC = () => {
     setPlayerActionButtonLabels,
     playerActionButtonLayout,
     setPlayerActionButtonLayout,
+    events: lastMatchEvents,
+    match: currentMatch,
   } = useMatchStore();
   const { activeSeason, setActiveSeason, recalculateLiveRankings, matches } =
     useRankingStore();
@@ -138,6 +140,34 @@ export const AppleProfileScreen: React.FC = () => {
     const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
     await nativeShare.shareFile(fileName, b64, 'application/json');
     setShowExportNotice(true);
+  };
+
+  const handleReportProblem = async () => {
+    Haptics.selection();
+    const diagnostics = {
+      appVersion: '1.2.1-rc1',
+      timestamp: new Date().toISOString(),
+      platform: typeof navigator !== 'undefined' ? navigator.platform : 'unknown',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      activeSeason,
+      currentMatchId: currentMatch?.config?.id || null,
+      recentEventsCount: lastMatchEvents?.length || 0,
+      lastMatchEvents: (lastMatchEvents || []).slice(-25),
+    };
+    const reportText = `RallyPoint Diagnostic Report (v1.2.1-rc1)\n${JSON.stringify(diagnostics, null, 2)}`;
+
+    const shared = await nativeShare.shareText('RallyPoint Problem Report', reportText);
+    if (!shared && typeof document !== 'undefined') {
+      const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rallypoint-diagnostics-${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
 
   if (showGallery) {
@@ -444,12 +474,28 @@ export const AppleProfileScreen: React.FC = () => {
             />
 
             <GroupedRow
+              title="Report a Problem"
+              subtitle="Bundle version, device info & last match event log"
+              leading={<Bug className="w-5 h-5 text-amber-500" />}
+              onClick={handleReportProblem}
+              trailing={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleReportProblem}
+                >
+                  Export Log
+                </Button>
+              }
+            />
+
+            <GroupedRow
               title="Installed Version"
               subtitle="Optimized for Android 15 & iQOO Neo 10"
               leading={<Info className="w-5 h-5 text-neutral-400" />}
               trailing={
                 <Badge variant="neutral" size="sm">
-                  v1.0.0
+                  v1.2.1-rc1
                 </Badge>
               }
             />
@@ -488,7 +534,7 @@ export const AppleProfileScreen: React.FC = () => {
         {/* App Info Footer */}
         <div className="text-center pt-2 pb-4 space-y-1">
           <Badge variant="neutral" size="sm">
-            RallyPoint UI v1.0.0 (Apple HIG)
+            RallyPoint UI v1.2.1-rc1 (Apple HIG)
           </Badge>
           <p className="text-[11px] text-neutral-400">
             Event-sourced badminton scoring & community leagues

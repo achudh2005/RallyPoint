@@ -2,6 +2,15 @@
 
 All notable changes to the RallyPoint project will be documented in this file.
 
+## [1.2.1-rc1] / [QA Phase 5] - Release Candidate & Manual Verification Pack
+### Added
+- **In-App Diagnostic Export (`apps/web/src/components/profile/AppleProfileScreen.tsx`)**:
+  - Added **Report a Problem** row bundling app version (`1.2.1-rc1`), platform/UA, active season, and last 25 match events into a shareable/downloadable diagnostic log.
+- **Release Security & Signature Gate (`.github/workflows/android-apk.yml`)**:
+  - Added `apksigner verify` signature check, `<= 12 MB` release APK size budget gate, and automatic GitHub Pre-Release tagging for `-rc` tags.
+- **iQOO Neo 10 Manual Test Pack (`/docs/qa/MANUAL_TEST_CHECKLIST.md`)**:
+  - Added 25-item (~15 min) physical device verification checklist and failure diagnostic guide.
+
 ## [QA Phase 4] - Performance Budgets, Code-Splitting & Glitch Hunt
 ### Added
 - **Bundle Splitting (`apps/web/vite.config.ts`)**:
